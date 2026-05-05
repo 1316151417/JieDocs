@@ -1,0 +1,23 @@
+{
+  "id": "conv-1777968404872-khx3bt7al",
+  "providerId": "claude",
+  "title": "你好！A simple greeting for this conversation",
+  "titleGenerationStatus": "success",
+  "createdAt": 1777968404876,
+  "updatedAt": 1777971547165,
+  "lastResponseAt": 1777971534645,
+  "sessionId": "c84ca7b4-508c-4048-a4f6-24d133d59065",
+  "providerState": {
+    "providerSessionId": "c84ca7b4-508c-4048-a4f6-24d133d59065"
+  },
+  "usage": {
+    "model": "opus",
+    "inputTokens": 15,
+    "cacheCreationInputTokens": 0,
+    "cacheReadInputTokens": 68478,
+    "contextWindow": 200000,
+    "contextTokens": 68493,
+    "percentage": 34,
+    "contextWindowIsAuthoritative": false
+  }
+}

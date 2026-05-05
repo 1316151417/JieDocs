@@ -1,0 +1,23 @@
+{
+  "id": "conv-1777971606021-f5r87x3tw",
+  "providerId": "claude",
+  "title": "I'll help you translate files and generate new ...",
+  "titleGenerationStatus": "success",
+  "createdAt": 1777971606021,
+  "updatedAt": 1777972232263,
+  "lastResponseAt": 1777972232263,
+  "sessionId": "8c98d76d-3cb7-4566-9951-dd6586b33463",
+  "providerState": {
+    "providerSessionId": "8c98d76d-3cb7-4566-9951-dd6586b33463"
+  },
+  "currentNote": "1_大模型/karpathy/1_The spelled-out intro to neural networks and backpropagation_ building micrograd.md",
+  "usage": {
+    "model": "opus",
+    "inputTokens": 51,
+    "cacheCreationInputTokens": 0,
+    "cacheReadInputTokens": 52672,
+    "contextWindow": 200000,
+    "contextTokens": 52723,
+    "percentage": 26
+  }
+}
