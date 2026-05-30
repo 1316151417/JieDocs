@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# Obsidian workspace files
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Claudian session files
+.claudian/sessions/

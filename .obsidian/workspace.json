@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "bb3d7ba6ef54fd49",
+        "id": "a2db1da7d82f5a6a",
         "type": "tabs",
         "children": [
           {
-            "id": "0a3e1ed416fa04a9",
+            "id": "dd2ad8dc6e0ae147",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "1_大模型/karpathy/1_Intro to Large Language Models.md",
+                "file": "3_深度学习/00_脑图.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "1_Intro to Large Language Models"
+              "title": "00_脑图"
             }
           }
         ]
@@ -78,7 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 255.5
+    "width": 349.5
   },
   "right": {
     "id": "b1342a72880bda7f",
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "1_大模型/karpathy/1_Intro to Large Language Models.md",
+                "file": "3_深度学习/引言.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "1_Intro to Large Language Models 的反向链接列表"
+              "title": "引言 的反向链接列表"
             }
           },
           {
@@ -178,8 +178,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 358.5,
-    "collapsed": true
+    "width": 358.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -194,32 +193,47 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "0a3e1ed416fa04a9",
+  "active": "dd2ad8dc6e0ae147",
   "lastOpenFiles": [
-    "1_大模型/karpathy/2_How I use LLMs.md",
-    "1_大模型/karpathy/1_Intro to Large Language Models.md",
-    "1_大模型/karpathy_cn/1_大语言模型入门.md",
+    "3_深度学习/15_前沿方向与开放问题.md",
+    "3_深度学习/14_深度学习工程实践.md",
+    "3_深度学习/13_迁移学习与微调.md",
+    "3_深度学习/12_大语言模型与基础模型.md",
+    "3_深度学习/11_自监督与对比学习.md",
+    "3_深度学习/10_损失函数与评估指标.md",
+    "3_深度学习/09_正则化与归一化.md",
+    "3_深度学习/08_反向传播与优化算法.md",
+    "3_深度学习/07_生成模型.md",
+    "3_深度学习/06_Transformer架构.md",
+    "3_深度学习/05_循环神经网络与序列模型.md",
+    "3_深度学习/04_卷积神经网络.md",
+    "3_深度学习/03_神经网络基础.md",
+    "3_深度学习/02_数学基础.md",
+    "3_深度学习/01_深度学习概述.md",
+    "3_深度学习/00_索引目录.md",
+    "Y_项目/企业知识库/企业知识库-技术设计byAI_v3.md",
+    "Excalidraw/Drawing 2026-05-26 10.35.57.excalidraw.md",
+    "Excalidraw",
+    "Y_项目/企业知识库/attachments/Pasted image 20260525235205.png",
+    "Y_项目/企业知识库/企业知识库-技术设计byAI_v2.md",
+    "Y_项目/企业知识库/attachments/Pasted image 20260525234348.png",
+    "Y_项目/企业知识库/企业知识库-技术设计byAI_v1.md",
+    "Y_项目/企业知识库/企业知识库-设计思路整理.md",
+    "Y_项目/企业知识库/attachments/Pasted image 20260525233718.png",
+    "Y_项目/企业知识库/attachments",
+    "Y_项目/企业知识库/企业知识库-设计思路整理 1.md",
+    "Y_项目/企业知识库",
+    "3_深度学习/00_脑图.md",
+    "Y_项目",
+    "3_深度学习/attachments/Pasted image 20260510221119.png",
+    "3_深度学习/attachments",
+    "2_Agent/Agent基础学习路线.md",
+    "1_大模型/karpathy_rpt/3-1_语言建模入门详解_深度分析报告.md",
+    "3_深度学习",
+    "1_大模型/karpathy_rpt/2_我是如何使用LLM的_深度分析报告.md",
     "1_大模型/karpathy_vsl/index.html",
     "1_大模型/karpathy_vsl",
     "1_大模型/karpathy_rpt/karpathy_vsl/index.html",
-    "1_大模型/karpathy_rpt/karpathy_vsl",
-    "1_大模型/karpathy_rpt/1_大语言模型入门_深度分析.md",
-    "1_大模型/karpathy_rpt",
-    "1_大模型/karpathy_zj",
-    "1_大模型/karpathy/1_The spelled-out intro to neural networks and backpropagation_ building micrograd.md",
-    "1_大模型/karpathy_cn",
-    "1_大模型/大模型基础学习路线-平滑版.md",
-    "1_大模型/karpathy",
-    "1_大模型/大模型基础学习路线.md",
-    "1_大模型/LLM_Smooth_Learning_Path.md",
-    "LLM_Smooth_Learning_Path.md",
-    "2_Agent/Agent基础学习路线.md",
-    "2_Agent",
-    "1_大模型",
-    "Agent基础/Agent基础学习路线.md",
-    "Agent基础/Agent_Learning_Report_V2_CN.md",
-    "大模型基础/大模型基础学习路线.md",
-    "大模型基础/学习路线.md",
-    "大模型基础/LLM_Fundamentals_Learning_Report.md"
+    "1_大模型/karpathy_rpt/karpathy_vsl"
   ]
 }

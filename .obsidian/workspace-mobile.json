@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "1_大模型/karpathy_rpt/1_大语言模型入门_深度分析.md",
-                "mode": "preview",
+                "file": "3_深度学习/引言.md",
+                "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "1_大语言模型入门_深度分析"
+              "title": "引言"
             }
           }
         ]
@@ -112,7 +112,7 @@
         "state": {
           "type": "backlink",
           "state": {
-            "file": "1_大模型/karpathy_rpt/1_大语言模型入门_深度分析.md",
+            "file": "1_大模型/karpathy_rpt/2_我是如何使用LLM的_深度分析报告.md",
             "collapseAll": false,
             "extraContext": false,
             "sortOrder": "alphabetical",
@@ -159,6 +159,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "mermaid-tools:Open Mermaid Toolbar": false,
       "switcher:打开快速切换": false,
       "graph:查看关系图谱": false,
       "canvas:新建白板": false,
@@ -171,9 +172,12 @@
   },
   "active": "311dd924a71e26ee",
   "lastOpenFiles": [
+    "1_大模型/karpathy_rpt/2_我是如何使用LLM的_深度分析报告.md",
+    "3_深度学习/引言.md",
+    "1_大模型/karpathy_rpt/3-1_语言建模入门详解_深度分析报告.md",
+    "1_大模型/karpathy_rpt/1_大语言模型入门_深度分析.md",
     "1_大模型/karpathy_cn/1_大语言模型入门.md",
     "1_大模型/大模型基础学习路线-平滑版.md",
-    "1_大模型/karpathy_rpt/1_大语言模型入门_深度分析.md",
     "提示词/ppt-master提示词分析.md",
     "大模型基础/飞天闪客.md",
     "大模型基础",
