@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "3_深度学习/引言.md",
-                "mode": "source",
+                "file": "2_Agent/Agent基础学习路线.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "引言"
+              "title": "Agent基础学习路线"
             }
           }
         ]
@@ -112,7 +112,7 @@
         "state": {
           "type": "backlink",
           "state": {
-            "file": "1_大模型/karpathy_rpt/2_我是如何使用LLM的_深度分析报告.md",
+            "file": "2_Agent/Agent基础学习路线.md",
             "collapseAll": false,
             "extraContext": false,
             "sortOrder": "alphabetical",
@@ -172,6 +172,15 @@
   },
   "active": "311dd924a71e26ee",
   "lastOpenFiles": [
+    "3_深度学习/04_卷积神经网络.md",
+    "3_深度学习/03_神经网络基础.md",
+    "3_深度学习/02_数学基础.md",
+    "3_深度学习/01_深度学习概述.md",
+    "3_深度学习/00_索引目录.md",
+    "3_深度学习/00_脑图.md",
+    "Z_炒股/A股2026年投资机会深度研究报告.md",
+    "Z_炒股/2025-2026-A股投资机会深度研究报告.md",
+    "Z_炒股",
     "1_大模型/karpathy_rpt/2_我是如何使用LLM的_深度分析报告.md",
     "3_深度学习/引言.md",
     "1_大模型/karpathy_rpt/3-1_语言建模入门详解_深度分析报告.md",
