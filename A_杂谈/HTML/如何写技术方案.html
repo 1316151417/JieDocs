@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>如何写好一个技术方案 — 第一性原理研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0e14;
+    --surface: #131720;
+    --surface-elevated: #1a1f2e;
+    --accent: #d4a843;
+    --accent-dim: rgba(212, 168, 67, 0.12);
+    --accent-glow: rgba(212, 168, 67, 0.25);
+    --text-primary: #e8e4dc;
+    --text-muted: #6b7280;
+    --text-subtle: #3d4450;
+    --border: #1e2430;
+    --border-accent: rgba(212, 168, 67, 0.3);
+    --red: #c0392b;
+    --green: #27ae60;
+    --blue: #2980b9;
+    --grid-color: rgba(212, 168, 67, 0.03);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Crimson Pro', Georgia, serif;
+    line-height: 1.8;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 15% 20%, rgba(212, 168, 67, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 85% 80%, rgba(41, 128, 185, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Noise overlay */
+  .noise {
+    position: fixed;
+    inset: 0;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ===== HEADER ===== */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    padding: 4rem 0;
+  }
+
+  .hero-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 2rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.2s forwards;
+  }
+
+  .hero-label::before {
+    content: '//';
+    margin-right: 0.5em;
+    opacity: 0.5;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.8rem, 6vw, 4.5rem);
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.4s forwards;
+  }
+
+  .hero h1 span {
+    color: var(--accent);
+    font-style: italic;
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: var(--text-muted);
+    max-width: 560px;
+    line-height: 1.9;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.6s forwards;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 2.5rem;
+    margin-top: 3rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.8s forwards;
+  }
+
+  .hero-meta-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--text-subtle);
+  }
+
+  .hero-meta-item strong {
+    display: block;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+
+  .scroll-indicator {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 1.2s forwards;
+  }
+
+  .scroll-indicator span {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
+    50% { opacity: 1; transform: scaleY(1); }
+  }
+
+  /* ===== NAVIGATION ===== */
+  .toc {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(11, 14, 20, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0.8rem 0;
+    margin-bottom: 4rem;
+    transition: box-shadow 0.3s ease;
+  }
+
+  .toc.scrolled {
+    box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+  }
+
+  .toc-inner {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .toc-inner::-webkit-scrollbar { display: none; }
+
+  .toc a {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    color: var(--text-subtle);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+  }
+
+  .toc a:hover, .toc a.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ===== SECTIONS ===== */
+  section {
+    margin-bottom: 6rem;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .section-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 5rem;
+    font-weight: 900;
+    color: var(--text-subtle);
+    opacity: 0.15;
+    line-height: 1;
+    margin-bottom: -1.5rem;
+    position: relative;
+    z-index: -1;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+  }
+
+  h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 2.5rem 0 1rem;
+    color: var(--text-primary);
+  }
+
+  p {
+    font-size: 1.08rem;
+    font-weight: 300;
+    line-height: 1.95;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+  }
+
+  p.lead {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+    font-weight: 300;
+  }
+
+  strong { color: var(--text-primary); font-weight: 600; }
+
+  .divider {
+    width: 60px;
+    height: 1px;
+    background: var(--accent);
+    margin: 3rem 0;
+    opacity: 0.5;
+  }
+
+  /* ===== FIRST PRINCIPLES DIAGRAM ===== */
+  .principle-tree {
+    position: relative;
+    padding: 2rem 0;
+  }
+
+  .principle-root {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .principle-root-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.6rem 1.5rem;
+    clip-path: polygon(8% 0%, 100% 0%, 92% 100%, 0% 100%);
+  }
+
+  .principle-branches {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .principle-branch {
+    background: var(--surface);
+    padding: 2rem 1.5rem;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.4s ease;
+  }
+
+  .principle-branch:hover {
+    background: var(--surface-elevated);
+  }
+
+  .principle-branch:hover .branch-icon {
+    transform: scale(1.1);
+    color: var(--accent);
+  }
+
+  .branch-icon {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    display: block;
+    transition: all 0.4s ease;
+    color: var(--text-muted);
+  }
+
+  .branch-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+  }
+
+  .branch-desc {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  /* ===== ACCORDION ===== */
+  .accordion {
+    margin: 2rem 0;
+  }
+
+  .accordion-item {
+    border: 1px solid var(--border);
+    margin-bottom: -1px;
+    transition: all 0.3s ease;
+  }
+
+  .accordion-item:hover {
+    border-color: var(--border-accent);
+  }
+
+  .accordion-item.open {
+    border-color: var(--accent);
+    z-index: 1;
+    position: relative;
+  }
+
+  .accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    background: var(--surface);
+    transition: all 0.3s ease;
+  }
+
+  .accordion-item.open .accordion-header {
+    background: var(--surface-elevated);
+  }
+
+  .accordion-title-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .accordion-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    min-width: 2.5rem;
+  }
+
+  .accordion-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .accordion-toggle {
+    width: 24px;
+    height: 24px;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .accordion-toggle::before,
+  .accordion-toggle::after {
+    content: '';
+    position: absolute;
+    background: var(--accent);
+    transition: transform 0.3s ease;
+  }
+
+  .accordion-toggle::before {
+    width: 12px;
+    height: 1px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .accordion-toggle::after {
+    width: 1px;
+    height: 12px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .accordion-item.open .accordion-toggle::after {
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  .accordion-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .accordion-item.open .accordion-body {
+    max-height: 2000px;
+  }
+
+  .accordion-content {
+    padding: 0 1.5rem 1.5rem 4.5rem;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.9;
+    font-weight: 300;
+  }
+
+  .accordion-content p { margin-bottom: 0.75rem; }
+
+  /* ===== COMPARISON ===== */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+
+  .compare-col {
+    background: var(--surface);
+    padding: 2rem;
+  }
+
+  .compare-col.bad {
+    background: rgba(192, 57, 43, 0.04);
+  }
+
+  .compare-col.good {
+    background: rgba(39, 174, 96, 0.04);
+  }
+
+  .compare-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .compare-col.bad .compare-label { color: var(--red); }
+  .compare-col.good .compare-label { color: var(--green); }
+
+  .compare-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+  }
+
+  .compare-text {
+    font-size: 0.92rem;
+    line-height: 1.8;
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+
+  .compare-example {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-left: 2px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.8;
+    color: var(--text-muted);
+  }
+
+  .compare-col.bad .compare-example { border-left-color: rgba(192, 57, 43, 0.4); }
+  .compare-col.good .compare-example { border-left-color: rgba(39, 174, 96, 0.4); }
+
+  /* ===== CHECKLIST ===== */
+  .checklist {
+    margin: 2rem 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+  }
+
+  .checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--surface);
+    user-select: none;
+  }
+
+  .checklist-item:hover {
+    background: var(--surface-elevated);
+  }
+
+  .checklist-item.checked {
+    background: rgba(39, 174, 96, 0.04);
+  }
+
+  .check-box {
+    width: 20px;
+    height: 20px;
+    border: 1.5px solid var(--text-subtle);
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    font-size: 0.7rem;
+    color: transparent;
+  }
+
+  .checklist-item.checked .check-box {
+    border-color: var(--green);
+    background: var(--green);
+    color: white;
+  }
+
+  .check-text {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 300;
+    line-height: 1.6;
+    transition: color 0.3s ease;
+  }
+
+  .checklist-item.checked .check-text {
+    color: var(--text-primary);
+  }
+
+  .score-bar {
+    grid-column: 1 / -1;
+    background: var(--surface-elevated);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .score-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .score-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.88rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .score-track {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    margin: 0 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .score-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 0%;
+  }
+
+  /* ===== STRUCTURE VISUALIZATION ===== */
+  .structure-flow {
+    position: relative;
+    padding: 2rem 0;
+  }
+
+  .structure-step {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 2rem;
+    margin-bottom: 0;
+    position: relative;
+  }
+
+  .step-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .step-dot {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--bg);
+    position: relative;
+    z-index: 2;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    transition: all 0.3s ease;
+  }
+
+  .structure-step:hover .step-dot {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .step-connector {
+    width: 1px;
+    flex: 1;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    min-height: 30px;
+  }
+
+  .step-body {
+    padding-bottom: 2.5rem;
+  }
+
+  .step-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .step-desc {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    font-weight: 300;
+    line-height: 1.8;
+  }
+
+  /* ===== TAB SWITCHER ===== */
+  .tab-container {
+    margin: 2rem 0;
+  }
+
+  .tab-header {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+
+  .tab-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+    background: none;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+  }
+
+  .tab-btn:hover { color: var(--text-muted); }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-panel {
+    display: none;
+    padding: 2rem 0;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .tab-panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== QUOTE ===== */
+  .quote-block {
+    border-left: 3px solid var(--accent);
+    padding: 1.5rem 2rem;
+    margin: 2rem 0;
+    background: var(--accent-dim);
+    position: relative;
+  }
+
+  .quote-block::before {
+    content: '"';
+    font-family: 'Playfair Display', serif;
+    font-size: 4rem;
+    color: var(--accent);
+    opacity: 0.3;
+    position: absolute;
+    top: -0.5rem;
+    left: 1rem;
+    line-height: 1;
+  }
+
+  .quote-text {
+    font-size: 1.1rem;
+    font-style: italic;
+    color: var(--text-primary);
+    line-height: 1.8;
+    padding-left: 0;
+  }
+
+  .quote-attr {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* ===== CODE BLOCK ===== */
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin: 1.5rem 0;
+    overflow: hidden;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: var(--surface-elevated);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .code-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-subtle);
+  }
+
+  .code-dots span:nth-child(1) { background: #c0392b; }
+  .code-dots span:nth-child(2) { background: #d4a843; }
+  .code-dots span:nth-child(3) { background: #27ae60; }
+
+  .code-filename {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .code-body {
+    padding: 1.25rem 1.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.9;
+    color: var(--text-muted);
+    overflow-x: auto;
+  }
+
+  .code-body .key { color: var(--accent); }
+  .code-body .val { color: var(--green); }
+  .code-body .cmt { color: var(--text-subtle); font-style: italic; }
+  .code-body .str { color: #e06c75; }
+  .code-body .hl {
+    display: inline;
+    background: rgba(212, 168, 67, 0.1);
+    padding: 0.15em 0.4em;
+    margin: 0 -0.4em;
+  }
+
+  /* ===== CARD GRID ===== */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+
+  .card {
+    background: var(--surface);
+    padding: 2rem;
+    transition: all 0.4s ease;
+    cursor: default;
+  }
+
+  .card:hover {
+    background: var(--surface-elevated);
+  }
+
+  .card-icon {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .card h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+  }
+
+  .card p {
+    font-size: 0.88rem;
+    line-height: 1.7;
+    margin-bottom: 0;
+  }
+
+  /* ===== TOOLTIP ===== */
+  .tip {
+    display: inline;
+    border-bottom: 1px dashed var(--accent);
+    cursor: help;
+    position: relative;
+  }
+
+  .tip:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: var(--bg);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.5rem 0.8rem;
+    white-space: nowrap;
+    z-index: 100;
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 3rem 0;
+    margin-top: 6rem;
+    text-align: center;
+  }
+
+  .footer p {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-subtle);
+    letter-spacing: 0.1em;
+  }
+
+  /* ===== PROGRESS ===== */
+  .reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 2px;
+    background: var(--accent);
+    z-index: 1000;
+    transition: width 0.1s linear;
+  }
+
+  /* ===== BACK TO TOP ===== */
+  .back-to-top {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 44px;
+    height: 44px;
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    z-index: 100;
+    color: var(--accent);
+    font-size: 1.2rem;
+  }
+
+  .back-to-top.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .back-to-top:hover {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    .principle-branches { grid-template-columns: 1fr; }
+    .compare { grid-template-columns: 1fr; }
+    .card-grid { grid-template-columns: 1fr; }
+    .checklist { grid-template-columns: 1fr; }
+    .hero-meta { flex-direction: column; gap: 1rem; }
+    .accordion-content { padding-left: 1.5rem; }
+    .structure-step { grid-template-columns: 50px 1fr; gap: 1rem; }
+    .step-dot { width: 32px; height: 32px; font-size: 0.65rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise"></div>
+<div class="reading-progress" id="progress"></div>
+
+<div class="container">
+
+  <!-- HERO -->
+  <header class="hero" id="top">
+    <div class="hero-label">Research Report · 第一性原理研究报告</div>
+    <h1>如何写好一个<br><span>技术方案</span></h1>
+    <p class="hero-subtitle">
+      以建筑师的结构化思维，从第一性原<br>
+      理出发，拆解技术方案写作的底层逻辑。
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <strong>方法论</strong>第一性原理
+      </div>
+      <div class="hero-meta-item">
+        <strong>视角</strong>建筑师人格
+      </div>
+      <div class="hero-meta-item">
+        <strong>粒度</strong>深度拆解
+      </div>
+    </div>
+    <div class="scroll-indicator">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </header>
+
+  <!-- TOC -->
+  <nav class="toc" id="toc">
+    <div class="toc-inner container">
+      <a href="#why" data-section="why">Why</a>
+      <a href="#first-principles" data-section="first-principles">第一性原理</a>
+      <a href="#anatomy" data-section="anatomy">方案解剖</a>
+      <a href="#core" data-section="core">核心六要素</a>
+      <a href="#comparison" data-section="comparison">对比分析</a>
+      <a href="#examples" data-section="examples">案例</a>
+      <a href="#checklist" data-section="checklist">自检清单</a>
+      <a href="#conclusion" data-section="conclusion">总结</a>
+    </div>
+  </nav>
+
+  <!-- SECTION 1: WHY -->
+  <section id="why">
+    <div class="section-number">01</div>
+    <div class="section-label">Problem Statement</div>
+    <h2>为什么大多数技术方案写得不好？</h2>
+    <p class="lead">
+      在技术领域，方案写作能力的缺乏不是因为工程师不够聪明，
+      而是因为他们习惯于「解决问题」的思维，却忽略了「解释问题」的艺术。
+    </p>
+    <div class="divider"></div>
+    <p>
+      我们先面对一个残酷的事实：<strong>绝大多数技术方案都没有达成它们的目标</strong>。它们不是因为技术错误被否决，而是因为读者在前三段就失去了继续阅读的意愿。一份好的技术方案，本质上是一座沟通的桥梁——它连接着「懂技术的人」和「做决策的人」。
+    </p>
+    <p>
+      建筑师在设计一座建筑之前，必须先理解：这座建筑是为谁而建？在什么环境下建？解决了什么核心需求？写技术方案也是一样——在你开始写第一行字之前，你必须先回答这三个根本性的问题。
+    </p>
+
+    <div class="quote-block">
+      <p class="quote-text">
+        如果你不能简单地解释一件事，说明你还没有真正理解它。
+      </p>
+      <div class="quote-attr">—— 理查德·费曼</div>
+    </div>
+  </section>
+
+  <!-- SECTION 2: FIRST PRINCIPLES -->
+  <section id="first-principles">
+    <div class="section-number">02</div>
+    <div class="section-label">First Principles Thinking</div>
+    <h2>回到第一性原理：技术方案的本质是什么？</h2>
+    <p class="lead">
+      抛开所有经验和惯例，让我们从最基础的公理出发，重新构建对技术方案的认知。
+    </p>
+    <div class="divider"></div>
+
+    <p>
+      <span class="tip" data-tip="Aristotle: 系统中最基本的命题或假设">第一性原理</span>要求我们剥离所有约定俗成的做法，回归事物最本质的定义。那么，一份技术方案的本质是什么？
+    </p>
+
+    <p><strong>技术方案 = 一份「让特定受众在有限信息下做出正确决策」的论证文档。</strong></p>
+
+    <p>这个定义包含三个关键要素：</p>
+
+    <div class="principle-tree">
+      <div class="principle-root">
+        <div class="principle-root-badge">技术方案的本质</div>
+      </div>
+      <div class="principle-branches">
+        <div class="principle-branch">
+          <span class="branch-icon">◎</span>
+          <div class="branch-title">受众导向</div>
+          <div class="branch-desc">不是写给自己的笔记，而是写给需要基于此做出判断的人。他们的背景、关注点、决策标准决定了你的表达方式。</div>
+        </div>
+        <div class="principle-branch">
+          <span class="branch-icon">△</span>
+          <div class="branch-title">决策支撑</div>
+          <div class="branch-desc">最终目的是帮助读者做出一个具体的、有约束的决策：做还是不做？用方案A还是方案B？投入多少资源？</div>
+        </div>
+        <div class="principle-branch">
+          <span class="branch-icon">□</span>
+          <div class="branch-title">信息压缩</div>
+          <div class="branch-desc">在有限的篇幅内，把复杂的技术现实压缩为可理解、可比较、可执行的信息。这是一种有损压缩的艺术。</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>从本质推导出的方法论</h3>
+
+    <p>基于以上三个本质特征，我们可以推导出几条核心原则：</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <span class="card-icon">→</span>
+        <h4>先写结论，再写过程</h4>
+        <p>决策者最关心的是「你的建议是什么」，然后才是「为什么」。金字塔原则不是写作技巧，而是对决策场景的尊重。</p>
+      </div>
+      <div class="card">
+        <span class="card-icon">⇔</span>
+        <h4>对比是认知的捷径</h4>
+        <p>人类理解新事物的方式是与已知事物对比。永远不要孤立地描述一个方案，要给它一个参照物——现状、竞品、或备选方案。</p>
+      </div>
+      <div class="card">
+        <span class="card-icon">∅</span>
+        <h4>显式声明不确定性</h4>
+        <p>掩盖风险不会让方案更容易通过，只会让你失去信任。主动暴露风险并给出应对策略，反而是一种力量的展示。</p>
+      </div>
+      <div class="card">
+        <span class="card-icon">∞</span>
+        <h4>可执行性大于完美性</h4>
+        <p>一个80分但可立即执行的方案，远胜于一个100分但需要三个月才能启动的方案。决策者需要的是「下一步做什么」。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3: ANATOMY -->
+  <section id="anatomy">
+    <div class="section-number">03</div>
+    <div class="section-label">Architecture of a Proposal</div>
+    <h2>方案的解剖学：一个技术方案的完整骨架</h2>
+    <p class="lead">
+      正如建筑需要结构骨架来支撑，一份技术方案也需要一个清晰的逻辑骨架。以下是我推荐的七层结构。
+    </p>
+    <div class="divider"></div>
+
+    <div class="structure-flow">
+      <div class="structure-step">
+        <div class="step-line">
+          <div class="step-dot">01</div>
+          <div class="step-connector"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-title">背景与问题陈述</div>
+          <div class="step-desc">用 2-3 段话回答「为什么我们现在需要讨论这件事」。关键是建立紧迫感和相关性。包含当前痛点、业务影响、时间约束。</div>
+        </div>
+      </div>
+
+      <div class="structure-step">
+        <div class="step-line">
+          <div class="step-dot">02</div>
+          <div class="step-connector"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-title">目标与非目标</div>
+          <div class="step-desc">明确列出「我们打算做什么」和「我们明确不做什么」。非目标和目标同样重要——它帮读者建立正确的预期边界。</div>
+        </div>
+      </div>
+
+      <div class="structure-step">
+        <div class="step-line">
+          <div class="step-dot">03</div>
+          <div class="step-connector"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-title">方案设计</div>
+          <div class="step-desc">技术方案的核心。包括整体架构、关键决策、数据模型、接口定义、流程图。这一部分应该让读者能够「看见」系统的运作方式。</div>
+        </div>
+      </div>
+
+      <div class="structure-step">
+        <div class="step-line">
+          <div class="step-dot">04</div>
+          <div class="step-connector"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-title">方案对比与取舍</div>
+          <div class="step-desc">列出你考虑过的备选方案，以及为什么最终选择了当前方案。这展示了你的思考深度，也方便评审者理解你的权衡逻辑。</div>
+        </div>
+      </div>
+
+      <div class="structure-step">
+        <div class="step-line">
+          <div class="step-dot">05</div>
+          <div class="step-connector"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-title">风险与应对</div>
+          <div class="step-desc">诚实列出技术风险、依赖风险、进度风险，并为每个风险提供应对策略。这不是自我否定，而是专业性的体现。</div>
+        </div>
+      </div>
+
+      <div class="structure-step">
+        <div class="step-line">
+          <div class="step-dot">06</div>
+          <div class="step-connector"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-title">实施计划</div>
+          <div class="step-desc">将方案分解为可执行的阶段，包含里程碑、负责人、时间估算、依赖关系。让读者看到「从这里到那里」的完整路径。</div>
+        </div>
+      </div>
+
+      <div class="structure-step">
+        <div class="step-line">
+          <div class="step-dot">07</div>
+        </div>
+        <div class="step-body">
+          <div class="step-title">成功指标</div>
+          <div class="step-desc">定义可量化的成功标准。项目上线后，我们如何判断这个方案是否成功？没有衡量标准的方案是不完整的。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4: CORE SIX -->
+  <section id="core">
+    <div class="section-number">04</div>
+    <div class="section-label">Six Core Elements</div>
+    <h2>核心六要素：决定方案质量的关键</h2>
+    <p class="lead">
+      如果说骨架决定了方案的结构，那么以下六个要素决定了方案的血肉和灵魂。
+    </p>
+    <div class="divider"></div>
+
+    <div class="accordion" id="coreAccordion">
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <div class="accordion-title-group">
+            <span class="accordion-num">01</span>
+            <span class="accordion-title">清晰的问题定义</span>
+          </div>
+          <div class="accordion-toggle"></div>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p>一个模糊的问题定义是方案失败的第一步。不要写「系统性能不好」，而要写「在 P99 场景下，订单创建接口的响应时间从 200ms 增长到了 1200ms，导致下游超时率达到 3.2%」。</p>
+            <p><strong>好的问题定义具备三个特征：</strong>可量化（有具体数字）、有归因（知道根本原因）、有影响（能关联到业务结果）。花时间把问题定义清楚，方案已经成功了一半。</p>
+            <p>建筑师的类比：在画设计图之前，你必须清楚地质条件、承重要求、使用场景。含糊的需求只能造出含糊的建筑。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <div class="accordion-title-group">
+            <span class="accordion-num">02</span>
+            <span class="accordion-title">充分的备选方案</span>
+          </div>
+          <div class="accordion-toggle"></div>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p>只提一个方案，要么说明你没有深入思考，要么说明你在试图控制决策。一份好的技术方案应该包含 <strong>至少2-3个备选方案</strong>，并给出结构化的对比分析。</p>
+            <p>对比维度建议包含：开发成本、维护复杂度、性能表现、可扩展性、团队学习曲线、技术风险。不要只列优缺点——要给出 <strong>加权后的推荐理由</strong>，说明在这个具体场景下，为什么当前选择是最优的。</p>
+            <p>记住：决策者需要的不是一个答案，而是一个经过深思熟虑的选择过程。展示你的思考路径比展示你的结论更重要。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <div class="accordion-title-group">
+            <span class="accordion-num">03</span>
+            <span class="accordion-title">精准的技术表达</span>
+          </div>
+          <div class="accordion-toggle"></div>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p>技术方案不是博客文章，也不是学术论文。它的表达需要做到「精确但不晦涩」。每个技术术语都要确保受众能理解；每个抽象概念都要有具体的例子或类比来锚定。</p>
+            <p><strong>三条表达原则：</strong></p>
+            <p>1. 数字优先于形容词——「延迟降低60%」优于「大幅降低延迟」；</p>
+            <p>2. 图表优先于文字——一张架构图胜过三段文字描述；</p>
+            <p>3. 正例优先于反例——先说「应该怎么做」，再说「避免什么」。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <div class="accordion-title-group">
+            <span class="accordion-num">04</span>
+            <span class="accordion-title">务实的实施路径</span>
+          </div>
+          <div class="accordion-toggle"></div>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p>最常被忽视的部分，也是最容易让方案流于纸面的部分。一个好的实施计划应该包含：</p>
+            <p><strong>阶段划分：</strong>将大方案拆分为2-4个独立交付的阶段，每个阶段都能交付可感知的价值。第一阶段尤其要小而具体，最好在1-2周内完成。</p>
+            <p><strong>里程碑：</strong>每个阶段的完成标准是什么？如何验证？谁来验证？</p>
+            <p><strong>回退方案：</strong>如果某个阶段失败了，如何回退？对业务的影响是什么？这不是悲观主义，而是工程素养。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <div class="accordion-title-group">
+            <span class="accordion-num">05</span>
+            <span class="accordion-title">真诚的风险评估</span>
+          </div>
+          <div class="accordion-toggle"></div>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p>很多工程师把「风险评估」当作一个走过场的部分——列出几个不太可能发生的问题，然后写上「已评估，风险可控」。这完全失去了这个环节的价值。</p>
+            <p>好的风险评估需要做到：<strong>识别真正的风险</strong>（不是表面的风险），<strong>量化影响</strong>（如果发生，业务损失是什么），<strong>制定具体的应对策略</strong>（不是「加强监控」这种空话），<strong>指定风险负责人</strong>。</p>
+            <p>一个有深度的风险评估，反而会让评审者对你的方案更有信心——因为它表明你真正思考过这个方案的边界和脆弱点。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <div class="accordion-title-group">
+            <span class="accordion-num">06</span>
+            <span class="accordion-title">可衡量的成功标准</span>
+          </div>
+          <div class="accordion-toggle"></div>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p>没有成功标准的方案，就像没有地基的建筑——它看起来可能很完整，但无法承受实践的检验。</p>
+            <p><strong>好的成功标准需要满足 SMART 原则：</strong>Specific（具体的）、Measurable（可衡量的）、Achievable（可实现的）、Relevant（与业务相关的）、Time-bound（有时间约束的）。</p>
+            <p>例如：「方案上线后30天内，订单创建接口 P99 响应时间从 1200ms 降至 300ms 以下，超时率从 3.2% 降至 0.1% 以下。」</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECTION 5: COMPARISON -->
+  <section id="comparison">
+    <div class="section-number">05</div>
+    <div class="section-label">Good vs. Bad</div>
+    <h2>好方案 vs. 坏方案：差异在哪里？</h2>
+    <p class="lead">
+      对比是认知最强大的工具。让我们通过具体的正反对比，来揭示优秀技术方案的真正特征。
+    </p>
+    <div class="divider"></div>
+
+    <div class="tab-container">
+      <div class="tab-header">
+        <button class="tab-btn active" onclick="switchTab(this, 'tab-structure')">结构</button>
+        <button class="tab-btn" onclick="switchTab(this, 'tab-lang')">语言</button>
+        <button class="tab-btn" onclick="switchTab(this, 'tab-data')">数据</button>
+        <button class="tab-btn" onclick="switchTab(this, 'tab-risk')">风险</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-structure">
+        <div class="compare">
+          <div class="compare-col bad">
+            <div class="compare-label">× 反面</div>
+            <div class="compare-title">流水账式结构</div>
+            <div class="compare-text">按照自己思考的时间线来组织内容：先写调研过程，再写方案A的分析，然后推翻方案A，再写方案B，最后给出结论。读者需要通读全文才能理解你的最终建议。</div>
+            <div class="compare-example">
+              "在调研了Redis和Memcached之后，<br>
+              我们发现Redis的持久化机制更符合需求，<br>
+              但考虑到团队目前的技术栈......<br>
+              （此处省略2000字调研过程）......<br>
+              因此我们建议采用Redis集群方案。"
+            </div>
+          </div>
+          <div class="compare-col good">
+            <div class="compare-label">✓ 正面</div>
+            <div class="compare-title">金字塔式结构</div>
+            <div class="compare-text">结论先行：先给出核心建议和关键数据，再逐步展开支撑论证。读者即使只看前两段，也能做出基本判断。详细分析放在附录供深入审阅。</div>
+            <div class="compare-example">
+              "建议：采用Redis Cluster作为缓存层，<br>
+              预计将P99延迟从1200ms降至200ms以下。<br>
+              核心理由：1) 性能提升6x...<br>
+              2) 团队已有Redis运维经验...<br>
+              3) 详细对比分析见附录A。"
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-lang">
+        <div class="compare">
+          <div class="compare-col bad">
+            <div class="compare-label">× 反面</div>
+            <div class="compare-title">模糊的技术语言</div>
+            <div class="compare-text">使用大量模糊的形容词和主观判断，缺乏具体的技术细节和数据支撑。读者无法判断方案的真实效果。</div>
+            <div class="compare-example">
+              "该方案将大幅提升系统性能，<br>
+              显著改善用户体验，<br>
+              同时具有良好的可扩展性，<br>
+              能够满足未来业务增长的需求。"
+            </div>
+          </div>
+          <div class="compare-col good">
+            <div class="compare-label">✓ 正面</div>
+            <div class="compare-title">精确的技术语言</div>
+            <div class="compare-text">每个论断都有具体的数据、指标或明确的定义作为支撑。所有关键概念都有清晰的定义，不存在歧义。</div>
+            <div class="compare-example">
+              "该方案将 API P99 响应时间从 1200ms<br>
+              降至 300ms 以下（降低75%），首屏加载<br>
+              时间从 4.2s 降至 1.8s。横向扩展能力<br>
+              从单节点500QPS提升至集群10000QPS。"
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-data">
+        <div class="compare">
+          <div class="compare-col bad">
+            <div class="compare-label">× 反面</div>
+            <div class="compare-title">缺乏数据支撑</div>
+            <div class="compare-text">方案中的关键判断缺少数据验证。性能预估基于直觉而非基准测试。容量规划缺乏历史数据的回归分析。</div>
+            <div class="compare-example">
+              "根据经验判断，该方案应该能够<br>
+              支撑当前的业务量。如果后续出现<br>
+              性能问题，我们可以再进行优化。"
+            </div>
+          </div>
+          <div class="compare-col good">
+            <div class="compare-label">✓ 正面</div>
+            <div class="compare-title">数据驱动的论证</div>
+            <div class="compare-text">每个关键假设都有数据支撑。包含基准测试结果、线上监控数据、容量预估模型。数据来源和计算方法都清晰标注。</div>
+            <div class="compare-example">
+              "基于近30天线上数据回归：日均请求<br>
+              量4.2亿，峰值QPS 12000。按年增长40%<br>
+              估算，12个月后峰值将达16800QPS。<br>
+              当前架构上限为15000QPS，需提前扩容。"
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-risk">
+        <div class="compare">
+          <div class="compare-col bad">
+            <div class="compare-label">× 反面</div>
+            <div class="compare-title">敷衍的风险评估</div>
+            <div class="compare-text">风险评估只是走个形式，列出的风险都是不痛不痒的常见项，缺乏对具体场景的深入分析。</div>
+            <div class="compare-example">
+              "风险1：可能存在性能风险。<br>
+              应对：上线后密切关注性能指标。<br>
+              风险2：可能影响其他服务。<br>
+              应对：做好灰度发布和监控。"
+            </div>
+          </div>
+          <div class="compare-col good">
+            <div class="compare-label">✓ 正面</div>
+            <div class="compare-title">深度的风险分析</div>
+            <div class="compare-text">识别真正的技术风险，量化潜在影响，制定具体的应对方案。每个风险都有明确的负责人和触发条件。</div>
+            <div class="compare-example">
+              "风险P1：缓存穿透导致DB压力激增。<br>
+              概率：中（历史上Q4大促出现过2次）。<br>
+              影响：DB CPU超80%，可能导致20%请求超时。<br>
+              应对：部署布隆过滤器+空值缓存，<br>
+              负责人：@张三，验证标准：压测3万QPS无穿透。"
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 6: EXAMPLES -->
+  <section id="examples">
+    <div class="section-number">06</div>
+    <div class="section-label">Practical Example</div>
+    <h2>实战示例：从零写一份技术方案</h2>
+    <p class="lead">
+      让我们通过一个具体的例子，来演示前面所有原则的应用。
+    </p>
+    <div class="divider"></div>
+
+    <h3>场景：用户反馈系统消息推送延迟过高</h3>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-filename">proposal-outline.md</span>
+      </div>
+      <div class="code-body">
+<span class="cmt"># 技术方案：消息推送系统优化</span>
+
+<span class="key">## 1. 问题陈述</span>
+<span class="cmt">  当前推送延迟 P99 = 8.3s，用户可感知卡顿。</span>
+<span class="cmt">  影响范围：日均 200 万条推送消息。</span>
+<span class="cmt">  业务影响：推送到达率下降 12%，</span>
+<span class="cmt">  直接影响用户活跃度和转化率。</span>
+
+<span class="key">## 2. 目标</span>
+<span class="val">  - 推送延迟 P99 降至 1s 以下</span>
+<span class="val">  - 推送到达率提升至 99.5% 以上</span>
+<span class="key">  非目标：</span>
+<span class="val">  - 不改变推送消息的内容格式</span>
+<span class="val">  - 不新增推送渠道</span>
+
+<span class="key">## 3. 方案设计</span>
+<span class="cmt">  当前架构：同步处理 → 每条消息串行发送</span>
+<span class="cmt">  提议架构：</span>
+<span class="hl">  同步接口 → MQ解耦 → 并行Worker池 → 推送网关</span>
+<span class="cmt">  关键改动点：</span>
+<span class="val">  a) 引入 Kafka 作为消息缓冲层</span>
+<span class="val">  b) Worker 池从固定 4 线程 → 动态扩缩容</span>
+<span class="val">  c) 增加推送网关连接池预热机制</span>
+
+<span class="key">## 4. 备选方案对比</span>
+<span class="cmt">  方案A: 仅增加 Worker 线程数（成本最低，效果有限）</span>
+<span class="cmt">  方案B: 引入MQ + 动态Worker（推荐，平衡成本与效果）</span>
+<span class="cmt">  方案C: 自研实时推送通道（效果最好，但工期过长）</span>
+
+<span class="key">## 5. 风险与应对</span>
+<span class="str">  R1: Kafka 集群引入增加运维复杂度</span>
+<span class="val">     → 使用云托管Kafka，降低运维成本</span>
+<span class="str">  R2: 消息积压时内存溢出</span>
+<span class="val">     → 设置积压阈值，超限启动降级策略</span>
+
+<span class="key">## 6. 实施计划</span>
+<span class="cmt">  P1 (Week 1-2): Kafka 接入 + Worker 改造</span>
+<span class="cmt">  P2 (Week 3): 压测 + 灰度验证</span>
+<span class="cmt">  P3 (Week 4): 全量上线 + 监控加固</span>
+
+<span class="key">## 7. 成功指标</span>
+<span class="val">  推送延迟 P99 &lt; 1s | 到达率 &gt; 99.5%</span>
+<span class="val">  Worker CPU 利用率 &lt; 60% | 消息零丢失</span>
+      </div>
+    </div>
+
+    <p>
+      注意这份大纲的几个关键特征：<strong>结论先行</strong>（问题陈述直接给出具体数字）、<strong>目标边界清晰</strong>（明确列出非目标）、<strong>方案对比有结构化维度</strong>（成本vs效果的二维权衡）、<strong>风险有具体的应对策略</strong>（不是「加强监控」而是具体的技术手段）。
+    </p>
+  </section>
+
+  <!-- SECTION 7: CHECKLIST -->
+  <section id="checklist">
+    <div class="section-number">07</div>
+    <div class="section-label">Self-Assessment</div>
+    <h2>自检清单：提交前的最后一步</h2>
+    <p class="lead">
+      完成方案初稿后，用这份清单进行自检。勾选每一项，看看你的方案能得多少分。
+    </p>
+    <div class="divider"></div>
+
+    <div class="checklist" id="checklistGrid">
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">问题陈述包含具体的、可量化的现状数据</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">目标和非目标都已明确列出</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">方案描述了至少2个备选方案并给出对比</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">架构图/流程图清晰可读</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">关键技术决策有明确的理由说明</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">数据支撑：关键指标有基准测试或监控数据</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">风险评估覆盖了真正的技术风险</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">每个风险都有具体的应对策略</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">实施计划有明确的阶段和里程碑</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">成功标准是具体、可衡量的</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">语言精确：无模糊形容词，数字替代描述</div>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <div class="check-box">✓</div>
+        <div class="check-text">从读者视角重新通读过全文</div>
+      </div>
+      <div class="score-bar">
+        <span class="score-label">Completion</span>
+        <div class="score-track">
+          <div class="score-fill" id="scoreFill"></div>
+        </div>
+        <span class="score-value" id="scoreValue">0 / 12</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 8: CONCLUSION -->
+  <section id="conclusion">
+    <div class="section-number">08</div>
+    <div class="section-label">Conclusion</div>
+    <h2>总结：建筑师的最后忠告</h2>
+    <div class="divider"></div>
+
+    <p>
+      写好一份技术方案，本质上不是写作能力的问题，而是<strong>思考深度的问题</strong>。建筑师不会在没有画好蓝图之前就开始砌墙，工程师也不应该在没有理清思路之前就开始写文档。
+    </p>
+
+    <div class="quote-block">
+      <p class="quote-text">
+        好的技术方案不是一份文档，而是一次对话——你在和未来的自己对话，和协作的同事对话，和做决策的领导对话。对话的质量取决于你对问题的理解深度，以及你把这种理解传递给他人的能力。
+      </p>
+    </div>
+
+    <p>
+      回到第一性原理：<strong>技术方案存在的唯一理由，是帮助一个人在信息不完全的情况下做出更好的决策</strong>。如果你写的每一句话都在服务于这个目标，你的方案就不会差。
+    </p>
+
+    <div class="card-grid">
+      <div class="card">
+        <span class="card-icon">◇</span>
+        <h4>回到本质</h4>
+        <p>当你不知道该不该写某段内容时，问自己：这能帮助读者做出更好的决策吗？如果不能，删掉它。</p>
+      </div>
+      <div class="card">
+        <span class="card-icon">◆</span>
+        <h4>持续迭代</h4>
+        <p>第一份草稿永远不会是完美的。先完成骨架，再填充血肉，最后打磨语言。每一轮修改都会让你的方案更好。</p>
+      </div>
+      <div class="card">
+        <span class="card-icon">◇</span>
+        <h4>获取反馈</h4>
+        <p>在正式提交之前，找一个不了解这个项目的人来阅读你的方案。如果他们能快速理解并提出有效的问题，说明你的方案是成功的。</p>
+      </div>
+      <div class="card">
+        <span class="card-icon">◆</span>
+        <h4>建立模板</h4>
+        <p>好方案的结构是可复用的。在成功实践之后，将你的方案结构沉淀为团队模板，让优秀的标准可传播。</p>
+      </div>
+    </div>
+
+    <div class="divider" style="margin: 4rem auto; width: 100%; max-width: 60px;"></div>
+
+    <p style="text-align: center; font-style: italic; font-size: 1.1rem; color: var(--text-muted);">
+      愿每一份技术方案，都是一座精心设计的建筑。
+    </p>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>Research Report · Built with First Principles · Architect's Perspective</p>
+  </footer>
+
+</div>
+
+<div class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
+
+<script>
+  // ===== READING PROGRESS =====
+  const progressBar = document.getElementById('progress');
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = (scrollTop / docHeight) * 100;
+    progressBar.style.width = progress + '%';
+  });
+
+  // ===== SECTION VISIBILITY =====
+  const sections = document.querySelectorAll('section');
+  const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, observerOptions);
+  sections.forEach(s => observer.observe(s));
+
+  // ===== ACTIVE NAV =====
+  const tocLinks = document.querySelectorAll('.toc a');
+  const navObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        tocLinks.forEach(link => link.classList.remove('active'));
+        const activeLink = document.querySelector(`.toc a[data-section="${entry.target.id}"]`);
+        if (activeLink) activeLink.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+  sections.forEach(s => navObserver.observe(s));
+
+  // ===== TOC SCROLLED STATE =====
+  const toc = document.getElementById('toc');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > window.innerHeight) {
+      toc.classList.add('scrolled');
+    } else {
+      toc.classList.remove('scrolled');
+    }
+  });
+
+  // ===== ACCORDION =====
+  function toggleAccordion(header) {
+    const item = header.parentElement;
+    const wasOpen = item.classList.contains('open');
+    // Close all
+    document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('open'));
+    // Toggle current
+    if (!wasOpen) item.classList.add('open');
+  }
+
+  // ===== TABS =====
+  function switchTab(btn, tabId) {
+    btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    btn.closest('.tab-container').querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+  }
+
+  // ===== CHECKLIST =====
+  function toggleCheck(item) {
+    item.classList.toggle('checked');
+    updateScore();
+  }
+
+  function updateScore() {
+    const total = document.querySelectorAll('.checklist-item').length;
+    const checked = document.querySelectorAll('.checklist-item.checked').length;
+    const pct = (checked / total) * 100;
+    document.getElementById('scoreFill').style.width = pct + '%';
+    document.getElementById('scoreValue').textContent = checked + ' / ' + total;
+  }
+
+  // ===== BACK TO TOP =====
+  const backToTop = document.getElementById('backToTop');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 500) {
+      backToTop.classList.add('show');
+    } else {
+      backToTop.classList.remove('show');
+    }
+  });
+</script>
+
+</body>
+</html>

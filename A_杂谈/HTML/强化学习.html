@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>强化学习第一性原理研究报告 — 建筑师视角</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-deep:#070b14;
+  --bg-surface:#0c1220;
+  --bg-card:#111928;
+  --bg-card-hover:#162035;
+  --line:#1a2a4a;
+  --accent:#00e5c3;
+  --accent2:#4facfe;
+  --accent3:#f9a825;
+  --accent4:#ff6b6b;
+  --text:#d8dee9;
+  --text-muted:#5c6b80;
+  --text-bright:#eef2f7;
+  --grid-color:rgba(0,229,195,0.04);
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{
+  background:var(--bg-deep);
+  color:var(--text);
+  font-family:'Noto Serif SC',serif;
+  line-height:1.8;
+  overflow-x:hidden;
+}
+
+/* Blueprint grid background */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(var(--grid-color) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-color) 1px,transparent 1px);
+  background-size:60px 60px;
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 20% 0%,rgba(0,229,195,0.03) 0%,transparent 50%),
+             radial-gradient(ellipse at 80% 100%,rgba(79,172,254,0.03) 0%,transparent 50%);
+}
+
+.container{max-width:1200px;margin:0 auto;padding:0 2rem;position:relative;z-index:1}
+
+/* ─── HEADER ─── */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  position:relative;padding:4rem 0;
+}
+.hero-badge{
+  font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:0.2em;
+  color:var(--accent);border:1px solid rgba(0,229,195,0.3);
+  display:inline-block;padding:0.35rem 1.2rem;margin-bottom:2rem;
+  text-transform:uppercase;opacity:0;animation:fadeUp 0.8s ease 0.2s forwards;
+}
+.hero h1{
+  font-family:'Playfair Display','Noto Serif SC',serif;font-size:clamp(2.5rem,6vw,5rem);
+  font-weight:900;line-height:1.15;color:var(--text-bright);
+  opacity:0;animation:fadeUp 0.8s ease 0.4s forwards;
+}
+.hero h1 .highlight{color:var(--accent);position:relative;display:inline-block}
+.hero h1 .highlight::after{
+  content:'';position:absolute;bottom:4px;left:0;width:100%;height:3px;
+  background:var(--accent);opacity:0.3;
+}
+.hero-sub{
+  font-family:'JetBrains Mono',monospace;font-size:clamp(0.85rem,1.5vw,1rem);
+  color:var(--text-muted);max-width:700px;margin-top:1.5rem;
+  opacity:0;animation:fadeUp 0.8s ease 0.6s forwards;
+}
+.hero-meta{
+  display:flex;gap:2rem;margin-top:3rem;flex-wrap:wrap;
+  opacity:0;animation:fadeUp 0.8s ease 0.8s forwards;
+}
+.hero-meta-item{
+  font-family:'JetBrains Mono',monospace;font-size:0.75rem;
+  color:var(--text-muted);letter-spacing:0.05em;
+}
+.hero-meta-item span{color:var(--accent2);font-weight:600}
+.scroll-hint{
+  position:absolute;bottom:3rem;left:50%;transform:translateX(-50%);
+  font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-muted);
+  letter-spacing:0.15em;display:flex;flex-direction:column;align-items:center;gap:0.5rem;
+  opacity:0;animation:fadeUp 0.8s ease 1s forwards;
+}
+.scroll-hint .line{width:1px;height:40px;background:linear-gradient(to bottom,var(--accent),transparent);animation:scrollPulse 2s ease infinite}
+
+/* ─── SECTIONS ─── */
+section{padding:6rem 0}
+.section-label{
+  font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:0.25em;
+  color:var(--accent);text-transform:uppercase;margin-bottom:0.8rem;
+  display:flex;align-items:center;gap:0.8rem;
+}
+.section-label::before{content:'';width:30px;height:1px;background:var(--accent)}
+.section-title{
+  font-family:'Playfair Display','Noto Serif SC',serif;font-size:clamp(1.8rem,4vw,2.8rem);
+  font-weight:900;color:var(--text-bright);line-height:1.3;margin-bottom:1rem;
+}
+.section-desc{color:var(--text-muted);max-width:700px;font-size:0.95rem;margin-bottom:3rem}
+
+/* ─── CARDS ─── */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem}
+.card{
+  background:var(--bg-card);border:1px solid var(--line);padding:2rem;
+  position:relative;overflow:hidden;transition:all 0.4s ease;cursor:default;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;width:100%;height:2px;
+  background:linear-gradient(90deg,var(--accent),transparent);opacity:0;transition:opacity 0.4s;
+}
+.card:hover{background:var(--bg-card-hover);transform:translateY(-2px);border-color:rgba(0,229,195,0.2)}
+.card:hover::before{opacity:1}
+.card-icon{font-size:1.8rem;margin-bottom:1rem;display:block}
+.card h3{font-size:1.1rem;color:var(--text-bright);margin-bottom:0.6rem;font-weight:700}
+.card p{font-size:0.88rem;color:var(--text-muted);line-height:1.7}
+.card .tag{
+  display:inline-block;margin-top:1rem;font-family:'JetBrains Mono',monospace;
+  font-size:0.65rem;letter-spacing:0.1em;color:var(--accent);
+  border:1px solid rgba(0,229,195,0.2);padding:0.2rem 0.6rem;
+}
+
+/* ─── PRINCIPLE BREAKDOWN ─── */
+.principle-stack{display:flex;flex-direction:column;gap:1rem}
+.principle-item{
+  display:grid;grid-template-columns:60px 1fr;gap:1.5rem;align-items:start;
+  padding:1.5rem 2rem;background:var(--bg-card);border:1px solid var(--line);
+  transition:all 0.3s;cursor:pointer;
+}
+.principle-item:hover{border-color:var(--accent);background:var(--bg-card-hover)}
+.principle-num{
+  font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;
+  color:var(--accent);opacity:0.4;line-height:1;
+}
+.principle-item:hover .principle-num{opacity:1}
+.principle-item h4{color:var(--text-bright);font-size:1rem;margin-bottom:0.4rem}
+.principle-item p{font-size:0.85rem;color:var(--text-muted)}
+
+/* ─── RL LOOP DIAGRAM ─── */
+.rl-loop{
+  display:flex;justify-content:center;align-items:center;gap:0;padding:3rem 0;
+  flex-wrap:wrap;
+}
+.rl-node{
+  text-align:center;padding:1.5rem;position:relative;
+  min-width:140px;
+}
+.rl-circle{
+  width:80px;height:80px;border-radius:50%;border:2px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 0.8rem;
+  font-size:1.6rem;transition:all 0.5s;
+  background:rgba(0,229,195,0.05);
+}
+.rl-node:hover .rl-circle{
+  background:rgba(0,229,195,0.15);transform:scale(1.1);
+  box-shadow:0 0 30px rgba(0,229,195,0.2);
+}
+.rl-node-label{
+  font-family:'JetBrains Mono',monospace;font-size:0.75rem;
+  color:var(--accent);letter-spacing:0.1em;
+}
+.rl-node-desc{font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem}
+.rl-arrow{
+  font-family:'JetBrains Mono',monospace;font-size:1.5rem;
+  color:var(--line);animation:arrowPulse 2s ease infinite;
+}
+
+/* ─── ALGORITHM TABLE ─── */
+.algo-table-wrap{overflow-x:auto;margin:2rem 0}
+.algo-table{
+  width:100%;border-collapse:collapse;font-size:0.85rem;
+  font-family:'JetBrains Mono',monospace;
+}
+.algo-table th{
+  text-align:left;padding:1rem;background:var(--bg-card);
+  color:var(--accent);font-weight:600;letter-spacing:0.05em;
+  border-bottom:2px solid var(--accent);font-size:0.7rem;text-transform:uppercase;
+}
+.algo-table td{
+  padding:0.8rem 1rem;border-bottom:1px solid var(--line);
+  color:var(--text);vertical-align:top;
+}
+.algo-table tr:hover td{background:rgba(0,229,195,0.03)}
+.algo-table .badge{
+  display:inline-block;font-size:0.6rem;padding:0.15rem 0.5rem;
+  letter-spacing:0.08em;
+}
+.badge-value{background:rgba(0,229,195,0.1);color:var(--accent);border:1px solid rgba(0,229,195,0.2)}
+.badge-policy{background:rgba(79,172,254,0.1);color:var(--accent2);border:1px solid rgba(79,172,254,0.2)}
+.badge-actor{background:rgba(249,168,37,0.1);color:var(--accent3);border:1px solid rgba(249,168,37,0.2)}
+.badge-model{background:rgba(255,107,107,0.1);color:var(--accent4);border:1px solid rgba(255,107,107,0.2)}
+
+/* ─── INTERACTIVE BANDIT ─── */
+.bandit-panel{
+  background:var(--bg-card);border:1px solid var(--line);
+  padding:2.5rem;margin:2rem 0;position:relative;
+}
+.bandit-panel h3{color:var(--text-bright);font-size:1.1rem;margin-bottom:0.5rem}
+.bandit-panel p{font-size:0.85rem;color:var(--text-muted);margin-bottom:1.5rem}
+.bandit-machines{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem}
+.bandit-machine{
+  width:90px;text-align:center;cursor:pointer;padding:1.2rem 0.8rem;
+  border:1px solid var(--line);background:var(--bg-surface);
+  transition:all 0.3s;user-select:none;
+}
+.bandit-machine:hover{border-color:var(--accent);background:var(--bg-card-hover)}
+.bandit-machine.active{border-color:var(--accent);box-shadow:0 0 20px rgba(0,229,195,0.1)}
+.bandit-machine .slot{font-size:2rem;display:block;margin-bottom:0.3rem}
+.bandit-machine .pulls{
+  font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-muted);
+}
+.bandit-machine .avg-reward{
+  font-family:'JetBrains Mono',monospace;font-size:0.8rem;
+  color:var(--accent);font-weight:600;
+}
+.bandit-controls{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;justify-content:center}
+.bandit-btn{
+  font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:0.1em;
+  padding:0.6rem 1.5rem;border:1px solid var(--accent);background:transparent;
+  color:var(--accent);cursor:pointer;transition:all 0.3s;text-transform:uppercase;
+}
+.bandit-btn:hover{background:var(--accent);color:var(--bg-deep)}
+.bandit-btn.primary{background:var(--accent);color:var(--bg-deep)}
+.bandit-btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
+.bandit-stats{
+  font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted);
+  display:flex;gap:2rem;margin-top:1.5rem;justify-content:center;flex-wrap:wrap;
+}
+.bandit-stats span{color:var(--text-bright)}
+.bandit-log{
+  margin-top:1rem;max-height:120px;overflow-y:auto;
+  font-family:'JetBrains Mono',monospace;font-size:0.7rem;
+  color:var(--text-muted);padding:0.5rem;background:var(--bg-deep);
+  border:1px solid var(--line);
+}
+.bandit-log::-webkit-scrollbar{width:4px}
+.bandit-log::-webkit-scrollbar-thumb{background:var(--line)}
+
+/* ─── GRID WORLD ─── */
+.gridworld-panel{
+  background:var(--bg-card);border:1px solid var(--line);
+  padding:2.5rem;margin:2rem 0;
+}
+.gridworld-panel h3{color:var(--text-bright);font-size:1.1rem;margin-bottom:0.5rem}
+.gridworld-panel p{font-size:0.85rem;color:var(--text-muted);margin-bottom:1.5rem}
+.grid-container{display:inline-grid;gap:3px;margin-bottom:1rem;border:1px solid var(--line);padding:3px}
+.grid-cell{
+  width:50px;height:50px;display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;cursor:pointer;transition:all 0.3s;
+  background:var(--bg-surface);border:1px solid transparent;
+  position:relative;
+}
+.grid-cell:hover{border-color:var(--accent)}
+.grid-cell.wall{background:#1a1a3a}
+.grid-cell.goal{background:rgba(0,229,195,0.15)}
+.grid-cell.agent{background:rgba(79,172,254,0.2)}
+.grid-cell.trap{background:rgba(255,107,107,0.1)}
+.grid-cell .q-val{
+  position:absolute;font-family:'JetBrains Mono',monospace;
+  font-size:0.45rem;color:var(--text-muted);opacity:0.6;
+}
+.grid-cell .q-val.top{top:1px}
+.grid-cell .q-val.bottom{bottom:1px}
+.grid-cell .q-val.left{left:2px}
+.grid-cell .q-val.right{right:2px}
+
+.grid-legend{
+  display:flex;gap:1.5rem;margin:1rem 0;font-size:0.75rem;
+  font-family:'JetBrains Mono',monospace;color:var(--text-muted);flex-wrap:wrap;
+}
+.grid-legend-item{display:flex;align-items:center;gap:0.4rem}
+.legend-swatch{width:14px;height:14px;border:1px solid var(--line)}
+
+/* ─── TIMELINE ─── */
+.timeline{position:relative;padding-left:2rem}
+.timeline::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:1px;
+  background:linear-gradient(to bottom,var(--accent),var(--accent2),transparent);
+}
+.timeline-item{position:relative;padding:0 0 2.5rem 1.5rem}
+.timeline-item::before{
+  content:'';position:absolute;left:-2rem;top:6px;
+  width:8px;height:8px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--bg-deep);
+}
+.timeline-item .year{
+  font-family:'JetBrains Mono',monospace;font-size:0.7rem;
+  color:var(--accent);letter-spacing:0.1em;
+}
+.timeline-item h4{color:var(--text-bright);font-size:0.95rem;margin:0.3rem 0}
+.timeline-item p{font-size:0.82rem;color:var(--text-muted)}
+
+/* ─── COLLAPSIBLE ─── */
+.collapsible{
+  background:var(--bg-card);border:1px solid var(--line);
+  margin:1rem 0;overflow:hidden;
+}
+.collapsible-header{
+  padding:1rem 1.5rem;cursor:pointer;display:flex;
+  justify-content:space-between;align-items:center;
+  font-family:'JetBrains Mono',monospace;font-size:0.85rem;
+  color:var(--text-bright);transition:background 0.3s;
+}
+.collapsible-header:hover{background:var(--bg-card-hover)}
+.collapsible-header .arrow{transition:transform 0.3s;color:var(--accent)}
+.collapsible-header.open .arrow{transform:rotate(90deg)}
+.collapsible-body{
+  max-height:0;overflow:hidden;transition:max-height 0.5s ease;
+  padding:0 1.5rem;
+}
+.collapsible-body.open{padding:0 1.5rem 1.5rem}
+.collapsible-body p,.collapsible-body ul{font-size:0.85rem;color:var(--text-muted);line-height:1.8}
+.collapsible-body ul{padding-left:1.2rem;margin:0.5rem 0}
+.collapsible-body li{margin:0.3rem 0}
+.collapsible-body code{
+  font-family:'JetBrains Mono',monospace;font-size:0.78rem;
+  background:var(--bg-deep);padding:0.15rem 0.4rem;color:var(--accent);
+}
+
+/* ─── FORMULA ─── */
+.formula-block{
+  background:var(--bg-card);border:1px solid var(--line);
+  border-left:3px solid var(--accent);padding:1.5rem 2rem;
+  margin:1.5rem 0;font-family:'JetBrains Mono',monospace;
+}
+.formula-block .formula{font-size:1.1rem;color:var(--text-bright);margin-bottom:0.5rem}
+.formula-block .explain{font-size:0.75rem;color:var(--text-muted)}
+
+/* ─── COMPARISON ─── */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:2rem 0}
+@media(max-width:768px){.compare-grid{grid-template-columns:1fr}}
+.compare-col{
+  background:var(--bg-card);border:1px solid var(--line);padding:2rem;
+}
+.compare-col h4{
+  font-size:0.95rem;color:var(--text-bright);margin-bottom:0.3rem;
+}
+.compare-col .sub{
+  font-family:'JetBrains Mono',monospace;font-size:0.7rem;
+  color:var(--accent);margin-bottom:1rem;
+}
+.compare-col ul{padding-left:1rem;font-size:0.85rem;color:var(--text-muted)}
+.compare-col li{margin:0.4rem 0}
+
+/* ─── FOOTER ─── */
+.footer{
+  padding:4rem 0;border-top:1px solid var(--line);
+  font-family:'JetBrains Mono',monospace;font-size:0.7rem;
+  color:var(--text-muted);text-align:center;
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes scrollPulse{
+  0%,100%{opacity:0.3;transform:scaleY(0.7)}
+  50%{opacity:1;transform:scaleY(1)}
+}
+@keyframes arrowPulse{
+  0%,100%{opacity:0.2}
+  50%{opacity:0.8;color:var(--accent)}
+}
+@keyframes nodeGlow{
+  0%,100%{box-shadow:0 0 5px rgba(0,229,195,0.1)}
+  50%{box-shadow:0 0 25px rgba(0,229,195,0.3)}
+}
+
+.reveal{opacity:0;transform:translateY(30px);transition:all 0.7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ─── NAV ─── */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:0.8rem 2rem;display:flex;justify-content:space-between;align-items:center;
+  background:rgba(7,11,20,0.85);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(26,42,74,0.5);
+  font-family:'JetBrains Mono',monospace;font-size:0.7rem;
+  transform:translateY(-100%);transition:transform 0.3s;
+}
+.nav.show{transform:translateY(0)}
+.nav-brand{color:var(--accent);letter-spacing:0.1em;font-weight:600}
+.nav-links{display:flex;gap:1.5rem}
+.nav-links a{color:var(--text-muted);text-decoration:none;transition:color 0.3s;letter-spacing:0.05em}
+.nav-links a:hover{color:var(--accent)}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:640px){
+  .principle-item{grid-template-columns:1fr}
+  .principle-num{display:none}
+  .nav-links{display:none}
+  .bandit-machines{gap:0.5rem}
+  .bandit-machine{width:70px;padding:0.8rem 0.5rem}
+  .grid-cell{width:38px;height:38px;font-size:0.9rem}
+}
+
+/* Syntax-like block */
+.code-concept{
+  font-family:'JetBrains Mono',monospace;font-size:0.8rem;
+  background:var(--bg-surface);border:1px solid var(--line);
+  padding:1.5rem 2rem;margin:1rem 0;line-height:2;
+  overflow-x:auto;
+}
+.code-concept .kw{color:var(--accent2)}
+.code-concept .fn{color:var(--accent3)}
+.code-concept .cm{color:var(--text-muted)}
+.code-concept .str{color:var(--accent)}
+.code-concept .op{color:var(--accent4)}
+
+.mt-2{margin-top:2rem}
+.mb-2{margin-bottom:2rem}
+.text-accent{color:var(--accent)}
+.text-muted{color:var(--text-muted)}
+.glow-text{text-shadow:0 0 40px rgba(0,229,195,0.3)}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav" id="mainNav">
+  <div class="nav-brand">ARCHITECT // RL REPORT</div>
+  <div class="nav-links">
+    <a href="#foundation">基石</a>
+    <a href="#loop">循环</a>
+    <a href="#algorithms">算法</a>
+    <a href="#bandit">实验</a>
+    <a href="#gridworld">格网</a>
+    <a href="#challenges">挑战</a>
+    <a href="#guidance">指南</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<header class="hero" id="top">
+  <div class="container">
+    <div class="hero-badge">Architect Persona — First Principles Research</div>
+    <h1>
+      <span class="highlight">强化学习</span><br>
+      第一性原理研究报告
+    </h1>
+    <p class="hero-sub">
+      // 以建筑师的视角，从地基开始，逐层搭建对强化学习的深层理解。
+      不引用结论，只追溯公理；不堆叠术语，只拆解本质。
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">Method <span>First Principles</span></div>
+      <div class="hero-meta-item">Depth <span>5 Layers</span></div>
+      <div class="hero-meta-item">Interactive <span>2 Labs</span></div>
+      <div class="hero-meta-item">Date <span>2026.06</span></div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>SCROLL TO EXPLORE</span>
+    <div class="line"></div>
+  </div>
+</header>
+
+<!-- Section 1: First Principles Foundation -->
+<section id="foundation">
+  <div class="container reveal">
+    <div class="section-label">01 — 地基</div>
+    <div class="section-title">第一性原理拆解：强化学习到底在解决什么问题？</div>
+    <div class="section-desc">
+      建筑师不从屋顶开始。我们要回到最根本的问题——如果世界上不存在"强化学习"这个概念，我们会如何重新发明它？
+    </div>
+
+    <div class="principle-stack">
+      <div class="principle-item">
+        <div class="principle-num">01</div>
+        <div>
+          <h4>最根本的问题：序贯决策（Sequential Decision Making）</h4>
+          <p>一个主体必须在不确定的环境中，通过一系列行动来最大化长期累积收益。这就是一切的起点——不是"学习"，不是"奖励"，而是"在时间中做选择"。棋手走棋、机器人行走、自动驾驶避障，本质上都是同一类问题。</p>
+        </div>
+      </div>
+      <div class="principle-item">
+        <div class="principle-num">02</div>
+        <div>
+          <h4>核心矛盾：探索与利用的权衡（Exploration vs. Exploitation）</h4>
+          <p>你面前有10家餐厅，去过3家。是去已知最好那家（利用），还是尝试新餐厅（探索）？这不是策略问题，这是数学上可以证明的——纯粹的贪婪和纯粹的随机都会导致长期收益次优。这个问题没有解析解，只有渐进最优策略。</p>
+        </div>
+      </div>
+      <div class="principle-item">
+        <div class="principle-num">03</div>
+        <div>
+          <h4>时间的维度：延迟奖励（Delayed Reward）</h4>
+          <p>今天的投资，十年后才有回报。棋盘上一步棋的好坏，可能要等30步后才显现。这意味着我们不能只看即时反馈，必须建模"未来的未来"。这是强化学习与监督学习的本质区别——没有逐样本的标签，只有稀疏的、延迟的、有时甚至是噪声的反馈信号。</p>
+        </div>
+      </div>
+      <div class="principle-item">
+        <div class="principle-num">04</div>
+        <div>
+          <h4>涌现的复杂性：环境的非平稳性</h4>
+          <p>当你改变了策略，环境对你的"分布"也变了。你不再是观察一个固定世界，而是参与了一个动态博弈。这导致了一个深层难题：你用过去数据学出的策略，在新策略下收集的数据上可能完全失效。这与物理实验根本不同——观察者改变了自己的行为。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2: RL Core Loop -->
+<section id="loop">
+  <div class="container reveal">
+    <div class="section-label">02 — 结构</div>
+    <div class="section-title">核心交互回路：Agent-Environment 循环</div>
+    <div class="section-desc">
+      建筑的承重结构决定了它能承载多少。强化学习的核心回路——就是这座建筑的承重墙。
+    </div>
+
+    <div class="rl-loop">
+      <div class="rl-node">
+        <div class="rl-circle">🤖</div>
+        <div class="rl-node-label">AGENT</div>
+        <div class="rl-node-desc">决策主体</div>
+      </div>
+      <div class="rl-arrow">→<br><span style="font-size:0.5rem;color:var(--text-muted)">Action</span></div>
+      <div class="rl-node">
+        <div class="rl-circle">🌍</div>
+        <div class="rl-node-label">ENVIRONMENT</div>
+        <div class="rl-node-desc">外部世界</div>
+      </div>
+      <div class="rl-arrow">→<br><span style="font-size:0.5rem;color:var(--text-muted)">State</span></div>
+      <div class="rl-node">
+        <div class="rl-circle">📊</div>
+        <div class="rl-node-label">STATE</div>
+        <div class="rl-node-desc">观测信息</div>
+      </div>
+      <div class="rl-arrow">→<br><span style="font-size:0.5rem;color:var(--text-muted)">Reward</span></div>
+      <div class="rl-node">
+        <div class="rl-circle">💎</div>
+        <div class="rl-node-label">REWARD</div>
+        <div class="rl-node-desc">反馈信号</div>
+      </div>
+    </div>
+
+    <div class="code-concept">
+      <span class="cm">// 核心伪代码 — 马尔可夫决策过程 (MDP)</span><br>
+      <span class="kw">Initialize</span> state <span class="str">s₀</span> from environment<br>
+      <span class="kw">for</span> each timestep <span class="fn">t</span> = 0, 1, 2, ... :<br>
+      &nbsp;&nbsp;Agent <span class="fn">selects</span> action <span class="str">aₜ</span> ~ <span class="fn">π</span>(<span class="str">a</span> | <span class="str">sₜ</span>)<br>
+      &nbsp;&nbsp;Environment <span class="fn">returns</span> reward <span class="str">rₜ</span> and next state <span class="str">sₜ₊₁</span><br>
+      &nbsp;&nbsp;Agent <span class="fn">updates</span> policy <span class="str">π</span> based on (<span class="str">sₜ, aₜ, rₜ, sₜ₊₁</span>)<br>
+      &nbsp;&nbsp;<span class="cm">// Goal: maximize E[∑ γᵗ · rₜ]  where γ ∈ [0,1)</span>
+    </div>
+
+    <div class="formula-block">
+      <div class="formula">Gₜ = rₜ + γ·rₜ₊₁ + γ²·rₜ₊₂ + ... = Σₖ₌₀^∞ γᵏ·rₜ₊ₖ</div>
+      <div class="explain">
+        折扣回报 (Discounted Return)：γ 控制"近视"还是"远视"。γ→0 只看眼前；γ→1 着眼长远。
+        这不是随意设定的超参数——它编码了我们对未来的不确定性：未来的奖励可能无法兑现。
+      </div>
+    </div>
+
+    <div class="card-grid mt-2">
+      <div class="card">
+        <span class="card-icon">🎯</span>
+        <h3>策略 π (Policy)</h3>
+        <p>从状态到行动的映射。可以是确定性的 (s→a)，也可以是随机的 (s→P(a))。
+        策略是建筑师的设计蓝图——它决定了一切行为的框架。所有学习的目标，最终都收敛为一个好策略。</p>
+        <span class="tag">CORE OBJECTIVE</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">📈</span>
+        <h3>价值函数 V(s) / Q(s,a)</h3>
+        <p>V(s) 评估一个状态"有多好"；Q(s,a) 评估在某状态下做某动作"有多好"。
+        它们是建筑师的结构计算——告诉你这根梁能不能承重，这块地基值不值得投入。</p>
+        <span class="tag">EVALUATION</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🧠</span>
+        <h3>模型 (Optional)</h3>
+        <p>对环境动态 P(s'|s,a) 和奖励 R(s,a) 的估计。有模型就能"规划"（在脑中模拟），
+        无模型则只能"试错"。这是建筑沙盘 vs. 真实建造的区别——有沙盘当然更好，但建一个准确的沙盘本身就很难。</p>
+        <span class="tag">OPTIONAL COMPONENT</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 3: Algorithms -->
+<section id="algorithms">
+  <div class="container reveal">
+    <div class="section-label">03 — 算法蓝图</div>
+    <div class="section-title">关键算法族谱与技术选型</div>
+    <div class="section-desc">
+      没有一种材料能解决所有建筑问题。同样，没有一种算法能解决所有RL问题。理解每种方法的受力结构，才能做出正确选型。
+    </div>
+
+    <div class="algo-table-wrap">
+      <table class="algo-table">
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            <th>Type</th>
+            <th>Core Idea</th>
+            <th>Strength</th>
+            <th>Limitation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Q-Learning</strong></td>
+            <td><span class="badge badge-value">Value</span></td>
+            <td>用表格记录每个(s,a)的Q值，通过TD更新</td>
+            <td>简单、收敛有保证</td>
+            <td>状态空间爆炸（维度灾难）</td>
+          </tr>
+          <tr>
+            <td><strong>DQN</strong></td>
+            <td><span class="badge badge-value">Value</span></td>
+            <td>用神经网络逼近Q函数 + 经验回放 + 目标网络</td>
+            <td>处理高维输入（图像）</td>
+            <td>仅限离散动作空间</td>
+          </tr>
+          <tr>
+            <td><strong>REINFORCE</strong></td>
+            <td><span class="badge badge-policy">Policy</span></td>
+            <td>直接参数化策略，用蒙特卡洛采样估计梯度</td>
+            <td>可处理连续动作</td>
+            <td>高方差、训练不稳定</td>
+          </tr>
+          <tr>
+            <td><strong>PPO</strong></td>
+            <td><span class="badge badge-policy">Policy</span></td>
+            <td>裁剪目标函数限制策略更新幅度</td>
+            <td>稳定、通用、工程友好</td>
+            <td>可能收敛到局部最优</td>
+          </tr>
+          <tr>
+            <td><strong>SAC</strong></td>
+            <td><span class="badge badge-actor">Actor-Critic</span></td>
+            <td>最大熵框架：在最大化回报的同时最大化策略熵</td>
+            <td>探索性强、鲁棒</td>
+            <td>超参数敏感、计算开销大</td>
+          </tr>
+          <tr>
+            <td><strong>TD3</strong></td>
+            <td><span class="badge badge-actor">Actor-Critic</span></td>
+            <td>双Q网络 + 延迟策略更新 + 动作噪声裁剪</td>
+            <td>缓解Q值过估计</td>
+            <td>离散动作不如DQN高效</td>
+          </tr>
+          <tr>
+            <td><strong>MCTS + NN</strong></td>
+            <td><span class="badge badge-model">Model-based</span></td>
+            <td>蒙特卡洛树搜索 + 神经网络引导（AlphaZero架构）</td>
+            <td>棋类超人表现</td>
+            <td>需要完美环境模拟器</td>
+          </tr>
+          <tr>
+            <td><strong>World Models</strong></td>
+            <td><span class="badge badge-model">Model-based</span></td>
+            <td>学一个环境的压缩表示，在"梦境"中训练策略</td>
+            <td>样本效率极高</td>
+            <td>模型误差累积</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="compare-grid">
+      <div class="compare-col">
+        <h4>Value-Based 方法</h4>
+        <div class="sub">先评估，再决策</div>
+        <ul>
+          <li>学习 Q(s,a) 或 V(s)，然后据此推导策略</li>
+          <li>天然适合离散动作空间</li>
+          <li>代表：Q-Learning, DQN, Double DQN</li>
+          <li>建筑师类比：先做力学计算（评估），再决定结构形式（策略）</li>
+        </ul>
+      </div>
+      <div class="compare-col">
+        <h4>Policy-Based 方法</h4>
+        <div class="sub">直接学习策略</div>
+        <ul>
+          <li>参数化策略 π(a|s;θ)，直接优化期望回报</li>
+          <li>天然支持连续动作空间和随机策略</li>
+          <li>代表：REINFORCE, PPO, TRPO</li>
+          <li>建筑师类比：直接优化设计本身，边建造边优化</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 4: Interactive Bandit Lab -->
+<section id="bandit">
+  <div class="container reveal">
+    <div class="section-label">04 — 实验室 I</div>
+    <div class="section-title">互动实验：多臂老虎机</div>
+    <div class="section-desc">
+      10台老虎机，每台的真实胜率未知。你的任务：通过有限次数的拉动，找到最好的那台。
+      这是强化学习最纯净的形式——没有状态转移，只有探索与利用的博弈。
+    </div>
+
+    <div class="bandit-panel">
+      <h3>🎰 Multi-Armed Bandit Lab</h3>
+      <p>选择一台老虎机拉动拉杆。观察奖励，调整策略。你能在100次拉动中找到最优机器吗？</p>
+      <div class="bandit-machines" id="banditMachines"></div>
+      <div class="bandit-controls">
+        <button class="bandit-btn primary" onclick="pullSelected()">拉动选中拉杆</button>
+        <button class="bandit-btn" onclick="pullRandom()">ε-Greedy 自动 (ε=0.1)</button>
+        <button class="bandit-btn" onclick="pullUCB()">UCB 策略</button>
+        <button class="bandit-btn" onclick="autoPlay(20)">自动 20 次</button>
+        <button class="bandit-btn" onclick="resetBandit()">重置</button>
+      </div>
+      <div class="bandit-stats" id="banditStats">
+        <div>总拉动: <span id="totalPulls">0</span> / 100</div>
+        <div>总奖励: <span id="totalReward">0.00</span></div>
+        <div>最优臂率: <span id="optimalRate">0%</span></div>
+        <div>选中: <span id="selectedMachine">-</span></div>
+      </div>
+      <div class="bandit-log" id="banditLog">
+        <div style="color:var(--accent)">// 实验日志 — 等待开始...</div>
+      </div>
+    </div>
+
+    <div class="formula-block">
+      <div class="formula">UCB₁ = Q(a) + c · √(ln(t) / N(a))</div>
+      <div class="expl

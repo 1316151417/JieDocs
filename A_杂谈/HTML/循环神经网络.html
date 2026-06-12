@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RNN 循环神经网络 — 第一性原理研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #06080e;
+    --bg-surface: #0c1018;
+    --bg-card: #111826;
+    --bg-card-hover: #182030;
+    --accent: #e8a634;
+    --accent-dim: rgba(232,166,52,0.15);
+    --accent-glow: rgba(232,166,52,0.4);
+    --blue: #3a8bff;
+    --blue-dim: rgba(58,139,255,0.15);
+    --red: #ff5a5a;
+    --red-dim: rgba(255,90,90,0.12);
+    --green: #34d399;
+    --green-dim: rgba(52,211,153,0.12);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167,139,250,0.12);
+    --text: #e8e4dd;
+    --text-muted: #7a7d85;
+    --text-dim: #4a4d55;
+    --border: rgba(255,255,255,0.06);
+    --border-accent: rgba(232,166,52,0.25);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: var(--bg-deep);
+    color: var(--text);
+    line-height: 1.75;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--bg-deep);
+  }
+
+  /* ===== NAVIGATION ===== */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 1000;
+    background: rgba(6,8,14,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+    transition: transform 0.3s ease;
+  }
+  nav.hidden { transform: translateY(-100%); }
+  nav .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+  nav .nav-links { display: flex; gap: 0.25rem; }
+  nav .nav-links a {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  nav .nav-links a:hover { color: var(--accent); background: var(--accent-dim); }
+
+  /* ===== HERO ===== */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 8rem 4rem 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -20%; right: -10%;
+    width: 70vw; height: 70vw;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,166,52,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30%; left: -15%;
+    width: 60vw; height: 60vw;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(58,139,255,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.2s forwards;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.7s ease 0.35s forwards;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+    position: relative;
+  }
+  .hero h1 em::after {
+    content: '';
+    position: absolute;
+    bottom: 0.05em; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+  .hero-sub {
+    max-width: 600px;
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    line-height: 1.8;
+    margin-bottom: 2.5rem;
+    opacity: 0;
+    animation: fadeUp 0.7s ease 0.5s forwards;
+  }
+  .hero-stats {
+    display: flex; gap: 3rem;
+    opacity: 0;
+    animation: fadeUp 0.7s ease 0.65s forwards;
+  }
+  .hero-stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .hero-stat-label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+  }
+  .scroll-hint {
+    position: absolute;
+    bottom: 2rem; left: 50%;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    opacity: 0;
+    animation: fadeUp 0.7s ease 0.9s forwards;
+  }
+  .scroll-hint span {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .scroll-line {
+    width: 1px; height: 40px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    animation: scrollPulse 1.8s ease-in-out infinite;
+  }
+
+  /* ===== SECTION LAYOUT ===== */
+  section {
+    padding: 6rem 4rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .section-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 1.5rem;
+  }
+  .section-desc {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    max-width: 680px;
+    margin-bottom: 3rem;
+    line-height: 1.85;
+  }
+
+  /* ===== DIVIDER ===== */
+  .divider {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 4rem;
+  }
+  .divider hr {
+    border: none;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ===== FIRST PRINCIPLES GRID ===== */
+  .principle-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 3rem;
+  }
+  .principle-card {
+    background: var(--bg-surface);
+    padding: 2.5rem 2rem;
+    position: relative;
+    transition: all 0.4s ease;
+  }
+  .principle-card:hover {
+    background: var(--bg-card);
+  }
+  .principle-card:hover .principle-num {
+    color: var(--accent);
+  }
+  .principle-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--text-dim);
+    line-height: 1;
+    margin-bottom: 1rem;
+    transition: color 0.3s;
+  }
+  .principle-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+  }
+  .principle-card p {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  /* ===== RNN DIAGRAM (SVG-based unrolling) ===== */
+  .diagram-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 3rem 2rem;
+    margin: 2rem 0 3rem;
+    overflow-x: auto;
+  }
+  .diagram-container svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+  }
+
+  /* ===== TAB SYSTEM ===== */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.3s;
+  }
+  .tab-btn:hover { color: var(--text-muted); }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .tab-panel {
+    display: none;
+    padding: 2.5rem 0;
+    animation: fadeIn 0.4s ease;
+  }
+  .tab-panel.active { display: block; }
+
+  /* ===== PROBLEM BLOCK ===== */
+  .problem-block {
+    background: var(--bg-surface);
+    border-left: 3px solid var(--red);
+    padding: 2rem 2.5rem;
+    margin: 2rem 0;
+    border-radius: 0 2px 2px 0;
+  }
+  .problem-block h4 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--red);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+  }
+  .problem-block p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
+  .solution-block {
+    background: var(--bg-surface);
+    border-left: 3px solid var(--green);
+    padding: 2rem 2.5rem;
+    margin: 2rem 0;
+    border-radius: 0 2px 2px 0;
+  }
+  .solution-block h4 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+  }
+  .solution-block p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
+  /* ===== CODE BLOCK ===== */
+  .code-block {
+    background: #0a0e16;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    margin: 1.5rem 0;
+    overflow: hidden;
+  }
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+  .code-header span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+  .code-header .copy-btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    background: none;
+    border: 1px solid var(--border);
+    padding: 0.25rem 0.6rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .code-header .copy-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  pre {
+    padding: 1.5rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: #c0c8d8;
+  }
+  pre .kw { color: #c792ea; }
+  pre .fn { color: #82aaff; }
+  pre .str { color: #c3e88d; }
+  pre .num { color: #f78c6c; }
+  pre .cmt { color: #546e7a; }
+  pre .op { color: #89ddff; }
+
+  /* ===== COMPARISON TABLE ===== */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+    font-size: 0.92rem;
+  }
+  .comparison-table th {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: left;
+    padding: 1rem 1.25rem;
+    border-bottom: 2px solid var(--border-accent);
+    background: rgba(232,166,52,0.03);
+  }
+  .comparison-table td {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+  .comparison-table tr:hover td {
+    background: rgba(255,255,255,0.015);
+  }
+  .comparison-table td:first-child {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  /* ===== INTERACTIVE RNN SANDBOX ===== */
+  .sandbox {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 2.5rem;
+    margin: 2rem 0;
+  }
+  .sandbox-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+  .sandbox-desc {
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+  }
+  .sandbox-controls {
+    display: flex; flex-wrap: wrap; gap: 1rem;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+  }
+  .control-group { display: flex; flex-direction: column; gap: 0.35rem; }
+  .control-group label {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .control-group input[type="text"],
+  .control-group select {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    background: var(--bg-deep);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 0.6rem 1rem;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .control-group input:focus,
+  .control-group select:focus {
+    border-color: var(--accent);
+  }
+  .run-btn {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--accent);
+    color: var(--bg-deep);
+    border: none;
+    padding: 0.7rem 1.8rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .run-btn:hover {
+    background: #f0b844;
+    letter-spacing: 0.12em;
+  }
+  .run-btn:active { transform: scale(0.97); }
+
+  .sandbox-output {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 1.5rem;
+    min-height: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    line-height: 1.8;
+  }
+
+  /* ===== GATE VISUALIZATION ===== */
+  .gate-viz {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 2rem 0;
+  }
+  .gate-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .gate-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform 0.3s;
+  }
+  .gate-card:hover::before { transform: scaleX(1); }
+  .gate-card:hover {
+    border-color: var(--border-accent);
+    background: var(--bg-card);
+  }
+  .gate-icon {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .gate-card:nth-child(1) .gate-icon { background: var(--red-dim); color: var(--red); }
+  .gate-card:nth-child(2) .gate-icon { background: var(--green-dim); color: var(--green); }
+  .gate-card:nth-child(3) .gate-icon { background: var(--blue-dim); color: var(--blue); }
+  .gate-card:nth-child(4) .gate-icon { background: var(--purple-dim); color: var(--purple); }
+  .gate-card h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .gate-card p {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .gate-detail {
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    display: none;
+  }
+  .gate-card.expanded .gate-detail { display: block; animation: fadeIn 0.3s; }
+  .gate-formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 0.5rem 0.75rem;
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    display: inline-block;
+  }
+
+  /* ===== GRADIENT FLOW VIS ===== */
+  .gradient-flow {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    margin: 2rem 0;
+    border-radius: 2px;
+  }
+  .gradient-flow h4 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .gradient-bars {
+    display: flex; gap: 0.5rem; align-items: flex-end;
+    height: 200px;
+    padding: 1rem 0;
+  }
+  .gradient-bar {
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    cursor: pointer;
+  }
+  .gradient-bar .bar-label {
+    position: absolute;
+    bottom: -2rem; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .gradient-bar .bar-val {
+    position: absolute;
+    top: -1.5rem; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .gradient-bar:hover .bar-val { opacity: 1; }
+  .flow-controls {
+    display: flex; gap: 1rem; margin-top: 2.5rem;
+    align-items: center;
+  }
+  .flow-controls label {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .flow-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 200px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  .flow-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .flow-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+  }
+  .flow-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    min-width: 2.5rem;
+  }
+
+  /* ===== TIMELINE ===== */
+  .timeline {
+    position: relative;
+    padding-left: 3rem;
+    margin: 2rem 0;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent), var(--border), transparent);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 2.5rem;
+    padding-left: 1.5rem;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -3.35rem; top: 0.45rem;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+  .timeline-year {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+  }
+  .timeline-item h4 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.35rem;
+  }
+  .timeline-item p {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  /* ===== APPLICATION CARDS ===== */
+  .app-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin: 2rem 0;
+  }
+  .app-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    border-radius: 2px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .app-card::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    transform: translate(30%, -30%);
+    transition: all 0.4s;
+    pointer-events: none;
+  }
+  .app-card:nth-child(1)::after { background: radial-gradient(circle, rgba(232,166,52,0.08), transparent 70%); }
+  .app-card:nth-child(2)::after { background: radial-gradient(circle, rgba(58,139,255,0.08), transparent 70%); }
+  .app-card:nth-child(3)::after { background: radial-gradient(circle, rgba(52,211,153,0.08), transparent 70%); }
+  .app-card:nth-child(4)::after { background: radial-gradient(circle, rgba(167,139,250,0.08), transparent 70%); }
+  .app-card:hover { border-color: var(--border-accent); transform: translateY(-2px); }
+  .app-card:hover::after { width: 200px; height: 200px; }
+  .app-card .app-emoji {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+  .app-card h4 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .app-card p {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  /* ===== SEQUENCE PREDICTOR ===== */
+  .seq-predictor {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 2.5rem;
+    border-radius: 2px;
+    margin: 2rem 0;
+  }
+  .seq-chain {
+    display: flex; align-items: center; gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 1.5rem 0;
+    min-height: 52px;
+  }
+  .seq-token {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    padding: 0.5rem 1rem;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: var(--bg-deep);
+    color: var(--text);
+    animation: fadeIn 0.3s ease;
+  }
+  .seq-token.highlight {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+  .seq-token.hidden-state {
+    border-color: var(--blue);
+    background: var(--blue-dim);
+    color: var(--blue);
+    border-style: dashed;
+  }
+  .seq-arrow {
+    color: var(--text-dim);
+    font-size: 1.2rem;
+  }
+  .seq-result {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid var(--green);
+    border-radius: 2px;
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* ===== PREDICT BUTTON GROUP ===== */
+  .pattern-btns {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .pattern-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    background: var(--bg-deep);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pattern-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .pattern-btn.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* ===== FLOW DIAGRAM ===== */
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 2rem 0;
+    padding: 2rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow-x: auto;
+  }
+  .flow-node {
+    padding: 0.8rem 1.2rem;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: center;
+    min-width: 90px;
+    position: relative;
+    transition: all 0.3s;
+  }
+  .flow-node:hover { transform: translateY(-2px); }
+  .flow-node.input { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(58,139,255,0.3); }
+  .flow-node.hidden { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(167,139,250,0.3); }
+  .flow-node.output { background: var(--green-dim); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .flow-node.loss { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,90,90,0.3); }
+  .flow-arrow-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    padding: 0 0.5rem;
+    text-align: center;
+  }
+
+  /* ===== CALLOUT ===== */
+  .callout {
+    background: var(--accent-dim);
+    border: 1px solid var(--border-accent);
+    border-radius: 2px;
+    padding: 1.5rem 2rem;
+    margin: 2rem 0;
+  }
+  .callout h4 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.92rem;
+    margin-bottom: 0.5rem;
+  }
+  .callout p {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  /* ===== CHECKLIST ===== */
+  .checklist {
+    list-style: none;
+    margin: 1.5rem 0;
+  }
+  .checklist li {
+    padding: 0.75rem 0;
+    padding-left: 2rem;
+    position: relative;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    line-height: 1.7;
+  }
+  .checklist li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: bold;
+  }
+
+  /* ===== FOOTER ===== */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 4rem;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  footer .footer-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(1); }
+    50%      { opacity: 1; transform: scaleY(1.2); }
+  }
+  @keyframes nodeGlow {
+    0%, 100% { box-shadow: 0 0 0 0 transparent; }
+    50%      { box-shadow: 0 0 20px rgba(232,166,52,0.15); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 900px) {
+    section { padding: 3rem 1.5rem; }
+    .hero { padding: 6rem 1.5rem 3rem; }
+    .principle-grid { grid-template-columns: 1fr; }
+    .gate-viz { grid-template-columns: repeat(2, 1fr); }
+    .app-grid { grid-template-columns: 1fr; }
+    nav .nav-links { display: none; }
+    .hero-stats { gap: 2rem; }
+  }
+  @media (max-width: 600px) {
+    .gate-viz { grid-template-columns: 1fr; }
+    .flow-diagram { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<nav id="mainNav">
+  <div class="logo">RNN REPORT</div>
+  <div class="nav-links">
+    <a href="#principles">第一性原理</a>
+    <a href="#architecture">核心架构</a>
+    <a href="#problem">困境与突破</a>
+    <a href="#evolution">架构演进</a>
+    <a href="#interactive">交互实验</a>
+    <a href="#applications">应用场景</a>
+    <a href="#guidance">指导建议</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">First-Principles Research Report</div>
+  <h1>循环神经网络<br><em>RNN</em> 深度研究报告</h1>
+  <p class="hero-sub">
+    以建筑师的思维方式，从第一性原理出发，对循环神经网络进行逐层拆解。
+    不止于"是什么"，更追问"为什么"和"怎么办"。
+  </p>
+  <div class="hero-stats">
+    <div>
+      <div class="hero-stat-val">6</div>
+      <div class="hero-stat-label">核心章节</div>
+    </div>
+    <div>
+      <div class="hero-stat-val">3</div>
+      <div class="hero-stat-label">交互实验</div>
+    </div>
+    <div>
+      <div class="hero-stat-val">40+</div>
+      <div class="hero-stat-label">关键概念</div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>Scroll to explore</span>
+    <div class="scroll-line"></div>
+  </div>
+</div>
+
+<!-- ========== SECTION 1: FIRST PRINCIPLES ========== -->
+<div class="divider"><hr></div>
+<section id="principles">
+  <div class="section-tag reveal">01 — 第一性原理</div>
+  <h2 class="section-title reveal">回到原点：<br>为什么需要循环神经网络？</h2>
+  <p class="section-desc reveal">
+    建筑师不会从第10层开始画图。在讨论 RNN 之前，我们必须先回答一个更根本的问题：
+    <strong>传统的前馈神经网络为什么无法处理序列数据？</strong>
+  </p>
+
+  <div class="principle-grid reveal">
+    <div class="principle-card">
+      <div class="principle-num">01</div>
+      <h3>世界本质上是序列的</h3>
+      <p>语言、音乐、股票价格、DNA 序列——信息的价值不在于单个元素，而在于元素之间的<strong>顺序与依赖关系</strong>。"我爱你"和"你爱我"包含相同的字，含义却截然不同。</p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-num">02</div>
+      <h3>前馈网络的记忆是瞬时的</h3>
+      <p>全连接网络和 CNN 每次输入都是独立的——它没有"上一步"的概念。面对可变长度的序列输入，前馈网络无法建模<strong>时间维度上的依赖</strong>。</p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-num">03</div>
+      <h3>需要一种"记忆"机制</h3>
+      <p>要理解序列，模型必须拥有<strong>状态</strong>——能够将之前的信息携带到当前时刻。RNN 的核心设计哲学就是：<em>让网络拥有记忆</em>。</p>
+    </div>
+  </div>
+
+  <div class="callout reveal">
+    <h4>建筑师视角</h4>
+    <p>
+      想象你在阅读一本书。理解第 10 页的内容，依赖于你对前 9 页的记忆。
+      传统网络像一个每读一页就失忆的读者，而 RNN 则是一个能记住上下文的读者。
+      这是理解一切的起点。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SECTION 2: CORE ARCHITECTURE ========== -->
+<div class="divider"><hr></div>
+<section id="architecture">
+  <div class="section-tag reveal">02 — 核心架构</div>
+  <h2 class="section-title reveal">拆解 RNN 的<br>内在结构</h2>
+  <p class="section-desc reveal">
+    从第一性原理出发，RNN 的全部秘密可以归结为一个简单的数学公式。
+    所有复杂的变体，都是在这个公式上的扩展与修补。
+  </p>
+
+  <!-- Core Formula -->
+  <div class="callout reveal" style="background: var(--blue-dim); border-color: rgba(58,139,255,0.25);">
+    <h4 style="color: var(--blue);">核心公式 — 一切从这里开始</h4>
+    <p style="font-family: 'JetBrains Mono', monospace; font-size: 1rem; line-height: 2;">
+      <strong>h<sub>t</sub> = tanh( W<sub>hh</sub> · h<sub>t-1</sub> + W<sub>xh</sub> · x<sub>t</sub> + b<sub>h</sub> )</strong><br>
+      <strong>y<sub>t</sub> = W<sub>hy</sub> · h<sub>t</sub> + b<sub>y</sub></strong>
+    </p>
+    <p style="margin-top: 0.75rem;">
+      h<sub>t</sub> 是当前时刻的隐藏状态（记忆），x<sub>t</sub> 是当前输入，y<sub>t</sub> 是输出。
+      <strong>关键在于 h<sub>t</sub> 同时依赖于当前输入和上一步的隐藏状态</strong>——这就是"循环"的本质。
+    </p>
+  </div>
+
+  <!-- Unrolled RNN Diagram -->
+  <div class="diagram-container reveal">
+    <svg width="820" height="240" viewBox="0 0 820 240">
+      <!-- Connections -->
+      <line x1="120" y1="120" x2="280" y2="120" stroke="#4a4d55" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <line x1="320" y1="120" x2="480" y2="120" stroke="#4a4d55" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <line x1="520" y1="120" x2="680" y2="120" stroke="#4a4d55" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <!-- Output lines -->
+      <line x1="100" y1="145" x2="100" y2="210" stroke="#34d399" stroke-width="1.5"/>
+      <line x1="300" y1="145" x2="300" y2="210" stroke="#34d399" stroke-width="1.5"/>
+      <line x1="500" y1="145" x2="500" y2="210" stroke="#34d399" stroke-width="1.5"/>
+      <line x1="700" y1="145" x2="700" y2="210" stroke="#34d399" stroke-width="1.5"/>
+      <!-- Input arrows -->
+      <line x1="100" y1="240" x2="100" y2="160" stroke="#3a8bff" stroke-width="1.5"/>
+      <line x1="300" y1="240" x2="300" y2="160" stroke="#3a8bff" stroke-width="1.5"/>
+      <line x1="500" y1="240" x2="500" y2="160" stroke="#3a8bff" stroke-width="1.5"/>
+      <line x1="700" y1="240" x2="700" y2="160" stroke="#3a8bff" stroke-width="1.5"/>
+
+      <!-- RNN Cells -->
+      <rect x="60" y="95" width="80" height="50" rx="4" fill="#111826" stroke="#e8a634" stroke-width="1.5"/>
+      <text x="100" y="125" text-anchor="middle" fill="#e8a634" font-family="Syne,sans-serif" font-weight="700" font-size="13">RNN</text>
+
+      <rect x="260" y="95" width="80" height="50" rx="4" fill="#111826" stroke="#e8a634" stroke-width="1.5"/>
+      <text x="300" y="125" text-anchor="middle" fill="#e8a634" font-family="Syne,sans-serif" font-weight="700" font-size="13">RNN</text>
+
+      <rect x="460" y="95" width="80" height="50" rx="4" fill="#111826" stroke="#e8a634" stroke-width="1.5"/>
+      <text x="500" y="125" text-anchor="middle" fill="#e8a634" font-family="Syne,sans-serif" font-weight="700" font-size="13">RNN</text>
+
+      <rect x="660" y="95" width="80" height="50" rx="4" fill="#111826" stroke="#e8a634" stroke-width="1.5"/>
+      <text x="700" y="125" text-anchor="middle" fill="#e8a634" font-family="Syne,sans-serif" font-weight="700" font-size="13">RNN</text>
+
+      <!-- Outputs -->
+      <text x="100" y="230" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12">y₁</text>
+      <text x="300" y="230" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12">y₂</text>
+      <text x="500" y="230" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12">y₃</text>
+      <text x="700" y="230" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12">y₄</text>
+
+      <!-- Inputs -->
+      <text x="100" y="18" text-anchor="middle" fill="#3a8bff" font-family="JetBrains Mono,monospace" font-size="12">x₁</text>
+      <text x="300" y="18" text-anchor="middle" fill="#3a8bff" font-family="JetBrains Mono,monospace" font-size="12">x₂</text>
+      <text x="500" y="18" text-anchor="middle" fill="#3a8bff" font-family="JetBrains Mono,monospace" font-size="12">x₃</text>
+      <text x="700" y="18" text-anchor="middle" fill="#3a8bff" font-family="JetBrains Mono,monospace" font-size="12">x₄</text>
+
+      <!-- Time labels -->
+      <text x="100" y="55" text-anchor="middle" fill="#546e7a" font-family="JetBrains Mono,monospace" font-size="10">t=1</text>
+      <text x="300" y="55" text-anchor="middle" fill="#546e7a" font-family="JetBrains Mono,monospace" font-size="10">t=2</text>
+      <text x="500" y="55" text-anchor="middle" fill="#546e7a" font-family="JetBrains Mono,monospace" font-size="10">t=3</text>
+      <text x="700" y="55" text-anchor="middle" fill="#546e7a" font-family="JetBrains Mono,monospace" font-size="10">t=4</text>
+
+      <!-- h labels on arrows -->
+      <text x="200" y="112" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11">h₁</text>
+      <text x="400" y="112" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11">h₂</text>
+      <text x="600" y="112" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11">h₃</text>
+    </svg>
+  </div>
+
+  <!-- Tabs: Layers of Understanding -->
+  <div class="tabs reveal">
+    <button class="tab-btn active" onclick="switchTab(event, 'tab-mechanism')">运行机制</button>
+    <button class="tab-btn" onclick="switchTab(event, 'tab-training')">训练过程</button>
+    <button class="tab-btn" onclick="switchTab(event, 'tab-types')">网络类型</button>
+  </div>
+
+  <div id="tab-mechanism" class="tab-panel active">
+    <h3 style="font-family:'Syne',sans-serif; font-weight:700; margin-bottom:1rem;">RNN 的运行机制：信息如何流动</h3>
+    <p style="color:var(--text-muted); margin-bottom:1.5rem;">
+      把 RNN 想象成一条工厂流水线。每个工位（时间步）执行相同的操作，但处理不同的零件（输入），并把半成品传递给下一个工位。
+    </p>
+
+    <!-- Flow Diagram -->
+    <div class="flow-diagram">
+      <div class="flow-node input">x<sub>t</sub><br><small>输入</small></div>
+      <div class="flow-arrow-label">→</div>
+      <div class="flow-node hidden">W<sub>xh</sub><br><small>输入权重</small></div>
+      <div class="flow-arrow-label">+</div>
+      <div class="flow-node hidden" style="border-style:dashed;">h<sub>t-1</sub><br><small>上一状态</small></div>
+      <div class="flow-arrow-label">×</div>
+      <div class="flow-node hidden">W<sub>hh</sub><br><small>状态权重</small></div>
+      <div class="flow-arrow-label">→</div>
+      <div class="flow-node output" style="background: var(--accent-dim); color: var(--accent); border-color: var(--border-accent);">tanh<br><small>激活函数</small></div>
+      <div class="flow-arrow-label">→</div>
+      <div class="flow-node output">h<sub>t</sub><br><small>新状态</small></div>
+      <div class="flow-arrow-label">→</div>
+      <div class="flow-node loss">y<sub>t</sub><br><small>输出</small></div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span>simple_rnn.py</span>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      </div>
+      <pre><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">class</span> <span class="fn">SimpleRNN</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, input_size, hidden_size, output_size):
+        <span class="cmt"># 初始化权重矩阵（Xavier 初始化）</span>
+        scale = np.sqrt(<span class="num">2.0</span> / (input_size + hidden_size))
+        self.W_xh = np.random.randn(hidden_size, input_size) * scale   <span class="cmt"># 输入→隐藏</span>
+        self.W_hh = np.random.randn(hidden_size, hidden_size) * scale  <span class="cmt"># 隐藏→隐藏</span>
+        self.W_hy = np.random.randn(output_size, hidden_size) * scale  <span class="cmt"># 隐藏→输出</span>
+        self.b_h = np.zeros((hidden_size, <span class="num">1</span>))
+        self.b_y = np.zeros((output_size, <span class="num">1</span>))
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, inputs, h_prev=<span class="kw">None</span>):
+        <span class="str">"""前向传播：处理整个序列"""</span>
+        <span class="kw">if</span> h_prev <span class="kw">is None</span>:
+            h_prev = np.zeros((self.W_hh.shape[<span class="num">0</span>], <span class="num">1</span>))
+
+        hiddens, outputs = [], []
+        <span class="kw">for</span> x <span class="kw">in</span> inputs:
+            <span class="cmt"># 核心公式：h_t = tanh(W_hh · h_{t-1} + W_xh · x_t + b_h)</span>
+            h = np.tanh(self.W_hh @ h_prev + self.W_xh @ x + self.b_h)
+            y = self.W_hy @ h + self.b_y
+            hiddens.append(h)
+            outputs.append(y)
+            h_prev = h  <span class="cmt"># 更新隐藏状态 — 这就是"循环"</span>
+        <span class="kw">return</span> outputs, hiddens</pre>
+    </div>
+  </div>
+
+  <div id="tab-training" class="tab-panel">
+    <h3 style="font-family:'Syne',sans-serif; font-weight:700; margin-bottom:1rem;">BPTT：通过时间反向传播</h3>
+    <p style="color:var(--text-muted); margin-bottom:1.5rem;">
+      RNN 的训练使用 <strong>BPTT（Backpropagation Through Time）</strong>算法。
+      本质上还是反向传播，但由于参数在所有时间步共享，梯度需要沿时间维度累加。
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span>bptt.py — 梯度计算核心</span>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      </div>
+      <pre><span class="kw">def</span> <span class="fn">bptt</span>(self, inputs, targets, h_prev=<span class="kw">None</span>):
+    <span class="str">"""BPTT: 通过时间反向传播"""</span>
+    <span class="cmt"># === 前向传播，缓存每一步的状态 ===</span>
+    caches = []
+    h = h_prev <span class="kw">or</span> np.zeros((self.W_hh.shape[<span class="num">0</span>], <span class="num">1</span>))
+    <span class="kw">for</span> t, x <span class="kw">in</span> enumerate(inputs):
+        h_raw = self.W_hh @ h + self.W_xh @ x + self.b_h
+        h_new = np.tanh(h_raw)
+        y = self.W_hy @ h_new + self.b_y
+        caches.append((h, h_new, h_raw, x, y))
+        h = h_new
+
+    <span class="cmt"># === 反向传播：梯度沿时间回传 ===</span>
+    dW_xh = np.zeros_like(self.W_xh)
+    dW_hh = np.zeros_like(self.W_hh)
+    dh_next = np.zeros_like(h)
+
+    <span class="kw">for</span> t <span class="kw">in</span> reversed(range(len(inputs))):
+        h_prev, h, h_raw, x, y = caches[t]
+        dy = self.<span class="fn">softmax_loss_grad</span>(y, targets[t])
+        dW_hy += dy @ h.T
+        dh = self.W_hy.T @ dy + dh_next      <span class="cmt"># 来自输出 + 来自下一时刻</span>
+        dh_raw = dh * (<span class="num">1</span> - h ** <span class="num">2</span>)           <span class="cmt"># tanh 导数</span>
+        dW_hh += dh_raw @ h_prev.T
+        dW_xh += dh_raw @ x.T
+        dh_next = self.W_hh.T @ dh_raw       <span class="cmt"># 梯度继续回传！</span>
+
+    <span class="kw">return</span> {<span class="str">'W_xh'</span>: dW_xh, <span class="str">'W_hh'</span>: dW_hh, <span class="str">'W_hy'</span>: dW_hy}</pre>
+    </div>
+
+    <div class="problem-block">
+      <h4>核心问题：梯度消失与梯度爆炸</h4>
+      <p>在反向传播过程中，梯度需要反复乘以 W<sub>hh</sub> 矩阵。当序列很长时，这些连乘会导致梯度趋近于 0（消失）或无穷大（爆炸）。这意味着 RNN 难以学习长距离依赖。</p>
+    </div>
+  </div>
+
+  <div id="tab-types" class="tab-panel">
+    <h3 style="font-family:'Syne',sans-serif; font-weight:700; margin-bottom:1rem;">RNN 的四种架构形态</h3>
+    <p style="color:var(--text-muted); margin-bottom:1.5rem;">
+      RNN 并非只有一种形态。根据输入和输出的对应关系，可以灵活组合出不同的架构，适用于不同的任务场景。
+    </p>
+
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>架构</th>
+          <th>输入→输出</th>
+          <th>典型应用</th>
+          <th>示例</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>多对多（等长）</td>
+          <td>序列 → 序列</td>
+          <td>词性标注、音素识别</td>
+          <td>"我爱中国" → "代 动 名"</td>
+        </tr>
+        <tr>
+          <td>多对一</td>
+          <td>序列 → 单值</td>
+          <td>情感分类、文本分类</td>
+          <td>"这部电影太棒了" → 正面</td>
+        </tr>
+        <tr>
+          <td>一对多</td>
+          <td>单值 → 序列</td>
+          <td>图像描述生成</td>
+          <td>[猫的图片] → "一只猫在睡觉"</td>
+        </tr>
+        <tr>
+          <td>Encoder-Decoder</td>
+          <td>序列 → 序列（不等长）</td>
+          <td>机器翻译、对话系统</td>
+          <td>"I love you" → "我爱你"</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ========== SECTION 3: PROBLEM & BREAKTHROUGH ========== -->
+<div class="divider"><hr></div>
+<section id="problem">
+  <div class="section-tag reveal">03 — 困境与突破</div>
+  <h2 class="section-title reveal">消失的梯度：<br>RNN 的根本性困境</h2>
+  <p class="section-desc reveal">
+    如果只记住 RNN 的一个缺点，那就是这个：<strong>长期依赖问题</strong>。
+    这不是一个工程上的小问题，而是架构层面的根本性限制。
+  </p>
+
+  <!-- Gradient Flow Visualization -->
+  <div class="gradient-flow reveal">
+    <h4>梯度随时间步衰减 — 可交互演示</h4>
+    <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem;">
+      调整序列长度，观察梯度如何在时间步之间衰减。这就是为什么 Vanilla RNN 无法记住长距离信息。
+    </p>
+    <div class="gradient-bars" id="gradientBars"></div>
+    <div class="flow-controls">
+      <label>序列长度</label>
+      <input type="range" class="flow-slider" id="seqLenSlider" min="3" max="20" value="8" oninput="updateGradientBars()">
+      <span class="flow-val" id="seqLenVal">8</span>
+      <label style="margin-left: 2rem;">衰减率</label>
+      <input type="range" class="flow-slider" id="decaySlider" min="1" max="99" value="85" oninput="updateGradientBars()">
+      <span class="flow-val" id="decayVal">0.85</span>
+    </div>
+  </div>
+
+  <div class="problem-block reveal">
+    <h4>梯度消失的直觉解释</h4>
+    <p>想象你站在一排人后面传话。梯度就像信息，每经过一个人，都会丢失一点。当排很长时（序列很长），最后一个人听到的内容已经和原始信息完全不同了。RNN 中的 tanh/sigmoid 激活函数的导数都小于 1，连乘后迅速趋近于 0。</p>
+  </div>
+
+  <div class="problem-block reveal">
+    <h4>梯度爆炸的表现</h4>
+    <p>梯度爆炸则相反——梯度值在反向传播中指数级增长，导致参数更新幅度极大，模型无法收敛。训练损失会突然变成 NaN。实际中常用<strong>梯度裁剪（Gradient Clipping）</strong>来缓解：</p>
+  </div>
+
+  <div class="code-block reveal">
+    <div class="code-header">
+      <span>gradient_clipping.py</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><span class="kw">def</span> <span class="fn">clip_gradients</span>(gradients, max_norm=<span class="num">5.0</span>):
+    <span class="str">"""梯度裁剪：防止梯度爆炸"""</span>
+    total_norm = np.sqrt(sum(np.sum(g**<span class="num">2</span>) <span class="kw">for</span> g <span class="kw">in</span> gradients))
+    <span class="kw">if</span> total_norm > max_norm:
+        scale = max_norm / total_norm
+        <span class="kw">for</span> g <span class="kw">in</span> gradients:
+            g *= scale
+    <span class="kw">return</span> gradients</pre>
+  </div>
+
+  <div class="solution-block reveal">
+    <h4>解决思路：门控机制</h4>
+    <p>根本解决方案是引入<strong>门控机制</strong>——让网络学会选择性地记住和遗忘信息。这催生了 LSTM 和 GRU，它们通过精心设计的门结构，创建了一条"梯度高速公路"，让信息可以无衰减地在长距离上传递。</p>
+  </div>
+</section>
+
+<!-- ========== SECTION 4: ARCHITECTURE EVOLUTION ========== -->
+<div class="divider"><hr></div>
+<section id="evolution">
+  <div class="section-tag reveal">04 — 架构演进</div>
+  <h2 class="section-title reveal">从 LSTM 到 GRU：<br>门控的艺术</h2>
+  <p class="section-desc reveal">
+    每一种成功的架构变体，都是对一个具体问题的精准回应。理解它们的演进逻辑，
+    比记住公式更重要。
+  </p>
+
+  <!-- Timeline -->
+  <div class="timeline reveal">
+    <div class="timeline-item">
+      <div class="timeline-year">1986</div>
+      <h4>Jordan Network</h4>
+      <p>最早的 RNN 形式之一。输出连接回自身，形成简单循环。结构简单但表达能力有限。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">1990</div>
+      <h4>Elman Network</h4>
+      <p>隐藏层的循环连接。比 Jordan Network 更灵活，成为经典 RNN 的基本形态。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">1997</div>
+      <h4>LSTM — 长短期记忆网络</h4>
+      <p><strong>突破性里程碑。</strong>Hochreiter & Schmidhuber 提出。通过引入细胞状态和三个门（遗忘门、输入门、输出门），彻底解决了长期依赖问题。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">2005</div>
+      <h4>Bi-directional RNN</h4>
+      <p>同时从正向和反向处理序列，捕捉双向上下文。对 NLP 任务影响深远。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">2014</div>
+      <h4>GRU — 门控循环单元</h4>
+      <p>Cho 等人提出。将 LSTM 的三个门简化为两个（重置门、更新门），参数更少，训练更快，在许多任务上与 LSTM 性能相当。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">2017</div>
+      <h4>Transformer 登场</h4>
+      <p>"Attention is All You Need"。自注意力机制完全替代循环结构，实现并行计算。RNN 在许多领域被取代，但其序列建模思想仍然深刻影响着后续架构设计。</p>
+    </div>
+  </div>
+
+  <!-- LSTM vs GRU Gates -->
+  <h3 style="font-family:'Syne',sans-serif; font-weight:700; margin: 3rem 0 0.5rem;" class="reveal">LSTM 的四大核心组件</h3>
+  <p style="color:var(--text-dim); margin-bottom:1rem;" class="reveal">点击展开查看详细公式与解释</p>
+
+  <div class="gate-viz reveal">
+    <div class="gate-card" onclick="toggleGate(this)">
+      <div class="gate-icon">✕</div>
+      <h4>遗忘门 (Forget Gate)</h4>
+      <p>决定从细胞状态中丢弃哪些信息</p>
+      <div class="gate-detail">
+        <p>遗忘门读取 h<sub>t-1</sub> 和 x<sub>t</sub>，输出 0~1 之间的值，与细胞状态逐元素相乘。0 表示"完全遗忘"，1 表示"完全保留"。</p>
+        <div class="gate-formula">f_t = σ(W_f · [h_{t-1}, x_t] + b_f)</div>
+      </div>
+    </div>
+    <div class="gate-card" onclick="toggleGate(this)">
+      <div class="gate-icon">+</div>
+      <h4>输入门 (Input Gate)</h4>
+      <p>决定哪些新信息存入细胞状态</p>
+      <div class="gate-detail">
+        <p>输入门由两部分组成：sigmoid 层决定更新哪些值，tanh 层创建候选值向量。两者相乘后添加到细胞状态中。</p>
+        <div class="gate-formula">i_t = σ(W_i · [h_{t-1}, x_t] + b_i)</div>
+        <div class="gate-formula" style="margin-top:0.25rem;">C̃_t = tanh(W_C · [h_{t-1}, x_t] + b_C)</div>
+      </div>
+    </div>
+    <div class="gate-card" onclick="toggleGate(this)">
+      <div class="gate-icon">→</div>
+      <h4>细胞状态更新</h4>
+      <p>信息的高速公路</p>
+      <div class="gate-detail">
+        <p>细胞状态是 LSTM 的核心创新。它像一条传送带，信息可以几乎无损地在上面流动。更新公式优雅地结合了"遗忘旧信息"和"添加新信息"。</p>
+        <div class="gate-formula">C_t = f_t * C_{t-1} + i_t * C̃_t</div>
+      </div>
+    </div>
+    <div class="gate-card" onclick="toggleGate(this)">
+      <div class="gate-icon">⊙</div>
+      <h4>输出门 (Output Gate)</h4>
+      <p>决定基于细胞状态输出什么</p>
+      <div class="gate-detail">
+        <p>细胞状态经过 tanh 压缩到 -1~1，再与输出门的 sigmoid 输出相乘，得到最终的隐藏状态 h<sub>t</sub>。</p>
+        <div class="gate-formula">o_t = σ(W_o · [h_{t-1}, x_t] + b_o)</div>
+        <div class="gate-formula" style="margin-top:0.25rem;">h_t = o_t * tanh(C_t)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LSTM vs GRU Comparison -->
+  <h3 style="font-family:'Syne',sans-serif; font-weight:700; margin: 3rem 0 0.5rem;" class="reveal">LSTM vs GRU：架构对比</h3>
+  <table class="comparison-table reveal">
+    <thead>
+      <tr>
+        <th>维度</th>
+        <th>LSTM</th>
+        <th>GRU</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>门的数量</td>
+        <td>3 个（遗忘门、输入门、输出门）</td>
+        <td>2 个（重置门、更新门）</td>
+      </tr>
+      <tr>
+        <td>参数量</td>
+        <td>较多（4 倍隐藏层大小的参数矩阵）</td>
+        <td>较少（约 LSTM 的 75%）</td>
+      </tr>
+      <tr>
+        <td>细胞状态</td>
+        <td>有独立的细胞状态 C_t 和隐藏状态 h_t</td>
+        <td>只有隐藏状态 h_t</td>
+      </tr>
+      <tr>
+        <td>训练速度</td>
+        <td>较慢</td>
+        <td>较快</td>
+      </tr>
+      <tr>
+        <td>长序列性能</td>
+        <td>通常在极长依赖上表现更好</td>
+        <td>中等长度序列表现相当</td>
+      </tr>
+      <tr>
+        <td>选择建议</td>
+        <td>数据充足、序列很长、任务复杂</td>
+        <td>数据有限、需要快速迭代、资源受限</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="code-block reveal">
+    <div class="code-header">
+      <span>pytorch_lstm_gru.py — PyTorch 实现对比</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="cmt"># LSTM 实现情感分析</span>
+<span class="kw">class</span> <span class="fn">LSTMSentiment</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, vocab_size, embed_dim, hidden_dim, output_dim):
+        <span class="fn">super</span>().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.lstm = nn.LSTM(embed_dim, hidden_dim, num_layers=<span class="num">2</span>,
+                           bidirectional=<span class="kw">True</span>, dropout=<span class="num">0.3</span>)
+        self.fc = nn.Linear(hidden_dim * <span class="num">2</span>, output_dim)  <span class="cmt"># *2 for bidirectional</span>
+        self.dropout = nn.Dropout(<span class="num">0.3</span>)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        embedded = self.dropout(self.embedding(x))      <span class="cmt"># [seq_len, batch, embed]</span>
+        output, (hidden, cell) = self.lstm(embedded)
+        <span class="cmt"># 拼接最后时刻的正向和反向隐藏状态</span>
+        hidden = torch.cat((hidden[-<span class="num">2</span>], hidden[-<span class="num">1</span>]), dim=<span class="num">1</span>)
+        <span class="kw">return</span> self.fc(self.dropout(hidden))
+
+<span class="cmt"># GRU 实现 — 更轻量的选择</span>
+<span class="kw">class</span> <span class="fn">GRUSentiment</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, vocab_size, embed_dim, hidden_dim, output_dim):
+        <span class="fn">super</span>().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.gru = nn.GRU(embed_dim, hidden_dim, num_layers=<span class="num">2</span>,
+                          bidirectional=<span class="kw">True</span>, dropout=<span class="num">0.3</span>)
+        self.fc = nn.Linear(hidden_dim * <span class="num">2</span>, output_dim)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        embedded = self.embedding(x)
+        output, hidden = self.gru(embedded)
+        hidden = torch.cat((hidden[-<span class="num">2</span>], hidden[-<span class="num">1</span>]), dim=<span class="num">1</span>)
+        <span class="kw">return</span> self.fc(hidden)</pre>
+  </div>
+</section>
+
+<!-- ========== SECTION 5: INTERACTIVE ========== -->
+<div class="divider"><hr></div>
+<section id="interactive">
+  <div class="section-tag reveal">05 — 交互实验</div>
+  <h2 class="section-title reveal">动手实验：<br>感受序列预测</h2>
+  <p class="section-desc reveal">
+    理论需要实践来检验。下面的交互实验让你直观感受 RNN 如何处理序列模式。
+    选择不同的模式类型，观察模型如何根据前面的序列推断下一步。
+  </p>
+
+  <!-- Sequence Pattern Predictor -->
+  <div class="seq-predictor reveal">
+    <div class="sandbox-title">序列模式预测器</div>
+    <div class="sandbox-desc">
+      选择一个预设模式，观察 RNN 如何逐步处理输入序列并预测下一个值。
+    </div>
+    <div class="pattern-btns">
+      <button class="pattern-btn active" onclick="selectPattern('fibonacci', this)">Fibonacci 近似</button>
+      <button class="pattern-btn" onclick="selectPattern('sine', this)">正弦采样</button>
+      <button class="pattern-btn" onclick="selectPattern('arithmetic', this)">等差数列</button>
+      <button class="pattern-btn" onclick="selectPattern('geometric', this)">等比数列</button>
+    </div>
+    <div class="seq-chain" id="seqChain"></div>
+    <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+      <button class="run-btn" onclick="stepPredict()">逐步预测</button>
+      <button class="run-btn" onclick="resetPredict()" style="background:var(--bg-card); color:var(--text-muted); border:1px solid var(--border);">重置</button>
+    </div>
+    <div class="sandbox-output" id="predictLog" style="margin-top:1rem;">
+// 点击"逐步预测"按钮，观察 RNN 如何处理序列中的每一步...
+// 每一步的隐藏状态都会影响下一步的预测
+    </div>
+  </div>
+
+  <!-- RNN Math Sandbox -->
+  <div class="sandbox reveal">
+    <div class="sandbox-title">RNN 公式计算器</div>
+    <div class="sandbox-desc">
+      输入具体的数值，亲自计算 RNN 的一个前向传播步骤。
+    </div>
+    <div class="sandbox-controls">
+      <div class="control-group">
+        <label>h_prev (上一状态)</label>
+        <input type="text" id="hPrev" value="0.5" style="width:80px;">
+      </div>
+      <div class="control-group">
+        <label>x_t (当前输入)</label>
+        <input type="text" id="xT" value="1.0" style="width:80px;">
+      </div>
+      <div class="control-group">
+        <label>W_hh (状态权重)</label>
+        <input type="text" id="Whh" value="0.8" style="width:80px;">
+      </div>
+      <div class="control-group">
+        <label>W_xh (输入权重)</label>
+        <input type="text" id="Wxh" value="0.5" style="width:80px;">
+      </div>
+      <div class="control-group">
+        <label>b_h (偏置)</label>
+        <input type="text" id="bh" value="0.1" style="width:80px;">
+      </div>
+      <button class="run-btn" onclick="calculateRNN()">计算</button>
+    </div>
+    <div class="sandbox-output" id="rnnCalcOutput">
+// 点击"计算"按钮查看结果
+    </div>
+  </div>
+</section>
+
+<!-- ========== SECTION 6: APPLICATIONS ========== -->
+<div class="divider"><hr></div>
+<section id="applications">
+  <div class="section-tag reveal">06 — 应用场景</div>
+  <h2 class="section-title reveal">RNN 的真实战场</h2>
+  <p class="section-desc reveal">
+    尽管 Transformer 在许多领域取代了 RNN，但循环神经网络依然在众多场景中发挥着不可替代的作用。
+  </p>
+
+  <div class="app-grid reveal">
+    <div class="app-card">
+      <span class="app-emoji">✍️</span>
+      <h4>自然语言处理</h4>
+      <p>语言建模、机器翻译、文本生成、命名实体识别。RNN 天然适合处理变长文本序列，捕捉词与词之间的语义依赖。经典的 Seq2Seq 模型至今仍是许多 NLP 任务的基线。</p>
+    </div>
+    <div class="app-card">
+      <span class="app-emoji">🎵</span>
+      <h4>语音与音频</h4>
+      <p>语音识别（ASR）、音乐生成、语音合成。音频信号是典型的时间序列，RNN 可以捕捉声音的时间动态特征。Google 的语音搜索早期就大量使用 LSTM。</p>
+    </div>
+    <div class="app-card">
+      <span class="app-emoji">📈</span>
+      <h4>时间序列预测</h4>
+      <p>股票价格、气象数据、能源消耗预测。任何具有时间依赖性的数值数据，RNN 都能建模其趋势与周期性。在 IoT 和工业预测场景中仍是首选方案。</p>
+    </div>
+    <div class="app-card">
+      <span class="app-emoji">🤖</span>
+      <h4>控制系统与强化学习</h4>
+      <p>游戏 AI、机器人控制、自动驾驶。DRQN（Deep Recurrent Q-Network）将 RNN 与强化学习结合，使 Agent 具备记忆能力，在部分可观测环境中表现优异。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SECTION 7: GUIDANCE ========== -->
+<div class="divider"><hr></div>
+<section id="guidance">
+  <div class="section-tag reveal">07 — 指导建议</div>
+  <h2 class="section-title reveal">建筑师的指导手册</h2>
+  <p class="section-desc reveal">
+    基于对 RNN 的深度拆解，以下是面向实践的系统性指导。这不是一份操作手册，
+    而是一套决策框架。
+  </p>
+
+  <div class="callout reveal">
+    <h4>核心决策原则</h4>
+    <p>
+      <strong>永远从问题出发，而不是从模型出发。</strong>
+      先问"我的数据有什么特点？"，再问"需要什么能力？"，最后才问"用什么架构？"。
+      这就是第一性原理的实践。
+    </p>
+  </div>
+
+  <h3 style="font-family:'Syne',sans-serif; font-weight:700; margin:2rem 0 1rem;" class="reveal">场景选择指南</h3>
+  <ul class="checklist reveal">
+    <li><strong>序列长度 < 100 步 + 需要快速迭代：</strong>优先考虑 GRU，参数少、训练快。</li>
+    <li><strong>序列长度 > 200 步 + 长距离依赖关键：</strong>使用 LSTM，细胞状态提供更强的长程记忆能力。</li>
+    <li><strong>需要双向上下文：</strong>使用 Bi-LSTM 或 Bi-GRU，同时捕捉过去和未来的信息。</li>
+    <li><strong>大规模数据 + 追求极致性能：</strong>考虑 Transformer 架构，自注意力机制支持并行计算。</li>
+    <li><strong>实时流式处理 + 边缘设备：</strong>RNN 的逐时间步处理特性天然适合流式场景，资源需求也低于 Transformer。</li>
+    <li><strong>时间序列 + 多变量：</strong>考虑带有注意力机制的 RNN 变体，让模型学会关注关键时间步。</li>
+  </ul>
+
+  <h3 style="font-family:'Syne',sans-serif; font-weight:700; margin:2rem 0 1rem;" class="reveal">工程实践要点</h3>
+  <div class="principle-grid reveal" style="grid-template-columns: repeat(2, 1fr);">
+    <div class="principle-card">
+      <div class="principle-num" style="font-size:2rem;">⚙</div>
+      <h3>数据预处理</h3>
+      <p>
+        序列填充到统一长度或使用 pack_padded_sequence。
+        对时间序列数据做归一化（MinMaxScaler 或 StandardScaler）。
+        使用滑动窗口构造训练样本，窗口大小是关键超参数。
+      </p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-num" style="font-size:2rem;">📉</div>
+      <h3>训练策略</h3>
+      <p>
+        使用梯度裁剪（max_norm=1.0~5.0）防止爆炸。
+        学习率建议从 1e-3 开始，配合 ReduceLROnPlateau。
+        Teacher Forcing 可加速训练，但注意 train/test 不一致问题。
+      </p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-num" style="font-size:2rem;">🏗</div>
+      <h3>模型设计</h3>
+      <p>
+        隐藏层大小通常 128~512，根据数据规模调整。
+        多层 RNN 一般不超过 3-4 层，过深会导致优化困难。
+        Dropout 放在 Embedding 层后和 RNN 输出后（不是层间）。
+      </p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-num" style="font-size:2rem;">🔍</div>
+      <h3>调试与诊断</h3>
+      <p>
+        监控梯度范数，判断是否存在消失/爆炸。
+        可视化隐藏状态，观察模型学到的时序特征。
+        在小数据子集上过拟合，验证模型能力上限。
+      </p>
+    </div>
+  </div>
+
+  <div class="solution-block reveal">
+    <h4>最终建议：RNN 的位置</h4>
+    <p>
+      RNN 不是过时的技术，而是一个经过时间检验的基础架构。在以下场景中，它仍然是最优选择：
+      资源受限的边缘计算、实时流式处理、小数据量的时间序列任务。
+      更重要的是，理解 RNN 的设计哲学——<strong>如何通过架构设计解决特定类型的问题</strong>——是理解所有现代序列模型（包括 Transformer）的基石。
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">RNN RESEARCH REPORT</div>
+  <p>以第一性原理构建认知 | 以建筑师思维拆解复杂系统</p>
+  <p style="margin-top: 0.5rem; font-size: 0.75rem;">Built with First-Principles Thinking — 2025</p>
+</footer>
+
+<script>
+// ===== Tab Switching =====
+function switchTab(e, tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// ===== Scroll Reveal =====
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.15 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ===== Nav hide on scroll =====
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('mainNav');
+  const current = window.pageYOffset;
+  if (current > lastScroll && current > 200) {
+    nav.classList.add('hidden');
+  } else {
+    nav.classList.remove('hidden');
+  }
+  lastScroll = current;
+});
+
+// ===== Copy Code =====
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ===== Gate Toggle =====
+function toggleGate(card) {
+  card.classList.toggle('expanded');
+}
+
+// ===== Gradient Flow Visualization =====
+function updateGradientBars() {
+  const seqLen = parseInt(document.getElementById('seqLenSlider').value);
+  const decay = parseInt(document.getElementById('decaySlider').value) / 100;
+  document.getElementById('seqLenVal').textContent = seqLen;
+  document.getElementById('decayVal').textContent = decay.toFixed(2);
+
+  const container = document.getElementById('gradientBars');
+  container.innerHTML = '';
+
+  const colors = ['#e8a634', '#d4962e', '#c08628', '#ac7622', '#98661c', '#845616', '#704610', '#5c360a'];
+
+  for (let i = 0; i < seqLen; i++) {
+    const gradVal = Math.pow(decay, i);
+    const height = Math.max(gradVal * 180, 4);
+    const bar = document.createElement('div');
+    bar.className = 'gradient-bar';
+    bar.style.height = height + 'px';
+
+    const intensity = Math.max(0.15, gradVal);
+    bar.style.background = `rgba(232, 166, 52, ${intensity})`;
+    if (gradVal < 0.05) {
+      bar.style.background = `rgba(255, 90, 90, 0.6)`;
+    }
+
+    bar.innerHTML = `
+      <span class="bar-label">t=${i + 1}</span>
+      <span class="bar-val">${(gradVal * 100).toFixed(1)}%</span>
+    `;
+    container.appendChild(bar);
+  }
+}
+updateGradientBars();
+
+// ===== Sequence Predictor =====
+const patterns = {
+  fibonacci: { seq: [1, 1, 2, 3, 5, 8, 13, 21], name: 'Fibonacci', rule: 'f(n) = f(n-1) + f(n-2)' },
+  sine: { seq: [0, 0.71, 1, 0.71, 0, -0.71, -1, -0.71], name: 'Sine Wave', rule: 'sin(n * π/4)' },
+  arithmetic: { seq: [3, 7, 11, 15, 19, 23, 27, 31], name: 'Arithmetic', rule: 'f(n) = 3 + 4n' },
+  geometric: { seq: [2, 6, 18, 54, 162, 486, 1458, 4374], name: 'Geometric', rule: 'f(n) = 2 * 3^n' }
+};
+let currentPattern = 'fibonacci';
+let stepIndex = 0;
+let hiddenState = 0;
+
+function selectPattern(name, btn) {
+  currentPattern = name;
+  document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  resetPredict();
+}
+
+function resetPredict() {
+  stepIndex = 0;
+  hiddenState = 0;
+  document.getElementById('seqChain').innerHTML = '';
+  document.getElementById('predictLog').textContent =
+    '// 模式: ' + patterns[currentPattern].name + ' | 规则: ' + patterns[currentPattern].rule +
+    '\n// 点击"逐步预测"按钮，观察 RNN 处理序列的过程...';
+}
+
+function stepPredict() {
+  const pat = patterns[currentPattern];
+  const chain = document.getElementById('seqChain');
+  const log = document.getElementById('predictLog');
+
+  if (stepIndex >= pat.seq.length) {
+    // Predict next
+    const predicted = predictNext(pat.seq, currentPattern);
+    const arrow1 = document.createElement('span');
+    arrow1.className = 'seq-arrow';
+    arrow1.textContent = '→';
+    chain.appendChild(arrow1);
+
+    const token = document.createElement('span');
+    token.className = 'seq-result';
+    token.textContent = '? ≈ ' + predicted;
+    chain.appendChild(token);
+
+    log.textContent += `\n\n>>> 预测完成！模型根据 {${pat.seq.join(', ')}} 的模式推断下一步 ≈ ${predicted}`;
+    log.textContent += `\n>>> 实际规则: ${pat.rule}`;
+    stepIndex++;
+    return;
+  }
+
+  if (stepIndex > 0) {
+    const arrow = document.createElement('span');
+    arrow.className = 'seq-arrow';
+    arrow.textContent = '→';
+    chain.appendChild(arrow);
+
+    const hs = document.createElement('span');
+    hs.className = 'seq-token hidden-state';
+    hs.textContent = 'h' + stepIndex;
+    chain.appendChild(hs);
+
+    const arrow2 = document.createElement('span');
+    arrow2.className = 'seq-arrow';
+    arrow2.textContent = '→';
+    chain.appendChild(arrow2);
+  }
+
+  const token = document.createElement('span');
+  token.className = 'seq-token';
+  token.textContent = pat.seq[stepIndex];
+  chain.appendChild(token);
+
+  const logLine = `\n[t=${stepIndex + 1}] 输入 x=${pat.seq[stepIndex]} | h_prev=${hiddenState.toFixed(3)} → h_new=${(Math.tanh(hiddenState * 0.8 + pat.seq[stepIndex] * 0.5)).toFixed(3)}`;
+  log.textContent += logLine;
+  hiddenState = Math.tanh(hiddenState * 0.8 + pat.seq[stepIndex] * 0.5);
+  stepIndex++;
+}
+
+function predictNext(seq, type) {
+  switch (type) {
+    case 'fibonacci': return seq[seq.length-1] + seq[seq.length-2];
+    case 'arithmetic': return seq[seq.length-1] + (seq[1] - seq[0]);
+    case 'geometric': return seq[seq.length-1] * (seq[1] / seq[0]);
+    case 'sine': return Math.sin((seq.length) * Math.PI / 4).toFixed(2);
+    default return '?';
+  }
+}
+
+// ===== RNN Calculator =====
+function calculateRNN() {
+  const hPrev = parseFloat(document.getElementById('hPrev').value) || 0;
+  const xT = parseFloat(document.getElementById('xT').value) || 0;
+  const Whh = parseFloat(document.getElementById('Whh').value) || 0;
+  const Wxh = parseFloat(document.getElementById('Wxh').value) || 0;
+  const bh = parseFloat(document.getElementById('bh').value) || 0;
+
+  const step1 = Whh * hPrev;
+  const step2 = Wxh * xT;
+  const step3 = step1 + step2 + bh;
+  const hNew = Math.tanh(step3);
+
+  const output = document.getElementById('rnnCalcOutput');
+  output.textContent =
+`╔══════════════════════════════════════════════╗
+║  RNN 前向传播 — 逐步计算                      ║
+╚══════════════════════════════════════════════╝
+
+  公式: h_t = tanh(W_hh · h_{t-1} + W_xh · x_t + b_h)
+
+  Step 1: W_hh × h_prev = ${Whh} × ${hPrev} = ${step1.toFixed(4)}
+  Step 2: W_xh × x_t    = ${Wxh} × ${xT} = ${step2.toFixed(4)}
+  Step 3: 求和 + 偏置    = ${step1.toFixed(4)} + ${step2.toFixed(4)} + ${bh} = ${step3.toFixed(4)}
+  Step 4: tanh(求和)     = tanh(${step3.toFixed(4)}) = ${hNew.toFixed(6)}
+
+  ┌────────────────────────────────────┐
+  │  h_new = ${hNew.toFixed(6).padEnd(27)}│
+  └────────────────────────────────────┘
+
+  分析:
+  · tanh 输入值 ${step3.toFixed(4)} ${step3 > 2 ? '(较大，输出趋近+1)' : step3 < -2 ? '(较小，输出趋近-1)' : '(适中，输出在活跃区间)'}
+  · 激活值 ${hNew.toFixed(4)} ${Math.abs(hNew) > 0.95 ? '⚠ 接近饱和区，梯度会很小' : '✓ 在活跃区域，梯度传播良好'}`;
+}
+</script>
+</body>
+</html>

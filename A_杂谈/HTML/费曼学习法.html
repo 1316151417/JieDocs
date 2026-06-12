@@ -1,0 +1,2468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第一性原理 × 费曼学习法 — 深度研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #060b14;
+    --bg-primary: #0a0f1a;
+    --bg-surface: #0f1729;
+    --bg-elevated: #152038;
+    --border: #1e3055;
+    --border-light: #2a4270;
+    --accent-cyan: #00d4ff;
+    --accent-cyan-dim: rgba(0,212,255,0.15);
+    --accent-amber: #ffb224;
+    --accent-amber-dim: rgba(255,178,36,0.12);
+    --accent-rose: #ff6b8a;
+    --accent-green: #34d399;
+    --accent-green-dim: rgba(52,211,153,0.12);
+    --text-primary: #e8edf5;
+    --text-secondary: #8b9dc3;
+    --text-muted: #4a5f82;
+    --glow-cyan: 0 0 30px rgba(0,212,255,0.15);
+    --glow-amber: 0 0 30px rgba(255,178,36,0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    line-height: 1.8;
+    overflow-x: hidden;
+  }
+
+  /* Blueprint grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(rgba(0,212,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.015) 1px, transparent 1px);
+    background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 20%, rgba(0,212,255,0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(255,178,36,0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ============ HERO ============ */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 80px 0;
+    position: relative;
+  }
+
+  .hero-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeIn 0.8s ease 0.3s forwards;
+  }
+
+  .hero-label::before {
+    content: '▸ ';
+    color: var(--accent-amber);
+  }
+
+  .hero h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(42px, 7vw, 80px);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--text-primary);
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: slideUp 1s ease 0.5s forwards;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent-cyan);
+    position: relative;
+  }
+
+  .hero h1 em::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-cyan), transparent);
+    opacity: 0.4;
+  }
+
+  .hero-subtitle {
+    font-size: 18px;
+    color: var(--text-secondary);
+    max-width: 640px;
+    line-height: 1.9;
+    opacity: 0;
+    animation: slideUp 1s ease 0.7s forwards;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 40px;
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    opacity: 0;
+    animation: fadeIn 1s ease 1s forwards;
+  }
+
+  .hero-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .hero-meta-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .hero-meta-value {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  .scroll-indicator {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeIn 1s ease 1.5s forwards;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--accent-cyan), transparent);
+    animation: scrollPulse 2s ease infinite;
+  }
+
+  .scroll-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ============ NAV ============ */
+  .nav-toc {
+    position: fixed;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .nav-dot:hover, .nav-dot.active {
+    background: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(0,212,255,0.4);
+  }
+
+  .nav-dot::after {
+    content: attr(data-label);
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .nav-dot:hover::after { opacity: 1; }
+
+  @media (max-width: 768px) {
+    .nav-toc { display: none; }
+  }
+
+  /* ============ SECTIONS ============ */
+  section {
+    padding: 100px 0;
+    position: relative;
+  }
+
+  .section-number {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .section-number::before {
+    content: '// ';
+    color: var(--text-muted);
+  }
+
+  h2 {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 400;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    margin-top: 48px;
+  }
+
+  .section-desc {
+    font-size: 16px;
+    color: var(--text-secondary);
+    max-width: 700px;
+    margin-bottom: 48px;
+    line-height: 1.9;
+  }
+
+  .divider {
+    width: 60px;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent-cyan), transparent);
+    margin: 48px 0;
+  }
+
+  /* ============ FIRST PRINCIPLES GRID ============ */
+  .fp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 32px;
+  }
+
+  .fp-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.4s ease;
+  }
+
+  .fp-card:hover {
+    border-color: var(--accent-cyan);
+    transform: translateY(-2px);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .fp-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--accent-cyan);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .fp-card:hover::before { opacity: 1; }
+
+  .fp-card-icon {
+    font-size: 28px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .fp-card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent-cyan);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .fp-card-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  .fp-card-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease, margin 0.3s ease;
+    margin-top: 0;
+  }
+
+  .fp-card.expanded .fp-card-detail {
+    max-height: 500px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .fp-card-detail p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.9;
+  }
+
+  .fp-card-hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* ============ DECONSTRUCT BLOCK ============ */
+  .deconstruct-block {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 48px;
+    margin: 32px 0;
+    position: relative;
+  }
+
+  .deconstruct-block::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 40px;
+    right: 40px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+  }
+
+  .level-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-amber);
+    margin-bottom: 20px;
+    padding: 6px 14px;
+    background: var(--accent-amber-dim);
+    border-radius: 2px;
+  }
+
+  .deconstruct-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 24px;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+  }
+
+  .deconstruct-text {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 2;
+  }
+
+  .deconstruct-chain {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 32px;
+  }
+
+  .chain-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 20px 0;
+    position: relative;
+  }
+
+  .chain-item:not(:last-child) {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .chain-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 32px;
+    font-weight: 300;
+    color: var(--accent-cyan);
+    line-height: 1;
+    min-width: 40px;
+    opacity: 0.6;
+  }
+
+  .chain-content h4 {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .chain-content p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* ============ INTERACTIVE STEPPER ============ */
+  .stepper {
+    margin: 48px 0;
+  }
+
+  .stepper-nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+    overflow-x: auto;
+  }
+
+  .stepper-tab {
+    padding: 16px 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+    transition: color 0.3s ease;
+  }
+
+  .stepper-tab:hover { color: var(--text-secondary); }
+
+  .stepper-tab.active {
+    color: var(--accent-cyan);
+  }
+
+  .stepper-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(0,212,255,0.3);
+  }
+
+  .stepper-panel {
+    display: none;
+    animation: fadeUp 0.5s ease;
+  }
+
+  .stepper-panel.active { display: block; }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .step-num {
+    font-family: 'Instrument Serif', serif;
+    font-size: 60px;
+    color: var(--accent-cyan);
+    opacity: 0.3;
+    line-height: 1;
+  }
+
+  .step-info h3 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 28px;
+    margin: 0 0 4px;
+    color: var(--text-primary);
+  }
+
+  .step-info p {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .step-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+
+  @media (max-width: 768px) {
+    .step-body { grid-template-columns: 1fr; }
+  }
+
+  .step-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+  }
+
+  .step-card-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .step-card p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+
+  .step-card.quote {
+    border-left: 3px solid var(--accent-amber);
+    background: var(--accent-amber-dim);
+  }
+
+  .step-card.quote p {
+    font-family: 'Instrument Serif', serif;
+    font-size: 18px;
+    font-style: italic;
+    color: var(--text-primary);
+  }
+
+  /* ============ COMPARISON ============ */
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin: 40px 0;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  @media (max-width: 768px) {
+    .comparison { grid-template-columns: 1fr; }
+  }
+
+  .comparison-side {
+    padding: 36px;
+    position: relative;
+  }
+
+  .comparison-side.before {
+    background: #12101a;
+    border-right: 1px solid var(--border);
+  }
+
+  .comparison-side.after {
+    background: #0d1a14;
+  }
+
+  .comparison-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-bottom: 20px;
+  }
+
+  .before .comparison-badge {
+    background: rgba(255,107,138,0.15);
+    color: var(--accent-rose);
+  }
+
+  .after .comparison-badge {
+    background: var(--accent-green-dim);
+    color: var(--accent-green);
+  }
+
+  .comparison-side h4 {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+
+  .comparison-side p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 2;
+  }
+
+  .complexity-bar {
+    margin-top: 16px;
+    height: 4px;
+    background: var(--bg-elevated);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .complexity-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  .before .complexity-fill {
+    background: var(--accent-rose);
+    width: 92%;
+  }
+
+  .after .complexity-fill {
+    background: var(--accent-green);
+    width: 25%;
+  }
+
+  .complexity-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    letter-spacing: 1px;
+  }
+
+  /* ============ INTERACTIVE EXERCISE ============ */
+  .exercise-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 48px;
+    margin: 40px 0;
+  }
+
+  .exercise-box h3 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 24px;
+    margin: 0 0 8px;
+    margin-top: 0;
+    color: var(--text-primary);
+  }
+
+  .exercise-subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+  }
+
+  .exercise-step {
+    margin-bottom: 32px;
+  }
+
+  .exercise-step-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-amber);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .exercise-step-label .step-check {
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--text-muted);
+    border-radius: 2px;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    transition: all 0.3s ease;
+  }
+
+  .exercise-step-label .step-check.done {
+    border-color: var(--accent-green);
+    background: var(--accent-green-dim);
+    color: var(--accent-green);
+  }
+
+  .exercise-textarea {
+    width: 100%;
+    min-height: 100px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    color: var(--text-primary);
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    line-height: 1.8;
+    resize: vertical;
+    transition: border-color 0.3s ease;
+  }
+
+  .exercise-textarea:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 0 3px var(--accent-cyan-dim);
+  }
+
+  .exercise-textarea::placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .exercise-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: transparent;
+    border: 1px solid var(--accent-cyan);
+    color: var(--accent-cyan);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    margin-top: 8px;
+  }
+
+  .exercise-btn:hover {
+    background: var(--accent-cyan);
+    color: var(--bg-deep);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .exercise-feedback {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--accent-cyan-dim);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 4px;
+    display: none;
+  }
+
+  .exercise-feedback.show { display: block; animation: fadeUp 0.4s ease; }
+
+  .exercise-feedback h5 {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-cyan);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .exercise-feedback p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* ============ SLIDER METER ============ */
+  .simplicity-meter {
+    margin: 32px 0;
+    padding: 32px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  .meter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .meter-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .meter-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 24px;
+    color: var(--accent-cyan);
+    font-weight: 500;
+  }
+
+  .meter-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent-green), var(--accent-amber), var(--accent-rose));
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .meter-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--text-primary);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(0,212,255,0.3);
+  }
+
+  .meter-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+
+  .meter-labels span {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  .meter-feedback {
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    min-height: 50px;
+  }
+
+  /* ============ KNOWLEDGE MAP ============ */
+  .knowledge-map {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 32px 0;
+  }
+
+  .map-node {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 24px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .map-node:hover {
+    border-color: var(--border-light);
+    background: var(--bg-elevated);
+  }
+
+  .map-node-marker {
+    min-width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .map-node-marker.core {
+    background: var(--accent-cyan-dim);
+    border: 1px solid rgba(0,212,255,0.3);
+    color: var(--accent-cyan);
+  }
+
+  .map-node-marker.support {
+    background: var(--accent-amber-dim);
+    border: 1px solid rgba(255,178,36,0.3);
+    color: var(--accent-amber);
+  }
+
+  .map-node-marker.apply {
+    background: var(--accent-green-dim);
+    border: 1px solid rgba(52,211,153,0.3);
+    color: var(--accent-green);
+  }
+
+  .map-node-body h4 {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .map-node-body p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .map-connector {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin-left: 44px;
+  }
+
+  /* ============ KEY INSIGHT CALLOUT ============ */
+  .insight-callout {
+    display: flex;
+    gap: 20px;
+    padding: 28px;
+    background: linear-gradient(135deg, var(--accent-amber-dim), transparent);
+    border: 1px solid rgba(255,178,36,0.2);
+    border-left: 3px solid var(--accent-amber);
+    border-radius: 4px;
+    margin: 32px 0;
+  }
+
+  .insight-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .insight-text {
+    font-size: 15px;
+    color: var(--text-primary);
+    line-height: 1.9;
+  }
+
+  .insight-text strong {
+    color: var(--accent-amber);
+    font-weight: 500;
+  }
+
+  /* ============ SOLUTION CARDS ============ */
+  .solution-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin: 32px 0;
+  }
+
+  .solution-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .solution-card:hover {
+    border-color: var(--accent-green);
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(52,211,153,0.1);
+  }
+
+  .solution-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-green), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .solution-card:hover::after { opacity: 1; }
+
+  .solution-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 40px;
+    font-weight: 300;
+    color: var(--accent-green);
+    opacity: 0.2;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .solution-card h4 {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+
+  .solution-card p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+
+  .solution-tag {
+    display: inline-block;
+    margin-top: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 2px;
+    background: var(--accent-green-dim);
+    color: var(--accent-green);
+  }
+
+  /* ============ PRINCIPLES TABLE ============ */
+  .principles-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 32px 0;
+  }
+
+  .principles-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: left;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+  }
+
+  .principles-table td {
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.7;
+  }
+
+  .principles-table tr:hover td {
+    background: rgba(0,212,255,0.02);
+  }
+
+  .principles-table td:first-child {
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* ============ TIMELINE ============ */
+  .timeline {
+    position: relative;
+    padding-left: 40px;
+    margin: 40px 0;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent-cyan), var(--accent-amber), var(--accent-green), transparent);
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 40px;
+    padding: 24px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+
+  .timeline-item:hover {
+    border-color: var(--border-light);
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -33px;
+    top: 28px;
+    width: 10px;
+    height: 10px;
+    background: var(--accent-cyan);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,212,255,0.4);
+  }
+
+  .timeline-item:nth-child(2)::before { background: var(--accent-amber); box-shadow: 0 0 10px rgba(255,178,36,0.4); }
+  .timeline-item:nth-child(3)::before { background: var(--accent-green); box-shadow: 0 0 10px rgba(52,211,153,0.4); }
+  .timeline-item:nth-child(4)::before { background: var(--accent-rose); box-shadow: 0 0 10px rgba(255,107,138,0.4); }
+
+  .timeline-phase {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    margin-bottom: 8px;
+  }
+
+  .timeline-item:nth-child(2) .timeline-phase { color: var(--accent-amber); }
+  .timeline-item:nth-child(3) .timeline-phase { color: var(--accent-green); }
+  .timeline-item:nth-child(4) .timeline-phase { color: var(--accent-rose); }
+
+  .timeline-item h4 {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .timeline-item p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* ============ CODE-LIKE BLOCKS ============ */
+  .logic-block {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+    margin: 24px 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 2.2;
+    overflow-x: auto;
+  }
+
+  .logic-block .comment {
+    color: var(--text-muted);
+  }
+
+  .logic-block .keyword {
+    color: var(--accent-rose);
+  }
+
+  .logic-block .function {
+    color: var(--accent-cyan);
+  }
+
+  .logic-block .string {
+    color: var(--accent-green);
+  }
+
+  .logic-block .arrow {
+    color: var(--accent-amber);
+  }
+
+  /* ============ ANIMATED STAT ROW ============ */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin: 40px 0;
+  }
+
+  @media (max-width: 768px) {
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .stat-item {
+    text-align: center;
+    padding: 28px 16px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-item::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-cyan);
+    opacity: 0.3;
+  }
+
+  .stat-number {
+    font-family: 'Instrument Serif', serif;
+    font-size: 42px;
+    color: var(--accent-cyan);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ============ FAQ / ACCORDION ============ */
+  .faq-item {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .faq-question {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 500;
+    font-family: 'Noto Sans SC', sans-serif;
+    transition: color 0.3s ease;
+  }
+
+  .faq-question:hover { color: var(--accent-cyan); }
+
+  .faq-icon {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    color: var(--text-muted);
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+    margin-left: 16px;
+  }
+
+  .faq-item.open .faq-icon {
+    transform: rotate(45deg);
+    color: var(--accent-cyan);
+  }
+
+  .faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+  }
+
+  .faq-item.open .faq-answer {
+    max-height: 500px;
+  }
+
+  .faq-answer-inner {
+    padding-bottom: 24px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 2;
+  }
+
+  /* ============ FOOTER ============ */
+  footer {
+    padding: 60px 0;
+    border-top: 1px solid var(--border);
+    margin-top: 80px;
+    text-align: center;
+  }
+
+  footer p {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+  }
+
+  /* ============ PROGRESS BAR ============ */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-amber));
+    z-index: 1000;
+    transition: width 0.1s linear;
+  }
+
+  /* ============ ANIMATIONS ============ */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.2); }
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ============ SEPARATOR ============ */
+  .section-sep {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 80px 0;
+  }
+
+  .section-sep::before,
+  .section-sep::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .section-sep span {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ============ TOOLTIP ============ */
+  .tooltip-word {
+    color: var(--accent-cyan);
+    cursor: help;
+    border-bottom: 1px dashed rgba(0,212,255,0.3);
+    position: relative;
+  }
+
+  .tooltip-word:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    z-index: 10;
+    animation: fadeUp 0.2s ease;
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 640px) {
+    section { padding: 60px 0; }
+    .deconstruct-block { padding: 28px; }
+    .exercise-box { padding: 28px; }
+    .comparison { grid-template-columns: 1fr; }
+    .comparison-side.before { border-right: none; border-bottom: 1px solid var(--border); }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .hero-meta { flex-direction: column; gap: 16px; }
+    .stepper-nav { gap: 0; }
+    .stepper-tab { padding: 12px 16px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<nav class="nav-toc" id="navToc">
+  <div class="nav-dot" data-label="核心问题" data-target="sec-problem"></div>
+  <div class="nav-dot" data-label="第一性原理" data-target="sec-fp"></div>
+  <div class="nav-dot" data-label="深度拆解" data-target="sec-deconstruct"></div>
+  <div class="nav-dot" data-label="四步法" data-target="sec-steps"></div>
+  <div class="nav-dot" data-label="交互体验" data-target="sec-exercise"></div>
+  <div class="nav-dot" data-label="解决方案" data-target="sec-solutions"></div>
+  <div class="nav-dot" data-label="指导意见" data-target="sec-guide"></div>
+</nav>
+
+<!-- ==================== HERO ==================== -->
+<header class="hero">
+  <div class="container">
+    <span class="hero-label">Research Report — First Principles</span>
+    <h1>费曼学习法的<br><em>第一性原理</em>拆解</h1>
+    <p class="hero-subtitle">
+      用建筑师的思维方式，从知识的本质出发，逐层拆解「以教代学」的底层机制。
+      不是告诉你费曼说了什么，而是让你理解它为什么有效——以及如何真正用起来。
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">方法论</span>
+        <span class="hero-meta-value">第一性原理 × 认知科学</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">结构</span>
+        <span class="hero-meta-value">7 个核心模块 · 4 层深度</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">交互</span>
+        <span class="hero-meta-value">可操作练习 + 即时反馈</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <div class="scroll-line"></div>
+    <span class="scroll-text">Scroll to explore</span>
+  </div>
+</header>
+
+<!-- ==================== SECTION 1: PROBLEM ==================== -->
+<section id="sec-problem">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-number">01 — 核心问题</span>
+      <h2>为什么你学了很多，却什么都不会？</h2>
+      <p class="section-desc">
+        这个问题困扰着几乎所有学习者。我们投入大量时间阅读、记笔记、看视频，
+        却在需要输出时一片空白。问题不在于你不够努力，而在于你对「学习」这件事的理解本身就是错的。
+      </p>
+    </div>
+
+    <div class="stat-row reveal">
+      <div class="stat-item">
+        <div class="stat-number" data-count="90">0</div>
+        <div class="stat-label">学习内容遗忘率 %</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-count="5">0</div>
+        <div class="stat-label">真正理解的比例 %</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-count="85">0</div>
+        <div class="stat-label">被动学习占比 %</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-count="12">0</div>
+        <div class="stat-label">平均注意力 span 分钟</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="reveal">
+      <h3>「知道」不等于「理解」</h3>
+      <p class="section-desc" style="margin-bottom:24px;">
+        大多数人混淆了两个完全不同的认知状态。这是学习效率低下的根本原因。
+      </p>
+    </div>
+
+    <div class="comparison reveal">
+      <div class="comparison-side before">
+        <span class="comparison-badge">表层记忆</span>
+        <h4>「我知道这个概念」</h4>
+        <p>
+          量子纠缠是两个粒子之间的关联，对一个粒子的测量会瞬时影响另一个，无论它们相距多远。
+          这种现象被爱因斯坦称为「鬼魅般的超距作用」。
+        </p>
+        <div class="complexity-bar">
+          <div class="complexity-fill"></div>
+        </div>
+        <div class="complexity-label">信息密度高 · 理解密度低 · 复述原文</div>
+      </div>
+      <div class="comparison-side after">
+        <span class="comparison-badge">费曼理解</span>
+        <h4>「我能用自己的话说清楚」</h4>
+        <p>
+          想象你有一双手套，你把左右手各寄给一个朋友。当你收到左手手套时，
+          你立刻知道朋友收到的是右手——不需要打电话确认。量子纠缠类似：
+          两个粒子一旦关联，知道一个的状态就自动知道另一个。
+        </p>
+        <div class="complexity-bar">
+          <div class="complexity-fill"></div>
+        </div>
+        <div class="complexity-label">信息密度低 · 理解密度高 · 自己的语言</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-sep"><span>First Principles</span></div>
+
+<!-- ==================== SECTION 2: FIRST PRINCIPLES ==================== -->
+<section id="sec-fp">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-number">02 — 第一性原理</span>
+      <h2>从不可再分的真相出发</h2>
+      <p class="section-desc">
+        在分析费曼学习法之前，我们先用第一性原理把「学习」这件事拆到最基本的组成单元。
+        不是参考别人怎么做，而是问：学习的本质是什么？认知系统如何工作？哪些是不可违反的规律？
+      </p>
+    </div>
+
+    <div class="logic-block reveal">
+      <span class="comment">// 学习的第一性原理拆解</span><br><br>
+      <span class="keyword">WHY</span> <span class="function">学习的本质是什么？</span><br>
+      <span class="arrow">  →</span> <span class="string">在大脑中建立新的神经连接（突触可塑性）</span><br>
+      <span class="arrow">  →</span> <span class="string">将信息从工作记忆转入长期记忆</span><br>
+      <span class="arrow">  →</span> <span class="string">形成可检索、可调用的知识结构</span><br><br>
+      <span class="keyword">HOW</span> <span class="function">什么决定了连接的质量？</span><br>
+      <span class="arrow">  →</span> <span class="string">编码深度（浅层复述 vs 深层加工）</span><br>
+      <span class="arrow">  →</span> <span class="string">提取练习（主动回忆 > 被动复习）</span><br>
+      <span class="arrow">  →</span> <span class="string">连接数量（与已有知识的关联网络）</span><br><br>
+      <span class="keyword">THEREFORE</span> <span class="function">最有效的学习方式 =</span><br>
+      <span class="arrow">  →</span> <span class="string">深层编码 + 主动提取 + 多维关联</span><br>
+      <span class="arrow">  →</span> <span class="string">「教别人」恰好同时满足这三者</span>
+    </div>
+
+    <div class="fp-grid reveal">
+      <div class="fp-card" onclick="toggleCard(this)">
+        <span class="fp-card-icon">◆</span>
+        <div class="fp-card-title">Axiom 01: 神经可塑性</div>
+        <div class="fp-card-text">
+          大脑通过反复激活特定神经通路来强化学习。重复不是机械的，而是需要每次都有新的认知参与。
+        </div>
+        <div class="fp-card-hint">▸ 点击展开深度分析</div>
+        <div class="fp-card-detail">
+          <p>
+            Hebbian学习法则：「一起激活的神经元会连接在一起」。但关键在于——
+            简单重复阅读只会激活同一浅层回路。而费曼法要求你用自己的话重新编码，
+            这会激活更广泛的神经网络，形成更强的记忆痕迹。
+            这解释了为什么读三遍不如讲一遍。
+          </p>
+        </div>
+      </div>
+
+      <div class="fp-card" onclick="toggleCard(this)">
+        <span class="fp-card-icon">◆</span>
+        <div class="fp-card-title">Axiom 02: 编码变异性</div>
+        <div class="fp-card-text">
+          用不同方式加工同一信息会产生多条提取路径。路径越多，回忆概率越高。
+        </div>
+        <div class="fp-card-hint">▸ 点击展开深度分析</div>
+        <div class="fp-card-detail">
+          <p>
+            认知心理学家 Robert Bjork 的研究表明：在不同情境下、用不同方式处理同一知识，
+            会形成多条独立的记忆检索线索。费曼法强迫你将专业术语转化为日常语言，
+            本质上是在创造一条全新的编码路径——这不是简单的「换种说法」，
+            而是用完全不同的认知框架重新建构知识。
+          </p>
+        </div>
+      </div>
+
+      <div class="fp-card" onclick="toggleCard(this)">
+        <span class="fp-card-icon">◆</span>
+        <div class="fp-card-title">Axiom 03: 测试效应</div>
+        <div class="fp-card-text">
+          主动提取记忆的行为本身就能强化记忆。测试不是评估工具，而是最强的学习策略。
+        </div>
+        <div class="fp-card-hint">▸ 点击展开深度分析</div>
+        <div class="fp-card-detail">
+          <p>
+            Jeffrey Karpicke 的经典实验（2011）证明：反复阅读的学生记住的内容，
+            远不如进行过提取练习的学生。费曼法的核心动作——「合上书本，用自己的话讲出来」——
+            本质上就是一次高强度的提取练习。你不是在「检验」自己是否记住了，
+            你是在「通过提取」来加深记忆。
+          </p>
+        </div>
+      </div>
+
+      <div class="fp-card" onclick="toggleCard(this)">
+        <span class="fp-card-icon">◆</span>
+        <div class="fp-card-title">Axiom 04: 元认知校准</div>
+        <div class="fp-card-text">
+          人类天生会高估自己的理解程度（达克效应）。暴露盲点是进步的前提。
+        </div>
+        <div class="fp-card-hint">▸ 点击展开深度分析</div>
+        <div class="fp-card-detail">
+          <p>
+            当你只是阅读时，「流畅性错觉」会让你误以为自己理解了——因为信息在眼前流过的感觉很顺畅。
+            但当你试图解释时，每一处卡壳都是一个精确的认知坐标，告诉你哪里出了问题。
+            费曼法的第三步（回顾与补漏）本质上是一个元认知校准器——
+            它帮你从「我觉得我会」走向「我确实会」。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-sep"><span>Deep Deconstruction</span></div>
+
+<!-- ==================== SECTION 3: DECONSTRUCT ==================== -->
+<section id="sec-deconstruct">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-number">03 — 深度拆解</span>
+      <h2>费曼法的认知架构</h2>
+      <p class="section-desc">
+        把费曼学习法看作一个系统——它有输入、处理、输出和反馈四个模块。
+        每个模块都对应一个认知科学原理，缺一不可。
+      </p>
+    </div>
+
+    <div class="timeline reveal">
+      <div class="timeline-item">
+        <div class="timeline-phase">Phase 1 — Input · 输入层</div>
+        <h4>选择概念，主动学习</h4>
+        <p>
+          不是漫无目的地阅读，而是带着「我要把这个讲给一个12岁的孩子听」的目标去学。
+          这个目标会自动激活大脑的<strong>选择性注意机制</strong>，过滤噪音，聚焦核心。
+          前额叶皮层开始有目的地编码信息，而非被动接收。
+        </p>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-phase">Phase 2 — Process · 加工层</div>
+        <h4>简化表达，重构知识</h4>
+        <p>
+          这是费曼法的核心引擎。当你被迫用简单语言解释时，大脑会执行<strong>精细化加工</strong>——
+          将抽象概念与具体经验建立连接。这比「维持性复述」（简单重复）深至少两个认知层级。
+          每一次简化都是一次知识的重新编码。
+        </p>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-phase">Phase 3 — Feedback · 反馈层</div>
+        <h4>识别盲区，精准修补</h4>
+        <p>
+          卡壳的地方就是知识断层。这不是失败，而是整个方法论中最有价值的产出——
+          <strong>精确的认知诊断</strong>。你获得的不是模糊的「我不太懂这个」，
+          而是「我能在A处解释清楚，但在B处无法用自己的话说出来」这样的精确定位。
+        </p>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-phase">Phase 4 — Output · 输出层</div>
+        <h4>教授他人，固化理解</h4>
+        <p>
+          最终输出——向他人讲解——激活了<strong>生成效应</strong>（Generation Effect）：
+          自己生成的信息比被动接收的信息记忆更深。同时，教学过程会自然地组织知识结构，
+          形成更清晰的心智模型。这就是为什么费曼说：「如果你不能把它简单地解释出来，你就没有真正理解它。」
+        </p>
+      </div>
+    </div>
+
+    <div class="insight-callout reveal">
+      <span class="insight-icon">◈</span>
+      <div class="insight-text">
+        <strong>核心洞察：</strong>费曼学习法不是一个学习「技巧」，而是一个<strong>认知加工协议</strong>。
+        它通过结构化流程，强制大脑从浅层加工转入深层加工，从被动接收转为主动建构。
+        它的有效性不取决于费曼本人有多聪明，而取决于它完美契合了人类认知系统的工作规律。
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-sep"><span>Interactive Steps</span></div>
+
+<!-- ==================== SECTION 4: STEPPER ==================== -->
+<section id="sec-steps">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-number">04 — 四步法详解</span>
+      <h2>逐一拆解每个步骤</h2>
+      <p class="section-desc">
+        点击每个标签，深入了解每一步的操作要点、认知原理和常见陷阱。
+      </p>
+    </div>
+
+    <div class="stepper reveal">
+      <div class="stepper-nav">
+        <button class="stepper-tab active" onclick="switchStep(0)">STEP 01 · 选择</button>
+        <button class="stepper-tab" onclick="switchStep(1)">STEP 02 · 教授</button>
+        <button class="stepper-tab" onclick="switchStep(2)">STEP 03 · 回顾</button>
+        <button class="stepper-tab" onclick="switchStep(3)">STEP 04 · 精简</button>
+      </div>
+
+      <div class="stepper-panel active" data-step="0">
+        <div class="step-header">
+          <span class="step-num">01</span>
+          <div class="step-info">
+            <h3>选择一个概念</h3>
+            <p>IDENTIFY · SCOPE · FOCUS</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="step-card">
+            <div class="step-card-label">操作要点</div>
+            <p>
+              选择一个你想学或正在学的概念。粒度要小——不是「量子物理」，而是「量子隧穿效应」。
+              把它写在纸的最上方，作为整个过程的锚点。
+              <br><br>
+              关键：不要选择太大的主题。一个好的费曼单元应该能在15分钟内讲完。
+            </p>
+          </div>
+          <div class="step-card quote">
+            <div class="step-card-label">费曼原话</div>
+            <p>「The first principle is that you must not fool yourself — and you are the easiest person to fool.」</p>
+          </div>
+          <div class="step-card">
+            <div class="step-card-label">认知原理</div>
+            <p>
+              明确的学习目标会激活大脑的<strong>目标导向网络</strong>（Goal-Directed Network），
+              使注意力资源集中在相关信息上。这就是为什么带着「要讲给别人」的目的去阅读，
+              效率远高于泛读。
+            </p>
+          </div>
+          <div class="step-card">
+            <div class="step-card-label">常见陷阱</div>
+            <p>
+              <span style="color:var(--accent-rose);">✘</span> 主题太大，无从下手<br>
+              <span style="color:var(--accent-rose);">✘</span> 同时学多个概念<br>
+              <span style="color:var(--accent-green);">✓</span> 选择一个具体的、可以独立解释的子概念
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stepper-panel" data-step="1">
+        <div class="step-header">
+          <span class="step-num">02</span>
+          <div class="step-info">
+            <h3>假装教给一个孩子</h3>
+            <p>SIMPLIFY · ANALOGIZE · CLARIFY</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="step-card">
+            <div class="step-card-label">操作要点</div>
+            <p>
+              合上书本和笔记。在白纸上写下你对这个概念的解释——
+              假装你在教一个12岁的孩子。只能用日常用语，不能出现专业术语。
+              每遇到一个抽象概念，都要找到一个具体的类比。
+            </p>
+          </div>
+          <div class="step-card quote">
+            <div class="step-card-label">核心原则</div>
+            <p>「如果你不能用简单的语言解释，你就没有真正理解。」</p>
+          </div>
+          <div class="step-card">
+            <div class="step-card-label">认知原理</div>
+            <p>
+              这一步激活了<strong>精细化加工</strong>（Elaborative Processing）。
+              当你把抽象概念翻译成具体例子时，大脑被迫在工作记忆中同时保持新知识和旧经验，
+              并在它们之间建立连接——这正是深层编码的核心机制。
+            </p>
+          </div>
+          <div class="step-card">
+            <div class="step-card-label">常见陷阱</div>
+            <p>
+              <span style="color:var(--accent-rose);">✘</span> 偷偷使用专业术语来自我安慰<br>
+              <span style="color:var(--accent-rose);">✘</span> 照搬教材的解释框架<br>
+              <span style="color:var(--accent-green);">✓</span> 用完全不同的例子和比喻重新构建
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stepper-panel" data-step="2">
+        <div class="step-header">
+          <span class="step-num">03</span>
+          <div class="step-info">
+            <h3>回顾与补漏</h3>
+            <p>IDENTIFY GAPS · REFILL · RE-TEST</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="step-card">
+            <div class="step-card-label">操作要点</div>
+            <p>
+              重新打开学习材料，对照你的解释找出：哪里卡壳了？哪里解释得不够清楚？
+              哪里用了术语来掩饰理解的空洞？将这些缺口标记出来，回到源头学习，然后再一次尝试用简单语言解释。
+            </p>
+          </div>
+          <div class="step-card quote">
+            <div class="step-card-label">费曼策略</div>
+            <p>「找到你不知道自己不知道的东西——这才是真正的进步发生的时刻。」</p>
+          </div>
+          <div class="step-card">
+            <div class="step-card-label">认知原理</div>
+            <p>
+              这是<strong>元认知监控</strong>的精确应用。学习心理学中的「校准理论」表明：
+              学习者对自己理解程度的判断往往是不准确的。费曼法通过强制输出，
+              将隐性的「不知道」转化为显性的「知道了自己的盲点」，
+              从而实现了认知的精确校准。
+            </p>
+          </div>
+          <div class="step-card">
+            <div class="step-card-label">常见陷阱</div>
+            <p>
+              <span style="color:var(--accent-rose);">✘</span> 跳过这一步直接进入下一步<br>
+              <span style="color:var(--accent-rose);">✘</span> 发现缺口后产生挫败感而放弃<br>
+              <span style="color:var(--accent-green);">✓</span> 把每个缺口视为进步的精确坐标
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stepper-panel" data-step="3">
+        <div class="step-header">
+          <span class="step-num">04</span>
+          <div class="step-info">
+            <h3>简化再简化</h3>
+            <p>COMPRESS · ANALOGIZE · ELEGANT</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="step-card">
+            <div class="step-card-label">操作要点</div>
+            <p>
+              对你的解释进行第二轮精简。目标：用最少的字数、最简单的类比，
+              把核心要义传达给一个完全外行的人。好的费曼解释应该像一首短诗——
+              言简意赅，直达本质。
+            </p>
+          </div>
+          <div class="step-card quote">
+            <div class="step-card-label">建筑师思维</div>
+            <p>「Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.」</p>
+          </div>
+          <div class="step-card">
+            <div class="step-card-label">认知原理</div>
+            <p>
+              精简过程激活了<strong>知识压缩</strong>（Knowledge Compression）——
+              这正是智能的核心特征。当你能把一个复杂概念压缩成一句简单的类比时，
+              说明你的大脑已经抽象出了最核心的结构。物理学家用方程式压缩自然规律，
+              费曼法教你用类比压缩知识。
+            </p>
+          </div>
+          <div class="step-card">
+            <div class="step-card-label">常见陷阱</div>
+            <p>
+              <span style="color:var(--accent-rose);">✘</span> 为了简化而牺牲准确性<br>
+              <span style="color:var(--accent-rose);">✘</span> 停留在「能说清楚」而不追求「说得优雅」<br>
+              <span style="color:var(--accent-green);">✓</span> 在准确和简洁之间找到最优平衡点
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-sep"><span>Try It Now</span></div>
+
+<!-- ==================== SECTION 5: EXERCISE ==================== -->
+<section id="sec-exercise">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-number">05 — 交互体验</span>
+      <h2>现在就试试</h2>
+      <p class="section-desc">
+        知道和做到之间有一条鸿沟。下面的练习就是你的桥梁。
+        选择一个你最近在学的概念，跟随引导完成一轮费曼学习法。
+      </p>
+    </div>
+
+    <div class="exercise-box reveal">
+      <h3>费曼练习工作台</h3>
+      <p class="exercise-subtitle">按照四个步骤完成一次完整的费曼学习法练习</p>
+
+      <div class="exercise-step" id="exStep1">
+        <div class="exercise-step-label">
+          <span class="step-check" id="check1">1</span>
+          Step 01 — 选择一个你想解释的概念
+        </div>
+        <textarea class="exercise-textarea" id="exConcept" placeholder="例如：什么是「机会成本」？什么是「区块链」？什么是「光合作用」？"></textarea>
+      </div>
+
+      <div class="exercise-step" id="exStep2">
+        <div class="exercise-step-label">
+          <span class="step-check" id="check2">2</span>
+          Step 02 — 用最简单的语言解释它（想象教给一个12岁的孩子）
+        </div>
+        <textarea class="exercise-textarea" id="exExplain" placeholder="用你自己的话写下来。不能用专业术语，只能用日常用语和类比。" style="min-height:160px;"></textarea>
+      </div>
+
+      <div class="exercise-step" id="exStep3">
+        <div class="exercise-step-label">
+          <span class="step-check" id="check3">3</span>
+          Step 03 — 你在哪里卡住了？标记你的知识缺口
+        </div>
+        <textarea class="exercise-textarea" id="exGaps" placeholder="写下你在解释过程中感到不顺畅的地方。哪些部分你无法用自己的话说出来？"></textarea>
+      </div>
+
+      <div class="exercise-step" id="exStep4">
+        <div class="exercise-step-label">
+          <span class="step-check" id="check4">4</span>
+          Step 04 — 用一句话（一个类比）概括核心要义
+        </div>
+        <textarea class="exercise-textarea" id="exCompress" placeholder="尝试用一个精妙的类比，一句话说清楚这个概念的本质。"></textarea>
+      </div>
+
+      <button class="exercise-btn" onclick="analyzeExercise()">
+        ◈ 生成诊断报告
+      </button>
+
+      <div class="exercise-feedback" id="exerciseFeedback">
+        <h5>// 认知诊断报告</h5>
+        <p id="feedbackText"></p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="reveal">
+      <h3>你的解释有多「费曼」？</h3>
+      <p class="section-desc">拖动滑块评估你的解释复杂度。越简洁越好——但不能丢失准确性。</p>
+    </div>
+
+    <div class="simplicity-meter reveal">
+      <div class="meter-header">
+        <span class="meter-title">复杂度评估器</span>
+        <span class="meter-value" id="meterValue">50</span>
+      </div>
+      <input type="range" class="meter-slider" id="simplicitySlider" min="0" max="100" value="50" oninput="updateMeter()">
+      <div class="meter-labels">
+        <span>过于简陋</span>
+        <span>恰到好处</span>
+        <span>过于复杂</span>
+      </div>
+      <div class="meter-feedback" id="meterFeedback">
+        拖动滑块来模拟你解释的复杂度。理想区间在 20-40 之间——简洁但不简陋。
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-sep"><span>Solutions</span></div>
+
+<!-- ==================== SECTION 6: SOLUTIONS ==================== -->
+<section id="sec-solutions">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-number">06 — 解决方案</span>
+      <h2>将费曼法嵌入你的学习系统</h2>
+      <p class="section-desc">
+        知道方法论不够——你需要一套可执行的操作系统。
+        以下是基于第一性原理推导出的六个核心解决方案。
+      </p>
+    </div>
+
+    <div class="solution-grid reveal">
+      <div class="solution-card">
+        <div class="solution-num">01</div>
+        <h4>建立「费曼笔记本」</h4>
+        <p>
+          准备一个专门的笔记本，每页一个概念。页面上方写概念名称，
+          左侧写你的「孩子版」解释，右侧记录后续补充和修正。
+          这个物理过程本身就是一种深度编码。
+        </p>
+        <span class="solution-tag">工具配置</span>
+      </div>
+
+      <div class="solution-card">
+        <div class="solution-num">02</div>
+        <h4>每天15分钟费曼时刻</h4>
+        <p>
+          每天固定一个15分钟时段，选择今天学到的一个概念进行费曼练习。
+          不在时间长短，在于每天持续。15分钟足以完成一次完整的四步循环。
+          累积效应远大于偶尔的长时间突击。
+        </p>
+        <span class="solution-tag">习惯设计</span>
+      </div>
+
+      <div class="solution-card">
+        <div class="solution-num">03</div>
+        <h4>创建类比库</h4>
+        <p>
+          维护一个个人「类比库」——把你想出的精彩类比记录下来。
+          随着积累，你会发现不同领域的概念往往可以用类似的类比来解释，
+          这本身就是跨领域知识迁移的体现。
+        </p>
+        <span class="solution-tag">知识管理</span>
+      </div>
+
+      <div class="solution-card">
+        <div class="solution-num">04</div>
+        <h4>找一个「学伴」互教</h4>
+        <p>
+          找一个学习伙伴，每周互相「费曼」一个概念给对方。
+          教学是双倍收益——教的人通过输出深化理解，听的人通过提问暴露盲区。
+          研究表明，教别人的学生考试成绩提高40%以上。
+        </p>
+        <span class="solution-tag">社交学习</span>
+      </div>
+
+      <div class="solution-card">
+        <div class="solution-num">05</div>
+        <h4>录制60秒解释视频</h4>
+        <p>
+          用手机录制60秒的自己解释一个概念的视频。不为发布，只为自我检验。
+          录像会让「卡壳」变得不可回避——你可以糊弄自己，
+          但很难在镜头前流畅地讲你没真正理解的东西。
+        </p>
+        <span class="solution-tag">输出驱动</span>
+      </div>
+
+      <div class="solution-card">
+        <div class="solution-num">06</div>
+        <h4>建立知识层级地图</h4>
+        <p>
+          把学过的概念按照层级关系画成地图。
+          最底层是基本事实，中间层是概念和原理，最上层是跨领域的模型和类比。
+          费曼法帮你夯实每一层，层级地图帮你看到全局。
+        </p>
+        <span class="solution-tag">系统思维</span>
+      </div>
+    </div>
+
+    <div class="deconstruct-block reveal">
+      <div class="level-indicator">◈ 方案对比分析</div>
+      <div class="deconstruct-title">传统学习 vs 费曼学习</div>
+      <table class="principles-table">
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>传统学习方式</th>
+            <th>费曼学习法</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>信息处理</td>
+            <td>被动接收 → 浅层编码 → 快速遗忘</td>
+            <td>主动加工 → 深层编码 → 长期记忆</td>
+          </tr>
+          <tr>
+            <td>理解验证</td>
+            <td>自我感觉良好（流畅性错觉）</td>
+            <td>通过输出暴露盲点（精确校准）</td>
+          </tr>
+          <tr>
+            <td>知识结构</td>
+            <td>碎片化存储，缺乏关联</td>
+            <td>网络化存储，多维连接</td>
+          </tr>
+          <tr>
+            <td>时间效率</td>
+            <td>投入大量时间，回报递减</td>
+            <td>短时高效，边际收益持续</td>
+          </tr>
+          <tr>
+            <td>迁移能力</td>
+            <td>知识局限于原学习情境</td>
+            <td>通过类比实现跨领域迁移</td>
+          </tr>
+          <tr>
+            <td>元认知</td>
+            <td>不知道自己不知道什么</td>
+            <td>精确知道自己的认知边界</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="section-sep"><span>Guidance</span></div>
+
+<!-- ==================== SECTION 7: GUIDE ==================== -->
+<section id="sec-guide">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-number">07 — 指导性意见</span>
+      <h2>建筑师的行动蓝图</h2>
+      <p class="section-desc">
+        作为一个注重结构和系统的人，我的建议不是「多练习」这样的正确废话，
+        而是一套从第一天就能执行的、有优先级的行动体系。
+      </p>
+    </div>
+
+    <div class="deconstruct-block reveal">
+      <div class="level-indicator">◈ 核心指导原则</div>
+      <div class="deconstruct-chain">
+        <div class="chain-item">
+          <span class="chain-num">01</span>
+          <div class="chain-content">
+            <h4>从最小可行单元开始</h4>
+            <p>
+              不要试图一次性改变整个学习方式。第一周，只在每天晚上花10分钟，
+              对今天学的一个概念做一次费曼练习。习惯的建立比完美的执行更重要。
+              一旦这个行为自动化了，再逐步增加难度和时间。
+            </p>
+          </div>
+        </div>
+        <div class="chain-item">
+          <span class="chain-num">02</span>
+          <div class="chain-content">
+            <h4>输出 > 输入，永远</h4>
+            <p>
+              如果你只有30分钟学习时间，10分钟阅读 + 20分钟费曼练习，
+              远好过30分钟阅读。学习的效果不取决于你「看了多少」，
+              而取决于你「消化了多少」。重新分配你的时间比例——从80/20逐步调整到50/50。
+            </p>
+          </div>
+        </div>
+        <div class="chain-item">
+          <span class="chain-num">03</span>
+          <div class="chain-content">
+            <h4>拥抱卡壳，珍视错误</h4>
+            <p>
+              费曼法中最有价值的产出不是「我解释清楚了」，而是「我发现了哪里解释不清楚」。
+              每一个卡壳点都是一张精确的学习地图。改变你对「卡壳」的情绪反应——
+              它不是失败，它是系统在告诉你：这里需要修补。
+            </p>
+          </div>
+        </div>
+        <div class="chain-item">
+          <span class="chain-num">04</span>
+          <div class="chain-content">
+            <h4>跨领域类比是最强武器</h4>
+            <p>
+              顶级理解的标志是：你能用一个完全不同领域的例子来解释当前概念。
+              比如用「河流分叉」解释「概率分布」，用「城市交通」解释「网络协议」。
+              每当你想出一个精彩的跨领域类比时，你的理解就上了一个新台阶。
+              刻意练习这个能力。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-callout reveal">
+      <span class="insight-icon">◈</span>
+      <div class="insight-text">
+        <strong>终极指导：</strong>学习的最高境界不是「学到了什么」，而是「建立了什么样的思维结构」。
+        费曼法的真正价值不在于帮你记住某个具体知识点，而在于训练你一种终身受用的思维习惯——
+        <strong>任何复杂的东西，你都有能力把它拆解、理解、再用自己的方式重新建构。</strong>
+        这就是第一性原理思维在学习领域的终极应用。
+      </div>
+    </div>
+
+    <div class="reveal">
+      <h3>常见问题</h3>
+    </div>
+
+    <div style="margin-top:24px;" class="reveal">
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          费曼学习法适用于所有学科吗？
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            基本适用，但需要调整形式。概念性学科（物理、经济学、哲学）最直接——用语言解释即可。
+            技能性学科（编程、绘画、运动）需要把「解释」转化为「演示+分解动作」。
+            数学类学科可以用「教别人解题思路」替代「解释定义」。
+            核心不变：通过输出来暴露和修补理解缺口。
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          我已经能解释清楚了，还需要继续费曼吗？
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            能解释清楚只是第一步。问自己三个升级问题：①我能用一个类比解释吗？
+            ②我能用一句话概括核心吗？③我能解释这个概念与相邻概念的区别和联系吗？
+            费曼法有深度层级——「能说清楚」是Level 1，「能用类比优雅地压缩」是Level 3，
+            「能教别人使用这个方法」是Level 5。永远有更深层的精简空间。
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          费曼法和思维导图、闪卡等工具怎么结合？
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            费曼法是「深度加工引擎」，思维导图是「结构可视化工具」，闪卡是「记忆强化工具」——三者互补。
+            推荐流程：先用费曼法理解概念 → 用思维导图画出知识结构 →
+            把卡壳点做成闪卡定期复习。费曼在前，工具在后。
+            没有深层理解的思维导图只是把别人的框架搬运到自己纸上。
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          需要真的找一个人来听我解释吗？
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            不是必须的，但有条件时强烈推荐。对着自己解释和对着别人解释，认知压力不同——
+            意识到「有人在听」会激活更多监控机制，让你更诚实地面对理解的空洞。
+            没有听众时，对着录音机或空白墙讲也有效，关键是建立「外部化输出」的习惯。
+            写下来同样有效——书写的线性结构会强迫你把模糊的理解排列成清晰的逻辑链。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer>
+  <div class="container">
+    <p>
+      FEYNMAN TECHNIQUE × FIRST PRINCIPLES &nbsp;·&nbsp;
+      以建筑师的思维方式重构学习 &nbsp;·&nbsp;
+      2024
+    </p>
+  </div>
+</footer>
+
+<script>
+// ============ SCROLL REVEAL ============
+const revealElements = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -50px 0px' });
+
+revealElements.forEach(el => revealObserver.observe(el));
+
+// ============ PROGRESS BAR ============
+window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = (scrollTop / docHeight) * 100;
+  document.getElementById('progressBar').style.width = progress + '%';
+});
+
+// ============ NAV DOTS ============
+const navDots = document.querySelectorAll('.nav-dot');
+const sections = document.querySelectorAll('section');
+
+navDots.forEach(dot => {
+  dot.addEventListener('click', () => {
+    const target = document.getElementById(dot.dataset.target);
+    if (target) target.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+const navObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navDots.forEach(d => d.classList.remove('active'));
+      const dot = document.querySelector(`.nav-dot[data-target="${entry.target.id}"]`);
+      if (dot) dot.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+
+sections.forEach(s => navObserver.observe(s));
+
+// ============ FP CARDS ============
+function toggleCard(card) {
+  card.classList.toggle('expanded');
+}
+
+// ============ STEPPER ============
+function switchStep(index) {
+  document.querySelectorAll('.stepper-tab').forEach((tab, i) => {
+    tab.classList.toggle('active', i === index);
+  });
+  document.querySelectorAll('.stepper-panel').forEach((panel, i) => {
+    panel.classList.toggle('active', i === index);
+  });
+}
+
+// ============ EXERCISE ============
+function analyzeExercise() {
+  const concept = document.getElementById('exConcept').value.trim();
+  const explain = document.getElementById('exExplain').value.trim();
+  const gaps = document.getElementById('exGaps').value.trim();
+  const compress = document.getElementById('exCompress').value.trim();
+
+  // Update check marks
+  if (concept) {
+    document.getElementById('check1').classList.add('done');
+    document.getElementById('check1').textContent = '✓';
+  }
+  if (explain) {
+    document.getElementById('check2').classList.add('done');
+    document.getElementById('check2').textContent = '✓';
+  }
+  if (gaps) {
+    document.getElementById('check3').classList.add('done');
+    document.getElementById('check3').textContent = '✓';
+  }
+  if (compress) {
+    document.getElementById('check4').classList.add('done');
+    document.getElementById('check4').textContent = '✓';
+  }
+
+  const feedback = document.getElementById('exerciseFeedback');
+  const feedbackText = document.getElementById('feedbackText');
+  feedback.classList.add('show');
+
+  const completedSteps = [concept, explain, gaps, compress].filter(Boolean).length;
+  const jargonCount = (explain.match(/[\u4e00-\u9fa5]{4,}(?:效应|原理|理论|模型|机制|范式|体系|框架)/g) || []).length;
+  const analogyWords = (compress.match(/就像|好比|类似于|相当于|仿佛|好像|犹如|譬如/g) || []).length;
+
+  let report = `<strong>完成度：</strong>${completedSteps}/4 步已完成。<br><br>`;
+
+  if (completedSteps === 0) {
+    report += '你还没有开始练习。选择一个概念，从 Step 01 开始吧。最困难的一步是开始。';
+  } else {
+    if (jargonCount > 2) {
+      report += '<strong style="color:var(--accent-rose);">⚠ 检测到较多专业术语</strong>（' + jargonCount + '个）。你的解释中可能还残留着「背诵」的痕迹。尝试用更生活化的语言重新表达——想象你在跟一个对这个领域完全陌生的朋友聊天。<br><br>';
+    } else if (explain.length > 0) {
+      report += '<strong style="color:var(--accent-green);">✓ 语言简洁度良好</strong>。你的解释中专业术语较少，这是一个好的信号。<br><br>';
+    }
+
+    if (analogyWords > 0) {
+      report += '<strong style="color:var(--accent-green);">✓ 发现类比使用</strong>（' + analogyWords + '处）。类比是费曼法的精华——它说明你在用已知框架重构新知识。继续保持。<br><br>';
+    } else if (compress.length > 0) {
+      report += '<strong style="color:var(--accent-amber);">△ 建议增加类比</strong>。你的压缩解释中没有检测到类比词。尝试用「这就像……」的句式来建立跨领域连接。<br><br>';
+    }
+
+    if (gaps.length > 0) {
+      report += '<strong style="color:var(--accent-cyan);">◈ 知识缺口已记录</strong>。你标记了自己卡壳的地方——这正是费曼法最有价值的产出。带着这些缺口回到学习材料中，逐一修补。修补完成后，再做一次完整的费曼练习来验证。<br><br>';
+    }
+
+    if (completedSteps === 4) {
+      report += '<strong>恭喜完成一次完整的费曼练习！</strong>把你的解释保存下来。一周后重新做一次同样的概念——你会惊喜地发现自己的理解更深了，类比更精准了。这就是费曼复利效应。';
+    } else {
+      report += `你还有 ${4 - completedSteps} 步未完成。建议现在就补全——半途而废的费曼练习效果大打折扣。`;
+    }
+  }
+
+  feedbackText.innerHTML = report;
+}
+
+// ============ SIMPLICITY METER ============
+function updateMeter() {
+  const val = document.getElementById('simplicitySlider').value;
+  document.getElementById('meterValue').textContent = val;
+  const feedback = document.getElementById('meterFeedback');
+
+  if (val < 15) {
+    feedback.innerHTML = '<span style="color:var(--accent-rose);">过于简陋。</span> 简化到丢失了关键信息。费曼法的核心是「简化但不扭曲」——你去掉的应该是术语，而不是内容。';
+  } else if (val < 35) {
+    feedback.innerHTML = '<span style="color:var(--accent-green);">优秀区间。</span> 你的解释简洁且准确。这是费曼法的理想状态——一个外行能听懂，内行也不会觉得你丢了关键细节。';
+  } else if (val < 55) {
+    feedback.innerHTML = '<span style="color:var(--accent-amber);">还行，但可以更精简。</span> 你的解释可能还有「自以为需要」的细节。问自己：去掉这句话，核心信息是否还在？如果是，删掉它。';
+  } else if (val < 75) {
+    feedback.innerHTML = '<span style="color:var(--accent-amber);">偏复杂了。</span> 你可能还在用「专业感」来保护自己的安全感。费曼的精髓在于——如果你能用一句大白话说清楚，就不要用三句专业表述。';
+  } else {
+    feedback.innerHTML = '<span style="color:var(--accent-rose);">这是在写论文，不是在解释。</span> 复杂度这么高，说明你还在用别人的语言框架。停下来，闭上眼，想想你跟朋友喝咖啡时会怎么说起这个话题。从那里开始。';
+  }
+}
+
+// ============ FAQ ============
+function toggleFaq(btn) {
+  const item = btn.parentElement;
+  const wasOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+  if (!wasOpen) item.classList.add('open');
+}
+
+// ============ COUNTER ANIMATION ============
+const statNumbers = document.querySelectorAll('.stat-number[data-count]');
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const el = entry.target;
+      const target = parseInt(el.dataset.count);
+      let current = 0;
+      const increment = target / 40;
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+          current = target;
+          clearInterval(timer);
+        }
+        el.textContent = Math.round(current);
+      }, 30);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+
+statNumbers.forEach(el => counterObserver.observe(el));
+</script>
+
+</body>
+</html>

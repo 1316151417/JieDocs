@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>预训练研究报告 — 第一性原理视角</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #060b14;
+    --bg-secondary: #0c1420;
+    --surface: #111c2e;
+    --surface-elevated: #162238;
+    --accent: #4fc3f7;
+    --accent-warm: #ff8a65;
+    --accent-gold: #ffd54f;
+    --accent-green: #81c784;
+    --accent-violet: #b39ddb;
+    --text-primary: #e8edf5;
+    --text-secondary: #8899b0;
+    --text-muted: #4a5d78;
+    --grid-line: rgba(79, 195, 247, 0.06);
+    --grid-line-strong: rgba(79, 195, 247, 0.12);
+    --border: rgba(79, 195, 247, 0.15);
+    --glow: rgba(79, 195, 247, 0.3);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'DM Mono', 'Noto Serif SC', monospace;
+    font-size: 15px;
+    line-height: 1.8;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Blueprint grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(var(--grid-line-strong) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line-strong) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 15% 20%, rgba(79, 195, 247, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 60%, rgba(179, 157, 219, 0.03) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  /* ═══════ HERO ═══════ */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    padding: 80px 0;
+  }
+
+  .hero-label {
+    font-size: 11px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeSlideUp 0.8s ease forwards 0.2s;
+  }
+
+  .hero-label::before {
+    content: '//';
+    margin-right: 12px;
+    color: var(--text-muted);
+  }
+
+  .hero-title {
+    font-family: 'Instrument Serif', 'Noto Serif SC', serif;
+    font-size: clamp(48px, 8vw, 96px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeSlideUp 1s ease forwards 0.5s;
+  }
+
+  .hero-title em {
+    font-style: italic;
+    color: var(--accent);
+    position: relative;
+  }
+
+  .hero-title em::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.3;
+  }
+
+  .hero-subtitle {
+    max-width: 640px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 2;
+    opacity: 0;
+    animation: fadeSlideUp 1s ease forwards 0.8s;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 48px;
+    margin-top: 64px;
+    opacity: 0;
+    animation: fadeSlideUp 1s ease forwards 1.1s;
+  }
+
+  .hero-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .hero-meta-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .hero-meta-value {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .scroll-indicator {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeSlideUp 1s ease forwards 1.4s;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 48px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    animation: scrollPulse 2s ease infinite;
+  }
+
+  /* ═══════ NAVIGATION ═══════ */
+  .nav-toc {
+    position: fixed;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .nav-dot:hover,
+  .nav-dot.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px var(--glow);
+  }
+
+  .nav-dot::after {
+    content: attr(data-label);
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .nav-dot:hover::after { opacity: 1; }
+
+  /* ═══════ SECTIONS ═══════ */
+  section {
+    padding: 120px 0;
+    position: relative;
+  }
+
+  .section-number {
+    font-family: 'Instrument Serif', serif;
+    font-size: 120px;
+    color: rgba(79, 195, 247, 0.04);
+    position: absolute;
+    top: 60px;
+    left: -20px;
+    font-style: italic;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .section-header {
+    margin-bottom: 64px;
+  }
+
+  .section-tag {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-tag::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--border), transparent);
+    max-width: 120px;
+  }
+
+  .section-title {
+    font-family: 'Instrument Serif', 'Noto Serif SC', serif;
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--text-primary);
+  }
+
+  .section-desc {
+    margin-top: 20px;
+    max-width: 680px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 2;
+  }
+
+  /* ═══════ CARDS & CONTENT ═══════ */
+  .principle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+    margin-top: 48px;
+  }
+
+  .principle-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 36px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s ease;
+    cursor: default;
+  }
+
+  .principle-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .principle-card:hover {
+    background: var(--surface-elevated);
+    border-color: rgba(79, 195, 247, 0.25);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .principle-card:hover::before { opacity: 1; }
+
+  .card-icon {
+    font-family: 'Instrument Serif', serif;
+    font-size: 48px;
+    color: var(--accent);
+    font-style: italic;
+    margin-bottom: 20px;
+    opacity: 0.6;
+  }
+
+  .card-number {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .card-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+
+  .card-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 2;
+  }
+
+  /* ═══════ ACCORDION ═══════ */
+  .accordion { margin-top: 48px; }
+
+  .accordion-item {
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .accordion-trigger {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    font-weight: 400;
+    padding: 28px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    text-align: left;
+    transition: color 0.3s ease;
+  }
+
+  .accordion-trigger:hover { color: var(--accent); }
+
+  .accordion-icon {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--text-muted);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.4s ease;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .accordion-item.open .accordion-icon {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+    transform: rotate(45deg);
+  }
+
+  .accordion-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .accordion-item.open .accordion-body { max-height: 2000px; }
+
+  .accordion-content {
+    padding-bottom: 32px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 2;
+  }
+
+  .accordion-content p { margin-bottom: 16px; }
+
+  /* ═══════ INTERACTIVE DIAGRAM ═══════ */
+  .flow-diagram {
+    margin: 64px 0;
+    padding: 48px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .flow-diagram::before {
+    content: 'INTERACTIVE';
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--accent-green);
+    opacity: 0.6;
+  }
+
+  .flow-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 24px;
+    font-style: italic;
+    color: var(--text-primary);
+    margin-bottom: 40px;
+  }
+
+  .flow-pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 16px;
+  }
+
+  .flow-stage {
+    flex: 1;
+    min-width: 180px;
+    padding: 24px 20px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    position: relative;
+    cursor: pointer;
+    transition: all 0.4s ease;
+  }
+
+  .flow-stage:first-child { border-radius: 4px 0 0 4px; }
+  .flow-stage:last-child { border-radius: 0 4px 4px 0; }
+
+  .flow-stage:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    color: var(--text-muted);
+    font-size: 18px;
+  }
+
+  .flow-stage:hover,
+  .flow-stage.active {
+    background: var(--surface-elevated);
+    border-color: var(--accent);
+    z-index: 1;
+    box-shadow: 0 0 30px rgba(79, 195, 247, 0.1);
+  }
+
+  .flow-stage-num {
+    font-family: 'Instrument Serif', serif;
+    font-size: 32px;
+    color: var(--accent);
+    font-style: italic;
+    opacity: 0.4;
+    margin-bottom: 8px;
+  }
+
+  .flow-stage-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .flow-stage-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .flow-detail {
+    margin-top: 32px;
+    padding: 32px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    min-height: 140px;
+    transition: all 0.4s ease;
+  }
+
+  .flow-detail-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .flow-detail-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 2;
+  }
+
+  /* ═══════ PARAMETER EXPLORER ═══════ */
+  .param-explorer {
+    margin: 64px 0;
+    padding: 48px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+
+  .param-explorer-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 24px;
+    font-style: italic;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .param-explorer-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 36px;
+  }
+
+  .param-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 36px;
+  }
+
+  .param-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .param-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .param-label-text {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+  }
+
+  .param-value-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--bg-secondary);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--glow);
+    cursor: pointer;
+  }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .result-card {
+    padding: 24px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    text-align: center;
+    transition: all 0.4s ease;
+  }
+
+  .result-card.highlight {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(79, 195, 247, 0.08);
+  }
+
+  .result-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .result-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 24px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .result-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  /* ═══════ COMPARISON TABLE ═══════ */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 48px;
+    font-size: 13px;
+  }
+
+  .comparison-table th {
+    text-align: left;
+    padding: 16px 20px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .comparison-table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(79, 195, 247, 0.05);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+
+  .comparison-table tr {
+    transition: background 0.3s ease;
+  }
+
+  .comparison-table tbody tr:hover {
+    background: rgba(79, 195, 247, 0.03);
+  }
+
+  .comparison-table .highlight-cell {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ═══════ TABS ═══════ */
+  .tabs {
+    margin-top: 48px;
+  }
+
+  .tab-headers {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    padding: 16px 24px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover { color: var(--text-secondary); }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-panel {
+    display: none;
+    padding: 32px 0;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .tab-panel.active { display: block; }
+
+  /* ═══════ KEY INSIGHT ═══════ */
+  .key-insight {
+    margin: 48px 0;
+    padding: 36px 40px;
+    background: linear-gradient(135deg, rgba(79, 195, 247, 0.06), rgba(179, 157, 219, 0.04));
+    border-left: 3px solid var(--accent);
+    border-radius: 0 2px 2px 0;
+    position: relative;
+  }
+
+  .key-insight-label {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .key-insight-text {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-weight: 400;
+  }
+
+  /* ═══════ CODE BLOCK ═══════ */
+  .code-block {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 28px 32px;
+    margin: 24px 0;
+    overflow-x: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    line-height: 1.9;
+    color: var(--text-secondary);
+  }
+
+  .code-comment { color: var(--text-muted); }
+  .code-keyword { color: var(--accent-violet); }
+  .code-string { color: var(--accent-green); }
+  .code-number { color: var(--accent-warm); }
+
+  /* ═══════ SOLUTION CARDS ═══════ */
+  .solution-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+
+  .solution-card {
+    padding: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .solution-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-violet));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+  }
+
+  .solution-card:hover::after { transform: scaleX(1); }
+
+  .solution-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+  }
+
+  .solution-num {
+    font-family: 'Instrument Serif', serif;
+    font-size: 36px;
+    font-style: italic;
+    color: var(--accent);
+    opacity: 0.3;
+    margin-bottom: 12px;
+  }
+
+  .solution-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+
+  .solution-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 2;
+  }
+
+  /* ═══════ TIMELINE ═══════ */
+  .timeline {
+    margin: 48px 0;
+    position: relative;
+    padding-left: 40px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent), var(--border), transparent);
+  }
+
+  .timeline-item {
+    position: relative;
+    padding-bottom: 48px;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -44px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--glow);
+  }
+
+  .timeline-year {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+
+  .timeline-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 17px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    font-weight: 400;
+  }
+
+  .timeline-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+
+  /* ═══════ CHART BAR ═══════ */
+  .bar-chart {
+    margin: 48px 0;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 16px;
+  }
+
+  .bar-label {
+    width: 140px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 28px;
+    background: var(--bg-secondary);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), rgba(79, 195, 247, 0.6));
+    border-radius: 2px;
+    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    width: 0;
+  }
+
+  .bar-fill.animated { width: var(--target-width); }
+
+  .bar-fill-text {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--bg);
+    white-space: nowrap;
+  }
+
+  /* ═══════ FOOTER ═══════ */
+  .footer {
+    padding: 80px 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .footer-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 2;
+  }
+
+  .footer-signature {
+    font-family: 'Instrument Serif', serif;
+    font-size: 18px;
+    font-style: italic;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  /* ═══════ ANIMATIONS ═══════ */
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.2); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ═══════ RESPONSIVE ═══════ */
+  @media (max-width: 768px) {
+    .container { padding: 0 20px; }
+    .nav-toc { display: none; }
+    .hero-meta { flex-direction: column; gap: 20px; }
+    .principle-grid { grid-template-columns: 1fr; }
+    .solution-grid { grid-template-columns: 1fr; }
+    .param-controls { grid-template-columns: 1fr; }
+    .result-grid { grid-template-columns: 1fr; }
+    .flow-pipeline { flex-direction: column; }
+    .flow-stage { border-radius: 2px !important; }
+    .flow-stage::after { display: none; }
+    section { padding: 80px 0; }
+    .bar-label { width: 80px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation Dots -->
+<nav class="nav-toc" id="navToc">
+  <div class="nav-dot active" data-label="引言" data-target="hero"></div>
+  <div class="nav-dot" data-label="第一性原理" data-target="sec-principles"></div>
+  <div class="nav-dot" data-label="架构解剖" data-target="sec-architecture"></div>
+  <div class="nav-dot" data-label="深度拆解" data-target="sec-deep"></div>
+  <div class="nav-dot" data-label="参数探索" data-target="sec-params"></div>
+  <div class="nav-dot" data-label="演进路线" data-target="sec-evolution"></div>
+  <div class="nav-dot" data-label="方法论" data-target="sec-methodology"></div>
+  <div class="nav-dot" data-label="指导建议" data-target="sec-guidance"></div>
+</nav>
+
+<!-- ═══════ HERO ═══════ -->
+<header class="hero" id="hero">
+  <div class="container">
+    <div class="hero-label">Pre-training Research Report</div>
+    <h1 class="hero-title">
+      预训练：从<em>第一性原理</em>解构<br>大模型智能的根基
+    </h1>
+    <p class="hero-subtitle">
+      以建筑师的系统性思维，回溯语言模型预训练的本质——信息压缩、模式抽象与知识涌现。
+      本报告不追求面面俱到，而是深入每一个关键节点的底层逻辑，拆解机制、分析权衡、提出可操作的解决路径。
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">研究视角</span>
+        <span class="hero-meta-value">第一性原理 / 系统架构</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">分析维度</span>
+        <span class="hero-meta-value">数据 → 架构 → 训练 → 涌现</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">更新日期</span>
+        <span class="hero-meta-value">2025.06</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <div class="scroll-line"></div>
+  </div>
+</header>
+
+<!-- ═══════ SECTION 1: 第一性原理 ═══════ -->
+<section id="sec-principles">
+  <div class="container">
+    <span class="section-number">01</span>
+    <div class="section-header reveal">
+      <div class="section-tag">First Principles</div>
+      <h2 class="section-title">回归原点：预训练的第一性原理</h2>
+      <p class="section-desc">
+        要理解预训练，我们不能从"怎么做"开始，而要从"为什么"开始。将问题拆解到不可再分的基本命题，然后从那里向上重建理解。
+      </p>
+    </div>
+
+    <div class="principle-grid">
+      <div class="principle-card reveal">
+        <div class="card-icon">P₁</div>
+        <div class="card-number">基本命题 01</div>
+        <div class="card-title">语言的本质是压缩</div>
+        <div class="card-text">
+          人类文明的全部知识被编码在线性文本序列中。预训练的根本任务是<strong>学习一种极致的信息压缩算法</strong>——将互联网级别的语料压缩到有限参数的神经网络中。这不是记忆，而是提取结构。正如建筑师将复杂的力学关系压缩为梁柱的几何形式。
+        </div>
+      </div>
+
+      <div class="principle-card reveal">
+        <div class="card-icon">P₂</div>
+        <div class="card-number">基本命题 02</div>
+        <div class="card-title">预测即理解</div>
+        <div class="card-text">
+          "给定前文，预测下一个token"看似简单，却是对语言模型最根本的约束。<strong>要准确预测，必须理解语法、语义、常识、逻辑乃至情感。</strong>这就像建筑师说：给我任意一堵墙的位置，我必须能推导出整栋建筑的结构合理性。预测能力迫使模型内化世界的运行规则。
+        </div>
+      </div>
+
+      <div class="principle-card reveal">
+        <div class="card-icon">P₃</div>
+        <div class="card-number">基本命题 03</div>
+        <div class="card-title">规模引发质变</div>
+        <div class="card-text">
+          当模型参数、数据量与计算量同步扩大到某个阈值时，模型会涌现出小规模下不具备的能力——推理、翻译、编程、类比。<strong>这不是渐进改良，而是相变。</strong>如同水在99°C和100°C之间看似连续，实则发生了根本的状态转换。Scaling Law 描述了这种涌现的量变到质变。
+        </div>
+      </div>
+
+      <div class="principle-card reveal">
+        <div class="card-icon">P₄</div>
+        <div class="card-number">基本命题 04</div>
+        <div class="card-title">数据即世界模型</div>
+        <div class="card-text">
+          模型的质量上限由数据决定。预训练数据不仅仅是"燃料"，它是模型能够感知到的<strong>全部世界</strong>。数据的分布、质量、多样性直接决定了模型的知识边界与偏见来源。建筑师的比喻：再精密的施工，也无法用劣质材料建成优质建筑。
+        </div>
+      </div>
+    </div>
+
+    <div class="key-insight reveal">
+      <div class="key-insight-label">核心洞察</div>
+      <div class="key-insight-text">
+        预训练的本质，是通过自监督学习在大规模文本上构建一个<strong>世界模型的近似函数</strong>。
+        它不"理解"语言，但它学会了语言中蕴含的世界运行模式。这个近似函数的精度由数据质量、模型架构和训练策略三者共同决定。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 2: 架构解剖 ═══════ -->
+<section id="sec-architecture">
+  <div class="container">
+    <span class="section-number">02</span>
+    <div class="section-header reveal">
+      <div class="section-tag">Architecture Anatomy</div>
+      <h2 class="section-title">架构解剖：预训练流水线</h2>
+      <p class="section-desc">
+        从原始语料到一个能够对话的模型，预训练经历了完整的工程流水线。每个环节的决策都会向下传导，产生深远影响。
+      </p>
+    </div>
+
+    <!-- Interactive Flow Diagram -->
+    <div class="flow-diagram reveal">
+      <div class="flow-title">点击各阶段查看详细分析</div>
+      <div class="flow-pipeline">
+        <div class="flow-stage active" data-stage="0">
+          <div class="flow-stage-num">I</div>
+          <div class="flow-stage-name">数据工程</div>
+          <div class="flow-stage-desc">采集、清洗、去重、过滤</div>
+        </div>
+        <div class="flow-stage" data-stage="1">
+          <div class="flow-stage-num">II</div>
+          <div class="flow-stage-name">分词</div>
+          <div class="flow-stage-desc">Tokenizer 构建与词表设计</div>
+        </div>
+        <div class="flow-stage" data-stage="2">
+          <div class="flow-stage-num">III</div>
+          <div class="flow-stage-name">模型架构</div>
+          <div class="flow-stage-desc">Transformer 变体选择</div>
+        </div>
+        <div class="flow-stage" data-stage="3">
+          <div class="flow-stage-num">IV</div>
+          <div class="flow-stage-name">预训练</div>
+          <div class="flow-stage-desc">大规模分布式训练</div>
+        </div>
+        <div class="flow-stage" data-stage="4">
+          <div class="flow-stage-num">V</div>
+          <div class="flow-stage-name">评估验证</div>
+          <div class="flow-stage-desc">能力探测与消融分析</div>
+        </div>
+      </div>
+
+      <div class="flow-detail" id="flowDetail">
+        <div class="flow-detail-title" id="flowDetailTitle">数据工程 — 地基之上的地基</div>
+        <div class="flow-detail-text" id="flowDetailText">
+          预训练数据的工程复杂度远超大多数人的想象。首先是<strong>规模</strong>：现代LLM通常使用数万亿token的语料，数据来源涵盖网页（Common Crawl）、书籍、代码、学术论文、百科等。其次是<strong>质量</strong>：原始网页数据充满噪声——广告、导航栏、重复模板、低质量内容。需要经过多阶段过滤管道：基于规则的启发式过滤（如文档长度、特殊字符比例）、基于分类器的质量过滤（如用fastText训练的质量分类器）、精确去重（MinHash + LSH）与模糊去重。最后是<strong>配比</strong>：不同数据源的混合比例直接影响模型能力分布——过多网页数据导致"闲聊"能力强但推理弱，过多代码数据则反过来。这是一门需要大量实验的"炼金术"。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 3: 深度拆解 ═══════ -->
+<section id="sec-deep">
+  <div class="container">
+    <span class="section-number">03</span>
+    <div class="section-header reveal">
+      <div class="section-tag">Deep Dive</div>
+      <h2 class="section-title">深度拆解：五个关键维度</h2>
+      <p class="section-desc">
+        以第一性原理审视每个维度的本质矛盾与解决路径。
+      </p>
+    </div>
+
+    <div class="tabs reveal">
+      <div class="tab-headers">
+        <button class="tab-btn active" data-tab="tokenization">分词设计</button>
+        <button class="tab-btn" data-tab="attention">注意力机制</button>
+        <button class="tab-btn" data-tab="scaling">缩放定律</button>
+        <button class="tab-btn" data-tab="optimization">优化策略</button>
+        <button class="tab-btn" data-tab="data-mix">数据配比</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-tokenization">
+        <h3 style="font-family:'Noto Serif SC',serif;font-size:20px;color:var(--text-primary);margin-bottom:16px;">
+          分词：信息的最小编码单元
+        </h3>
+        <p style="margin-bottom:16px;">
+          <strong>第一性原理问题：</strong>模型的"原子"是什么？分词器（Tokenizer）将连续文本切分为离散的token序列，决定了模型感知世界的粒度。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>核心矛盾：</strong>词表太小 → 序列过长（一个中文字符可能被拆成3个token），增加计算开销；词表太大 → 嵌入层参数膨胀，稀有token训练不充分。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>主流方案：</strong>BPE（Byte Pair Encoding）通过数据驱动的频率统计自动构建子词词表。现代实践通常在50K-150K词表大小之间取得平衡。中文场景下，一个关键改进是在预分词阶段引入中文单字/词粒度，避免UTF-8字节级别的低效编码。
+        </p>
+        <div class="code-block">
+<span class="code-comment"># 分词粒度对序列长度的影响（示意）</span>
+text = <span class="code-string">"预训练是大模型的基础"</span>
+
+<span class="code-comment"># GPT-2 原始 BPE（英文字节级）</span>
+tokens_gpt2 = [<span class="code-string">"é¢„"</span>, <span class="code-string">"è®­"</span>, <span class="code-string">"»"</span>, ...]  <span class="code-comment"># 约 20+ tokens</span>
+
+<span class="code-comment"># 优化中文 BPE（词表扩展后）</span>
+tokens_optimized = [<span class="code-string">"预训练"</span>, <span class="code-string">"是"</span>, <span class="code-string">"大模型"</span>, <span class="code-string">"的"</span>, <span class="code-string">"基础"</span>]  <span class="code-comment"># 5 tokens</span>
+
+<span class="code-comment"># 压缩比：4x → 显著降低推理成本</span>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-attention">
+        <h3 style="font-family:'Noto Serif SC',serif;font-size:20px;color:var(--text-primary);margin-bottom:16px;">
+          注意力机制：信息的全局调度器
+        </h3>
+        <p style="margin-bottom:16px;">
+          <strong>第一性原理问题：</strong>序列中的每个位置如何高效获取全局上下文？Transformer 的自注意力机制让每个 token 直接"看到"序列中的所有其他 token，摆脱了 RNN 的顺序瓶颈。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>本质矛盾：</strong>自注意力的计算复杂度为 O(n²)，当序列长度达到数万甚至数十万 token 时，计算与内存开销变得不可承受。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>解决路径：</strong>围绕这个矛盾，催生了大量变体——FlashAttention（通过分块计算减少HBM访问）、GQA/MQA（减少KV头数以压缩KV Cache）、Ring Attention（分布式序列并行）、线性注意力近似等。每种方案都是在"全局感知能力"与"计算效率"之间寻找新的帕累托最优解。
+        </p>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>方案</th>
+              <th>复杂度</th>
+              <th>核心思想</th>
+              <th>代价</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>标准 MHA</td>
+              <td>O(n²d)</td>
+              <td>全连接注意力</td>
+              <td class="highlight-cell">内存瓶颈</td>
+            </tr>
+            <tr>
+              <td>FlashAttention</td>
+              <td>O(n²d)</td>
+              <td>分块 + 重计算</td>
+              <td>实现复杂度高</td>
+            </tr>
+            <tr>
+              <td>GQA</td>
+              <td>O(n²d/k)</td>
+              <td>KV头共享</td>
+              <td>微小精度损失</td>
+            </tr>
+            <tr>
+              <td>线性注意力</td>
+              <td>O(nd²)</td>
+              <td>核近似</td>
+              <td>长距离衰减</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tab-panel" id="tab-scaling">
+        <h3 style="font-family:'Noto Serif SC',serif;font-size:20px;color:var(--text-primary);margin-bottom:16px;">
+          缩放定律：量变到质变的数学描述
+        </h3>
+        <p style="margin-bottom:16px;">
+          <strong>第一性原理问题：</strong>投入更多算力，模型能力如何变化？Kaplan et al. (2020) 和 Chinchilla (2022) 的研究表明，模型的损失（Loss）与参数量 N、数据量 D、计算量 C 之间存在幂律关系。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>核心公式：</strong>L(N, D) = A/N<sup>α</sup> + B/D<sup>β</sup> + E，其中 E 是数据本身的不可约损失（entropy of natural text）。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>关键启示：</strong>Chinchilla 定律指出，在固定计算预算下，参数量与数据量应同步增长。这意味着许多早期模型（如 GPT-3 175B）实际上是"过大而欠训练"的。后续的 LLaMA、Mistral 等模型验证了"较小模型 + 更多数据"往往优于"更大模型 + 较少数据"。
+        </p>
+
+        <div class="bar-chart" id="scalingChart">
+          <div class="bar-row">
+            <span class="bar-label">GPT-3 (2020)</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="--target-width: 45%">
+                <span class="bar-fill-text">175B params · 300B tokens</span>
+              </div>
+            </div>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Chinchilla (2022)</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="--target-width: 60%">
+                <span class="bar-fill-text">70B params · 1.4T tokens</span>
+              </div>
+            </div>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">LLaMA-2 (2023)</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="--target-width: 78%">
+                <span class="bar-fill-text">70B params · 2T tokens</span>
+              </div>
+            </div>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">LLaMA-3 (2024)</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="--target-width: 100%">
+                <span class="bar-fill-text">405B params · 15T+ tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-optimization">
+        <h3 style="font-family:'Noto Serif SC',serif;font-size:20px;color:var(--text-primary);margin-bottom:16px;">
+          优化策略：穿越高维损失曲面
+        </h3>
+        <p style="margin-bottom:16px;">
+          <strong>第一性原理问题：</strong>如何在拥有数十亿参数的损失曲面上高效找到好的解？预训练的优化不仅是一个算法问题，更是一个系统工程问题。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>学习率调度：</strong>几乎所有现代预训练都采用 warmup + cosine decay 的策略。Warmup 防止训练初期梯度爆炸，cosine decay 在训练后期精细收敛。一些前沿工作（如 WSD 调度）探索了 warmup-stable-decay 的三阶段策略，允许在训练中途进行更好的数据混合调整。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>梯度累积与混合精度：</strong>由于单卡内存无法容纳大 batch，梯度累积成为标配。BF16 混合精度训练在保持数值稳定性的同时，将内存占用和计算时间减半。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>训练稳定性：</strong>大规模训练中，loss spike 是常见问题。处理策略包括：梯度裁剪（gradient clipping）、z-loss 正则化、学习率回退、以及在 spike 发生时跳过异常 batch。
+        </p>
+      </div>
+
+      <div class="tab-panel" id="tab-data-mix">
+        <h3 style="font-family:'Noto Serif SC',serif;font-size:20px;color:var(--text-primary);margin-bottom:16px;">
+          数据配比：能力的隐性编排
+        </h3>
+        <p style="margin-bottom:16px;">
+          <strong>第一性原理问题：</strong>不同类型的知识以什么比例进入模型？数据配比是预训练中最不透明但影响最深的决策之一。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>经验法则与研究发现：</strong>代码数据（5%-15%）能显著提升模型的推理和结构化输出能力，即使最终任务不涉及编程；高质量书籍和学术论文（10%-20%）提升深度知识能力；多语言数据需要根据目标语言能力精细调配，过多英文数据可能"压制"其他语言的表达。
+        </p>
+        <p style="margin-bottom:16px;">
+          <strong>动态配比：</strong>最新研究表明，在训练的不同阶段调整数据配比可以进一步提升效果——例如在训练后期增加高质量数据的比重（curriculum learning），或者在 annealing 阶段混入合成数据和指令数据。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 4: 参数探索 ═══════ -->
+<section id="sec-params">
+  <div class="container">
+    <span class="section-number">04</span>
+    <div class="section-header reveal">
+      <div class="section-tag">Parameter Explorer</div>
+      <h2 class="section-title">交互式参数探索器</h2>
+      <p class="section-desc">
+        调整模型参数，直观感受缩放定律的权衡关系。参数量、数据量和计算量之间的关系在此变得可触摸。
+      </p>
+    </div>
+
+    <div class="param-explorer reveal">
+      <div class="param-explorer-title">Scaling Law Explorer</div>
+      <div class="param-explorer-subtitle">基于 Chinchilla 缩放定律的近似估算 · 仅供参考理解量级关系</div>
+
+      <div class="param-controls">
+        <div class="param-group">
+          <div class="param-label">
+            <span class="param-label-text">模型参数量 (N)</span>
+            <span class="param-value-display" id="paramN">7B</span>
+          </div>
+          <input type="range" id="sliderN" min="1" max="8" step="0.1" value="1.85">
+        </div>
+        <div class="param-group">
+          <div class="param-label">
+            <span class="param-label-text">训练数据量 (D, tokens)</span>
+            <span class="param-value-display" id="paramD">2T</span>
+          </div>
+          <input type="range" id="sliderD" min="10" max="16" step="0.1" value="13.3">
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-card highlight" id="resultFLOPs">
+          <div class="result-label">计算量 (FLOPs)</div>
+          <div class="result-value" id="valFLOPs">4.2e22</div>
+          <div class="result-note">≈ 6 × N × D</div>
+        </div>
+        <div class="result-card" id="resultGPUs">
+          <div class="result-label">GPU 小时 (A100)</div>
+          <div class="result-value" id="valGPUs">~8,400</div>
+          <div class="result-note">单卡 312 TFLOPS BF16</div>
+        </div>
+        <div class="result-card" id="resultRatio">
+          <div class="result-label">D/N 比率</div>
+          <div class="result-value" id="valRatio">286</div>
+          <div class="result-note">Chinchilla 最优 ≈ 20</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 5: 演进路线 ═══════ -->
+<section id="sec-evolution">
+  <div class="container">
+    <span class="section-number">05</span>
+    <div class="section-header reveal">
+      <div class="section-tag">Evolution Timeline</div>
+      <h2 class="section-title">演进路线：预训练的范式迁移</h2>
+      <p class="section-desc">
+        从统计语言模型到现代大语言模型，预训练经历了三次根本性的范式转换。
+      </p>
+    </div>
+
+    <div class="timeline reveal">
+      <div class="timeline-item">
+        <div class="timeline-year">2003 — 2013</div>
+        <div class="timeline-title">统计语言模型 → 神经语言模型</div>
+        <div class="timeline-text">
+          从 N-gram 的离散计数到 Bengio 的神经概率语言模型，核心转变是<strong>从稀疏表示到稠密表示</strong>。词不再是离散符号，而是连续空间中的向量。但受限于固定窗口，无法建模长距离依赖。
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2013 — 2017</div>
+        <div class="timeline-title">RNN/LSTM 时代：序列建模的突破与瓶颈</div>
+        <div class="timeline-text">
+          LSTM 通过门控机制理论上可以建模无限长依赖，但实际受限于梯度消失。更关键的瓶颈是<strong>串行计算</strong>——无法充分利用 GPU 的并行能力。预训练在此阶段尚未成为主流范式，大多数模型仍采用有监督学习。
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2017 — 2020</div>
+        <div class="timeline-title">Transformer + 自监督预训练：范式革命</div>
+        <div class="timeline-text">
+          2017年 "Attention is All You Need" 和 2018年 GPT/BERT 标志着<strong>预训练+微调</strong>成为NLP的默认范式。核心创新有两个：自注意力机制实现全局并行计算；自监督目标（MLM/CLM）让无标注数据变成训练信号。此后，模型规模开始指数级增长。
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2020 — 2023</div>
+        <div class="timeline-title">规模时代：GPT-3 到 Chinchilla 的范式修正</div>
+        <div class="timeline-text">
+          GPT-3 证明了<strong>规模本身就是一种能力</strong>（in-context learning）。但 Chinchilla 定律指出"大而欠训练"不是最优策略。这一发现重新定义了缩放路线：在固定算力下，数据量与参数量应均衡增长。LLaMA 系列验证了"小模型+大数据"的高效路线。
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2023 — 2025</div>
+        <div class="timeline-title">后预训练时代：数据质量、合成数据与多模态融合</div>
+        <div class="timeline-text">
+          当互联网文本被近乎穷尽时，新的增长点转向：<strong>合成数据</strong>（用强模型生成弱模型的训练数据）、<strong>多模态预训练</strong>（图文、视频、音频联合）、<strong>课程学习</strong>（训练阶段的数据组织策略）、以及<strong>推理时扩展</strong>（test-time compute）作为预训练能力的放大器。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 6: 方法论 ═══════ -->
+<section id="sec-methodology">
+  <div class="container">
+    <span class="section-number">06</span>
+    <div class="section-header reveal">
+      <div class="section-tag">Methodology & Solutions</div>
+      <h2 class="section-title">方法论：核心问题与解决思路</h2>
+      <p class="section-desc">
+        基于第一性原理的分析，归纳出预训练面临的六大核心挑战及其对应的解决路径。
+      </p>
+    </div>
+
+    <div class="accordion reveal">
+      <div class="accordion-item open">
+        <button class="accordion-trigger">
+          <span>挑战一：如何在有限参数中最大化知识密度？</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p><strong>问题本质：</strong>模型参数是有限的"容器"，但人类知识的总量远超其容量。核心矛盾在于有限存储 vs. 无限知识。</p>
+            <p><strong>解决思路 — 信息论视角：</strong>将模型训练视为有损压缩过程，目标是最小化压缩后的信息损失（即交叉熵损失）。具体策略包括：</p>
+            <p>1. <strong>数据去冗余</strong>：通过精确去重和模糊去重，确保每个训练样本都携带独特信息。实验表明，去除近似重复数据后，相同算力下模型性能提升可达 5-10%。</p>
+            <p>2. <strong>高质量数据筛选</strong>：不是所有文本的信息密度相同。教科书级别的内容比论坛灌浆的信息密度高出数个数量级。用质量分类器筛选高信息密度内容，等效于用更好的材料建造建筑。</p>
+            <p>3. <strong>架构效率</strong>：MoE（混合专家）架构通过稀疏激活实现"参数多但计算少"——拥有数千亿参数但每个token只激活其中一小部分，有效扩大了"存储容量"而不等比增加计算。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          <span>挑战二：如何让模型获得真正的推理能力而非模式匹配？</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p><strong>问题本质：</strong>纯粹的下一个token预测是否能涌现出真正的推理？还是只是在做复杂的插值？</p>
+            <p><strong>深层分析：</strong>当前证据表明，纯预训练确实在模型中编码了某种"推理原语"（reasoning primitives）——但这些原语的激活和组合高度依赖数据分布。模型在见过大量推理链的语料上表现更好。</p>
+            <p><strong>解决路径：</strong></p>
+            <p>1. <strong>增加代码数据比例</strong>：代码本质上是形式化的推理。实验反复证明，增加代码预训练比例能提升模型在逻辑推理 benchmark 上的表现。</p>
+            <p>2. <strong>引入数学和科学文献</strong>：专门的 STEM 数据让模型接触到严谨的推导链条。</p>
+            <p>3. <strong>过程奖励数据</strong>：在预训练阶段混入逐步推理的合成数据（如 CoT 格式的教科书内容），帮助模型学习"思考过程"而非仅记忆结论。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          <span>挑战三：如何控制和消除预训练中的偏见与有害内容？</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p><strong>问题本质：</strong>模型忠实反映了训练数据的分布，而互联网数据天然包含偏见、错误和有害内容。完全消除噪声既不可能也不可取。</p>
+            <p><strong>解决思路 — 分层治理：</strong></p>
+            <p>1. <strong>数据层</strong>：建立多级过滤管道。使用专门的安全分类器识别和过滤高风险内容（色情、暴力、仇恨言论）。但要避免过度过滤导致模型对敏感话题完全失语。</p>
+            <p>2. <strong>训练层</strong>：通过数据配比的调控来"稀释"偏见——增加多元视角的高质量内容，让模型在统计上偏向更均衡的世界观。</p>
+            <p>3. <strong>对齐层</strong>：承认预训练阶段无法完美解决安全问题，将其视为一个持续优化的系统工程。通过 RLHF/DPO 等对齐技术在后训练阶段进一步调整模型行为。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          <span>挑战四：如何高效利用日益稀缺的高质量训练数据？</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p><strong>问题本质：</strong>互联网上的高质量文本是有限的。随着模型规模持续增长，数据正在成为真正的瓶颈。</p>
+            <p><strong>前沿解决方向：</strong></p>
+            <p>1. <strong>合成数据</strong>：使用强大的教师模型生成高质量训练数据。关键在于合成数据的多样性和验证——单纯"蒸馏"会导致模型能力逐步退化，需要引入新信息源（如工具验证、搜索增强）来注入"新知识"。</p>
+            <p>2. <strong>多模态数据</strong>：将训练信号从文本扩展到图像、视频、音频。视频数据蕴含的物理世界知识远超纯文本，为模型提供文本无法覆盖的"接地"信号。</p>
+            <p>3. <strong>数据效率技术</strong>：通过课程学习、重要性采样、数据去污染等技术，在不增加总数据量的前提下提升单位数据的信息利用率。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          <span>挑战五：如何让预训练模型支持超长上下文？</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p><strong>问题本质：</strong>标准 Transformer 的注意力复杂度是 O(n²)，序列长度翻倍意味着计算和内存开销增加四倍。</p>
+            <p><strong>系统性解决路径：</strong></p>
+            <p>1. <strong>位置编码外推</strong>：RoPE 的 NTK-aware 插值和 YaRN 等方法让模型在推理时处理远超训练长度的序列，而不需要从头训练。</p>
+            <p>2. <strong>高效注意力实现</strong>：FlashAttention 系列将注意力的HBM访问降低了一个数量级，使 128K 甚至 1M 长度的训练成为可能。</p>
+            <p>3. <strong>架构创新</strong>：Mamba 等状态空间模型（SSM）将复杂度降至 O(n)，但需要在长距离检索能力上做出权衡。混合架构（SSM + Attention）可能是下一个突破点。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          <span>挑战六：如何降低预训练的资源门槛？</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <p><strong>问题本质：</strong>前沿预训练的算力成本已达数千万美元级别，将大量机构排除在外。如何在有限预算下获得最优结果？</p>
+            <p><strong>民主化路径：</strong></p>
+            <p>1. <strong>数据优先</strong>：在算力有限时，投资高质量数据比投资算力更划算。精心策划的 1T token 高质量数据，效果可能超过 10T token 的低质量数据。</p>
+            <p>2. <strong>高效架构</strong>：选择参数效率更高的架构。如 Mixture of Experts 在推理时只激活部分参数，大幅降低了推理成本。</p>
+            <p>3. <strong>开源生态</strong>：借助开源的预训练框架（如 Megatron-LM、DeepSpeed、OpenRLHF）和预训练数据管道，减少重复造轮子的工程开销。</p>
+            <p>4. <strong>持续预训练</strong>：在已有开源基座模型上进行领域自适应的持续预训练，而非从零开始，可以以 1/100 的成本获得领域专家模型。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 7: 指导建议 ═══════ -->
+<section id="sec-guidance">
+  <div class="container">
+    <span class="section-number">07</span>
+    <div class="section-header reveal">
+      <div class="section-tag">Guidance & Recommendations</div>
+      <h2 class="section-title">指导性建议：面向实践的行动框架</h2>
+      <p class="section-desc">
+        将上述分析转化为可操作的行动指南，帮助团队在不同阶段做出正确的预训练决策。
+      </p>
+    </div>
+
+    <div class="solution-grid">
+      <div class="solution-card reveal">
+        <div class="solution-num">01</div>
+        <div class="solution-title">数据先行，而非架构先行</div>
+        <div class="solution-text">
+          在开始训练之前，至少投入 40% 的项目时间在数据工程上。建立完善的数据质量评估管道：自动化去重、多维度质量评分、数据分布可视化。记住：<strong>你无法通过更好的架构弥补数据的缺陷，但好的数据可以弥补架构的不完美。</strong>
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-num">02</div>
+        <div class="solution-title">小规模验证，大规模执行</div>
+        <div class="solution-text">
+          在投入大规模算力前，用小模型（1B-7B）完整跑通所有实验。建立可靠的 scaling curve，用小模型的表现预测大模型的性能。<strong>将大模型训练视为"验证"而非"探索"阶段。</strong>真正的研究应该发生在小模型实验中。
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-num">03</div>
+        <div class="solution-title">拥抱代码数据</div>
+        <div class="solution-text">
+          即使你的目标不是构建代码模型，也要确保预训练数据中包含 5%-15% 的高质量代码。代码是人类创造的最精确的结构化表达形式，<strong>接触代码训练出的模型在逻辑推理、结构化输出和指令遵循上全面优于纯文本模型。</strong>
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-num">04</div>
+        <div class="solution-title">设计可扩展的训练基础设施</div>
+        <div class="solution-text">
+          预训练是马拉松，不是短跑。在项目初期就投资于：自动化实验管理（跟踪每次运行的配置和结果）、训练稳定性监控（实时检测 loss spike 和梯度异常）、检查点管理（支持从任意检查点恢复和分支）。<strong>工程效率的 10% 提升在数月训练中意味着数十万美元的节约。</strong>
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-num">05</div>
+        <div class="solution-title">多阶段训练策略</div>
+        <div class="solution-text">
+          将预训练分为明确的阶段：Phase 1（大规模通用预训练）→ Phase 2（领域数据增强）→ Phase 3（高质量数据 annealing）。每个阶段有不同的数据配比和学习率策略。<strong>这种分阶段方法允许在训练后期灵活调整方向，而非在一开始就做不可逆的决策。</strong>
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-num">06</div>
+        <div class="solution-title">评估体系先于训练</div>
+        <div class="solution-text">
+          在开始训练前就建立全面的评估套件：基础能力（perplexity、next-token accuracy）、知识能力（QA benchmarks）、推理能力（数学、逻辑）、多语言能力、安全评测。<strong>没有评估体系的训练就像没有测量工具的建筑施工——你不知道自己建的是什么。</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="key-insight reveal" style="margin-top: 64px;">
+      <div class="key-insight-label">建筑师的结语</div>
+      <div class="key-insight-text">
+        预训练不是一个可以"解决"的单点问题，而是一个需要持续优化的复杂系统。
+        正如建筑学中"形式追随功能"的核心理念——预训练的每一个技术决策都应该服务于最终的能力目标。
+        <strong>用第一性原理思考：我们到底需要模型具备什么能力？然后反向推导数据、架构和训练策略的最优组合。</strong>
+        这是建筑师的思维方式，也是面对预训练这一复杂工程最可靠的方法论。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-signature">Built with First Principles Thinking</div>
+    <div class="footer-text">
+      本报告以建筑师的系统性视角撰写，力求深入每个关键节点的底层逻辑<br>
+      数据截至 2025 年中 · 部分前沿信息可能需要进一步验证<br>
+      <span style="color: var(--text-muted);">Pre-training Research Report · MiMo Architecture Analysis</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ═══════ ACCORDION ═══════
+  document.querySelectorAll('.accordion-trigger').forEach(trigger => {
+    trigger.addEventListener('click', () => {
+      const item = trigger.parentElement;
+      const wasOpen = item.classList.contains('open');
+      // Close all
+      document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('open'));
+      if (!wasOpen) item.classList.add('open');
+    });
+  });
+
+  // ═══════ TABS ═══════
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+    });
+  });
+
+  // ═══════ FLOW DIAGRAM ═══════
+  const stageDetails = [
+    {
+      title: '数据工程 — 地基之上的地基',
+      text: '预训练数据的工程复杂度远超大多数人的想象。首先是<strong>规模</strong>：现代LLM通常使用数万亿token的语料，来源涵盖网页、书籍、代码、论文、百科等。其次是<strong>质量</strong>：原始网页充满噪声，需经过多阶段管道——启发式规则过滤、质量分类器、精确去重与模糊去重。最后是<strong>配比</strong>：不同数据源的混合比例直接影响模型能力分布。这是一门需要大量实验的"炼金术"。'
+    },
+    {
+      title: '分词 — 定义模型的感知粒度',
+      text: 'Tokenizer 将连续文本转为离散 token 序列。<strong>核心权衡</strong>：词表大小 vs. 序列长度 vs. 嵌入参数。BPE 是主流方案，通过数据驱动的频率统计构建子词表。中文场景需特别优化——原始字节级 BPE 对中文效率极低，需在预分词阶段引入字符/词粒度。词表大小通常在50K-150K之间，直接影响推理效率和训练成本。'
+    },
+    {
+      title: '模型架构 — Transformer 及其变体',
+      text: 'Decoder-only Transformer 是当前主流选择。关键设计决策包括：<strong>位置编码</strong>（RoPE 已成为标准）、<strong>归一化策略</strong>（Pre-Norm vs. RMSNorm）、<strong>激活函数</strong>（SwiGLU）、<strong>注意力变体</strong>（MHA/MQA/GQA）。MoE（混合专家）架构通过稀疏激活在不增加推理成本的情况下扩大模型容量，但引入了负载均衡和路由策略的额外复杂度。'
+    },
+    {
+      title: '大规模训练 — 分布式系统工程',
+      text: '现代预训练需要数千张 GPU 协同工作。<strong>3D并行</strong>（数据并行 + 张量并行 + 流水线并行）是标准配置。ZeRO 优化器通过分片减少内存冗余。训练过程需要持续监控：loss曲线、梯度范数、学习率、GPU利用率、通信带宽。一个典型的 70B 模型训练需要在 256-512 张 A100 上运行数周。'
+    },
+    {
+      title: '评估验证 — 度量能力边界',
+      text: '预训练模型的评估分为多个层次：<strong>基础度量</strong>（perplexity 在验证集上的变化趋势）、<strong>能力探测</strong>（在各种 benchmark 上 zero-shot/few-shot 评估）、<strong>消融实验</strong>（改变单一变量以理解因果关系）、<strong>涌现能力检测</strong>（在训练的不同 checkpoint 上评估模型是否获得了新能力）。评估体系的质量决定了我们能否做出正确的迭代决策。'
+    }
+  ];
+
+  document.querySelectorAll('.flow-stage').forEach(stage => {
+    stage.addEventListener('click', () => {
+      const idx = parseInt(stage.dataset.stage);
+      document.querySelectorAll('.flow-stage').forEach(s => s.classList.remove('active'));
+      stage.classList.add('active');
+      document.getElementById('flowDetailTitle').textContent = stageDetails[idx].title;
+      document.getElementById('flowDetailText').innerHTML = stageDetails[idx].text;
+    });
+  });
+
+  // ═══════ PARAMETER EXPLORER ═══════
+  const sliderN = document.getElementById('sliderN');
+  const sliderD = document.getElementById('sliderD');
+
+  function updateParams() {
+    const logN = parseFloat(sliderN.value);
+    const logD = parseFloat(sliderD.value);
+
+    const N = Math.pow(10, logN);
+    const D = Math.pow(10, logD);
+
+    // Format N
+    let nStr;
+    if (N >= 1e12) nStr = (N / 1e12).toFixed(1) + 'T';
+    else if (N >= 1e9) nStr = (N / 1e9).toFixed(1) + 'B';
+    else if (N >= 1e6) nStr = (N / 1e6).toFixed(0) + 'M';
+    else nStr = N.toFixed(0);
+    document.getElementById('paramN').textContent = nStr;
+
+    // Format D
+    let dStr;
+    if (D >= 1e12) dStr = (D / 1e12).toFixed(1) + 'T';
+    else if (D >= 1e9) dStr = (D / 1e9).toFixed(0) + 'B';
+    else dStr = (D / 1e6).toFixed(0) + 'M';
+    document.getElementById('paramD').textContent = dStr + ' tokens';
+
+    // Compute FLOPs ≈ 6 * N * D
+    const flops = 6 * N * D;
+    const flopsStr = flops.toExponential(1);
+    document.getElementById('valFLOPs').textContent = flopsStr;
+
+    // GPU hours (A100 at 312 TFLOPS BF16, ~50% MFU)
+    const effectiveFLOPS = 312e12 * 0.5;
+    const gpuSeconds = flops / effectiveFLOPS;
+    const gpuHours = gpuSeconds / 3600;
+    let gpuStr;
+    if (gpuHours >= 1e6) gpuStr = '~' + (gpuHours / 1e6).toFixed(1) + 'M';
+    else if (gpuHours >= 1e3) gpuStr = '~' + (gpuHours / 1e3).toFixed(0) + 'K';
+    else gpuStr = '~' + gpuHours.toFixed(0);
+    document.getElementById('valGPUs').textContent = gpuStr;
+
+    // D/N ratio
+    const ratio = Math.round(D / N);
+    document.getElementById('valRatio').textContent = ratio.toLocaleString();
+
+    // Highlight ratio card if close to Chinchilla optimal
+    const ratioCard = document.getElementById('resultRatio');
+    if (ratio >= 15 && ratio <= 30) {
+      ratioCard.classList.add('highlight');
+    } else {
+      ratioCard.classList.remove('highlight');
+    }
+  }
+
+  sliderN.addEventListener('input', updateParams);
+  sliderD.addEventListener('input', updateParams);
+  updateParams();
+
+  // ═══════ SCROLL REVEAL ═══════
+  const revealElements = document.querySelectorAll('.reveal');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  revealElements.forEach(el => revealObserver.observe(el));
+
+  // ═══════ BAR CHART ANIMATION ═══════
+  const chartObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.querySelectorAll('.bar-fill').forEach((bar, i) => {
+          setTimeout(() => bar.classList.add('animated'), i * 200);
+        });
+        chartObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+
+  const scalingChart = document.getElementById('scalingChart');
+  if (scalingChart) chartObserver.observe(scalingChart);
+
+  // ═══════ NAV DOTS ═══════
+  const sections = ['hero', 'sec-principles', 'sec-architecture', 'sec-deep', 'sec-params', 'sec-evolution', 'sec-methodology', 'sec-guidance'];
+  const navDots = document.querySelectorAll('.nav-dot');
+
+  navDots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const target = dot.dataset.target;
+      document.getElementById(target).scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  const sectionObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const idx = sections.indexOf(entry.target.id);
+        if (idx >= 0) {
+          navDots.forEach(d => d.classList.remove('active'));
+          navDots[idx].classList.add('active');
+        }
+      }
+    });
+  }, { threshold: 0.3 });
+
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) sectionObserver.observe(el);
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,2057 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN 卷积神经网络 — 第一性原理深度研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #060e1a;
+    --bg-primary: #0a1628;
+    --bg-surface: #0f1d33;
+    --bg-elevated: #142544;
+    --blueprint-line: #1a3a6a;
+    --cyan: #00d4ff;
+    --cyan-glow: rgba(0, 212, 255, 0.15);
+    --cyan-dim: rgba(0, 212, 255, 0.4);
+    --accent: #ff6b35;
+    --accent-glow: rgba(255, 107, 53, 0.15);
+    --text-primary: #e0e8f5;
+    --text-secondary: #8a9ab5;
+    --text-muted: #4a5a72;
+    --gold: #e8c547;
+    --green: #00e89d;
+    --grid-line: rgba(26, 58, 106, 0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; font-size: 16px; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'DM Mono', 'Noto Serif SC', monospace;
+    line-height: 1.8;
+    overflow-x: hidden;
+  }
+
+  /* Blueprint Grid Background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 20%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(255, 107, 53, 0.02) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ========== HERO ========== */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    padding: 4rem 2rem;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    border: 1px solid var(--cyan-dim);
+    color: var(--cyan);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 0.5rem 1.5rem;
+    margin-bottom: 2rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.2s forwards;
+  }
+
+  .hero h1 {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 700;
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.4s forwards;
+  }
+
+  .hero h1 .highlight {
+    color: var(--cyan);
+    position: relative;
+  }
+
+  .hero h1 .highlight::after {
+    content: '';
+    position: absolute;
+    bottom: 0.1em;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--cyan);
+    opacity: 0.3;
+  }
+
+  .hero-subtitle {
+    font-family: 'Noto Serif SC', serif;
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    color: var(--text-secondary);
+    font-weight: 300;
+    max-width: 700px;
+    margin: 0 auto 2.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.6s forwards;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.8s forwards;
+  }
+
+  .hero-meta span { display: flex; align-items: center; gap: 0.5rem; }
+  .hero-meta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    animation: pulse 2s ease infinite;
+  }
+
+  .scroll-hint .line {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--cyan), transparent);
+  }
+
+  /* ========== NAV ========== */
+  .nav-toc {
+    position: fixed;
+    right: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    align-items: flex-end;
+  }
+
+  .nav-toc a {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+
+  .nav-toc a .label {
+    opacity: 0;
+    transform: translateX(10px);
+    transition: all 0.3s ease;
+    background: var(--bg-elevated);
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--blueprint-line);
+  }
+
+  .nav-toc a:hover .label,
+  .nav-toc a.active .label {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .nav-toc a .indicator {
+    width: 8px;
+    height: 8px;
+    border: 1px solid var(--text-muted);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .nav-toc a.active .indicator {
+    background: var(--cyan);
+    border-color: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+  }
+
+  @media (max-width: 900px) {
+    .nav-toc { display: none; }
+  }
+
+  /* ========== SECTIONS ========== */
+  section {
+    padding: 6rem 0;
+    position: relative;
+  }
+
+  .section-number {
+    font-family: 'Instrument Serif', serif;
+    font-size: 6rem;
+    color: var(--bg-elevated);
+    font-style: italic;
+    line-height: 1;
+    margin-bottom: -1rem;
+    position: relative;
+    z-index: 0;
+    user-select: none;
+  }
+
+  .section-tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    border: 1px solid var(--cyan-dim);
+    padding: 0.3rem 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+  }
+
+  .section-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    max-width: 680px;
+    margin-bottom: 3rem;
+    line-height: 2;
+  }
+
+  /* ========== CARD SYSTEM ========== */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+  }
+
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--blueprint-line);
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s ease;
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  .card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .card:hover {
+    border-color: var(--cyan-dim);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 30px var(--cyan-glow);
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  .card-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--blueprint-line);
+    margin-bottom: 1.2rem;
+    font-size: 1.4rem;
+    color: var(--cyan);
+    transition: all 0.3s ease;
+  }
+
+  .card:hover .card-icon {
+    border-color: var(--cyan);
+    background: var(--cyan-glow);
+  }
+
+  .card h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+    color: var(--text-primary);
+  }
+
+  .card p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+
+  /* ========== INTERACTIVE CONVOLUTION ========== */
+  .interactive-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--blueprint-line);
+    padding: 2.5rem;
+    margin: 2rem 0;
+    position: relative;
+  }
+
+  .interactive-panel h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--cyan);
+  }
+
+  .interactive-panel .caption {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+  }
+
+  .convolution-demo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    padding: 2rem 0;
+  }
+
+  .matrix-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .matrix-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+  }
+
+  .matrix {
+    display: grid;
+    gap: 3px;
+  }
+
+  .matrix-cell {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid var(--blueprint-line);
+    background: var(--bg-elevated);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .matrix-cell:hover {
+    border-color: var(--cyan);
+    background: var(--cyan-glow);
+  }
+
+  .matrix-cell.active {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+
+  .matrix-cell.highlight {
+    border-color: var(--cyan);
+    background: var(--cyan-glow);
+    color: var(--cyan);
+    animation: cellPulse 0.6s ease;
+  }
+
+  .matrix-cell.result-cell {
+    width: 52px;
+    height: 52px;
+    background: rgba(0, 232, 157, 0.08);
+    border-color: var(--green);
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .operator {
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+
+  .conv-controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .conv-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    padding: 0.6rem 1.5rem;
+    background: transparent;
+    border: 1px solid var(--cyan-dim);
+    color: var(--cyan);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .conv-btn:hover {
+    background: var(--cyan);
+    color: var(--bg-deep);
+    box-shadow: 0 0 20px var(--cyan-glow);
+  }
+
+  .conv-btn.active-btn {
+    background: var(--cyan);
+    color: var(--bg-deep);
+  }
+
+  /* ========== FIRST PRINCIPLES ========== */
+  .principle-chain {
+    position: relative;
+    padding-left: 3rem;
+  }
+
+  .principle-chain::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--cyan), var(--blueprint-line));
+  }
+
+  .principle-item {
+    position: relative;
+    padding: 2rem 0;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.6s ease;
+  }
+
+  .principle-item.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .principle-item::before {
+    content: '';
+    position: absolute;
+    left: -3rem;
+    top: 2.5rem;
+    width: 9px;
+    height: 9px;
+    border: 2px solid var(--cyan);
+    background: var(--bg-deep);
+    transform: rotate(45deg);
+    transition: all 0.3s ease;
+  }
+
+  .principle-item:hover::before {
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan);
+  }
+
+  .principle-item h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .principle-item p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 2;
+  }
+
+  /* ========== LAYER EXPLORER ========== */
+  .layer-explorer {
+    background: var(--bg-surface);
+    border: 1px solid var(--blueprint-line);
+    overflow: hidden;
+  }
+
+  .layer-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--blueprint-line);
+    overflow-x: auto;
+  }
+
+  .layer-tab {
+    flex: 1;
+    min-width: 120px;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .layer-tab:hover {
+    color: var(--text-secondary);
+    background: rgba(0, 212, 255, 0.03);
+  }
+
+  .layer-tab.active {
+    color: var(--cyan);
+    border-bottom-color: var(--cyan);
+    background: rgba(0, 212, 255, 0.05);
+  }
+
+  .layer-content {
+    padding: 2.5rem;
+    min-height: 300px;
+  }
+
+  .layer-panel {
+    display: none;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .layer-panel.active { display: block; }
+
+  .layer-panel h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.15rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+  }
+
+  .layer-panel p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 2;
+    margin-bottom: 1rem;
+  }
+
+  .formula {
+    background: var(--bg-elevated);
+    border: 1px solid var(--blueprint-line);
+    border-left: 3px solid var(--cyan);
+    padding: 1.2rem 1.5rem;
+    font-size: 0.85rem;
+    color: var(--cyan);
+    margin: 1rem 0;
+    overflow-x: auto;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .tag {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--blueprint-line);
+    color: var(--text-secondary);
+  }
+
+  .tag.cyan { border-color: var(--cyan-dim); color: var(--cyan); }
+  .tag.orange { border-color: rgba(255, 107, 53, 0.4); color: var(--accent); }
+  .tag.green { border-color: rgba(0, 232, 157, 0.4); color: var(--green); }
+
+  /* ========== ARCHITECTURE VIS ========== */
+  .architecture-visual {
+    padding: 3rem 0;
+    overflow-x: auto;
+  }
+
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 900px;
+    justify-content: center;
+    padding: 2rem 0;
+  }
+
+  .arch-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .arch-node:hover .arch-box {
+    border-color: var(--cyan);
+    background: var(--cyan-glow);
+    transform: scale(1.05);
+  }
+
+  .arch-box {
+    width: 100px;
+    height: 100px;
+    border: 1px solid var(--blueprint-line);
+    background: var(--bg-elevated);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .arch-box .inner {
+    font-size: 0.65rem;
+    text-align: center;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .arch-node:hover .arch-box .inner { color: var(--cyan); }
+
+  .arch-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-align: center;
+    max-width: 100px;
+  }
+
+  .arch-arrow {
+    display: flex;
+    align-items: center;
+    color: var(--blueprint-line);
+    font-size: 1.2rem;
+    min-width: 40px;
+    justify-content: center;
+  }
+
+  /* Decreasing box sizes to show compression */
+  .arch-node:nth-child(1) .arch-box { width: 120px; height: 120px; }
+  .arch-node:nth-child(3) .arch-box { width: 110px; height: 110px; }
+  .arch-node:nth-child(5) .arch-box { width: 90px; height: 90px; }
+  .arch-node:nth-child(7) .arch-box { width: 70px; height: 70px; }
+  .arch-node:nth-child(9) .arch-box { width: 50px; height: 50px; }
+  .arch-node:nth-child(11) .arch-box { width: 30px; height: 60px; }
+
+  /* ========== CASE STUDY ========== */
+  .case-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .case-grid { grid-template-columns: 1fr; }
+  }
+
+  .case-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--blueprint-line);
+    padding: 2rem;
+    transition: all 0.4s ease;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .case-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .case-card:hover {
+    border-color: var(--cyan-dim);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  }
+
+  .case-card .year {
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    margin-bottom: 0.8rem;
+  }
+
+  .case-card h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.1rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .case-card p {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+
+  /* ========== QUIZ ========== */
+  .quiz-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--blueprint-line);
+    padding: 2.5rem;
+    margin: 2rem 0;
+  }
+
+  .quiz-question {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+
+  .quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .quiz-option {
+    padding: 1rem 1.5rem;
+    border: 1px solid var(--blueprint-line);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    font-family: 'DM Mono', monospace;
+    text-align: left;
+    width: 100%;
+  }
+
+  .quiz-option:hover {
+    border-color: var(--cyan-dim);
+    color: var(--text-primary);
+  }
+
+  .quiz-option.correct {
+    border-color: var(--green);
+    background: rgba(0, 232, 157, 0.08);
+    color: var(--green);
+  }
+
+  .quiz-option.wrong {
+    border-color: var(--accent);
+    background: rgba(255, 107, 53, 0.08);
+    color: var(--accent);
+  }
+
+  .quiz-feedback {
+    margin-top: 1.2rem;
+    font-size: 0.8rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    display: none;
+  }
+
+  .quiz-feedback.show { display: block; animation: fadeIn 0.4s ease; }
+
+  /* ========== CODE BLOCK ========== */
+  .code-block {
+    background: var(--bg-deep);
+    border: 1px solid var(--blueprint-line);
+    overflow: hidden;
+    margin: 1.5rem 0;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.2rem;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--blueprint-line);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  .code-dots {
+    display: flex;
+    gap: 5px;
+    margin-right: 0.5rem;
+  }
+
+  .code-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--blueprint-line);
+  }
+
+  .code-dots span:nth-child(1) { background: #ff5f57; }
+  .code-dots span:nth-child(2) { background: #febc2e; }
+  .code-dots span:nth-child(3) { background: #28c840; }
+
+  .code-body {
+    padding: 1.5rem;
+    overflow-x: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+  }
+
+  .code-body .kw { color: var(--accent); }
+  .code-body .fn { color: var(--cyan); }
+  .code-body .str { color: var(--green); }
+  .code-body .cm { color: var(--text-muted); font-style: italic; }
+  .code-body .num { color: var(--gold); }
+
+  /* ========== PROGRESS BAR ========== */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--accent));
+    z-index: 1000;
+    transition: width 0.1s ease;
+  }
+
+  /* ========== COMPARISON TABLE ========== */
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.78rem;
+  }
+
+  .comp-table th {
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 2px solid var(--blueprint-line);
+    color: var(--cyan);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+  }
+
+  .comp-table td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid rgba(26, 58, 106, 0.3);
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .comp-table tr:hover td {
+    background: rgba(0, 212, 255, 0.02);
+  }
+
+  /* ========== ANIMATIONS ========== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+  }
+
+  @keyframes cellPulse {
+    0% { transform: scale(0.85); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-40px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes dashDraw {
+    to { stroke-dashoffset: 0; }
+  }
+
+  /* ========== DIVIDER ========== */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--blueprint-line), transparent);
+    margin: 2rem 0;
+  }
+
+  /* ========== FOOTER ========== */
+  .footer {
+    padding: 4rem 0;
+    text-align: center;
+    border-top: 1px solid var(--blueprint-line);
+    margin-top: 4rem;
+  }
+
+  .footer p {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* ========== FEATURE MAP VIZ ========== */
+  .feature-map-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 36px);
+    gap: 2px;
+  }
+
+  .feature-cell {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    transition: all 0.5s ease;
+  }
+
+  .feature-cell.active {
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan-glow);
+  }
+
+  .feature-cell.active-dim {
+    background: rgba(0, 212, 255, 0.3);
+  }
+
+  /* ========== SCROLLBAR ========== */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-deep); }
+  ::-webkit-scrollbar-thumb { background: var(--blueprint-line); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* ========== RESPONSIVE ========== */
+  @media (max-width: 640px) {
+    .container { padding: 0 1.2rem; }
+    section { padding: 4rem 0; }
+    .interactive-panel { padding: 1.5rem; }
+    .matrix-cell { width: 40px; height: 40px; font-size: 0.7rem; }
+    .card-grid { grid-template-columns: 1fr; }
+    .arch-flow { min-width: 700px; }
+  }
+
+  /* Tooltip */
+  .tooltip-container {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dashed var(--cyan-dim);
+    cursor: help;
+    color: var(--cyan);
+  }
+
+  .tooltip-container .tooltip-text {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-elevated);
+    border: 1px solid var(--blueprint-line);
+    padding: 0.6rem 1rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    z-index: 10;
+    transition: all 0.3s ease;
+    max-width: 280px;
+    white-space: normal;
+    line-height: 1.6;
+  }
+
+  .tooltip-container:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- NAV -->
+<nav class="nav-toc" id="navToc">
+  <a href="#hero"><span class="label">序章</span><span class="indicator"></span></a>
+  <a href="#first-principles"><span class="label">第一性原理</span><span class="indicator"></span></a>
+  <a href="#core-concepts"><span class="label">核心机制</span><span class="indicator"></span></a>
+  <a href="#interactive"><span class="label">交互实验</span><span class="indicator"></span></a>
+  <a href="#architecture"><span class="label">架构演进</span><span class="indicator"></span></a>
+  <a href="#layers"><span class="label">层结构详解</span><span class="indicator"></span></a>
+  <a href="#cases"><span class="label">实战案例</span><span class="indicator"></span></a>
+  <a href="#guidance"><span class="label">指导建议</span><span class="indicator"></span></a>
+  <a href="#quiz"><span class="label">知识验证</span><span class="indicator"></span></a>
+</nav>
+
+<!-- ========== HERO ========== -->
+<header class="hero" id="hero">
+  <div class="hero-badge">ARCHITECT'S PERSPECTIVE · FIRST PRINCIPLES</div>
+  <h1>
+    卷积神经网络<br><span class="highlight">CNN</span> 深度研究报告
+  </h1>
+  <p class="hero-subtitle">
+    以建筑师的第一性原理思维，从原子结构出发，逐层搭建视觉智能的摩天大楼
+  </p>
+  <div class="hero-meta">
+    <span><span class="dot"></span>第一性原理拆解</span>
+    <span><span class="dot"></span>交互式实验</span>
+    <span><span class="dot"></span>架构演进分析</span>
+    <span><span class="dot"></span>实战指导</span>
+  </div>
+  <div class="scroll-hint">
+    <span>SCROLL</span>
+    <div class="line"></div>
+  </div>
+</header>
+
+<!-- ========== 01 第一性原理 ========== -->
+<section id="first-principles">
+  <div class="container">
+    <div class="section-number">01</div>
+    <div class="section-tag">FIRST PRINCIPLES</div>
+    <h2 class="section-title">回归本源：第一性原理拆解</h2>
+    <p class="section-desc">
+      建筑师设计大楼之前，必须理解重力、材料强度和力学结构。同样，理解 CNN 需要我们剥离所有花哨的术语，回到最根本的问题——<strong>机器如何"看见"？</strong>
+    </p>
+
+    <div class="principle-chain">
+      <div class="principle-item">
+        <h4>原子问题：视觉识别的本质是什么？</h4>
+        <p>
+          归根结底，图像就是一个数字矩阵。一张 28×28 的灰度图就是 784 个 0~255 的数字。
+          视觉识别的本质就是：<strong>从这堆数字中找到有意义的模式（Pattern）</strong>，并将这些模式映射到语义标签。
+          这不是一个"看"的问题，而是一个"数学映射"问题。
+        </p>
+      </div>
+
+      <div class="principle-item">
+        <h4>第一个关键约束：空间结构不可丢弃</h4>
+        <p>
+          如果你把一张图片展平成一维向量输入全连接网络，就等于拆掉大楼的钢筋结构——像素之间的空间邻接关系被破坏了。
+          一只猫的耳朵是"耳朵附近的像素"组合而成的模式，而非"第 327 个像素"。
+          <strong>全连接网络忽略了二维空间的拓扑结构</strong>，这是它处理图像效率极低的根本原因。
+        </p>
+      </div>
+
+      <div class="principle-item">
+        <h4>第二个关键洞察：局部感受野</h4>
+        <p>
+          人类看世界也不是一次看清全部——眼睛聚焦于局部区域，大脑逐层整合信息。
+          CNN 的卷积核（Filter）就是"局部聚焦"的数学实现：<strong>一个小窗口在图像上滑动，每次只观察局部区域的像素关系</strong>。
+          这就是 <span class="tooltip-container">感受野（Receptive Field）<span class="tooltip-text">神经元"看到"的输入区域大小，随着网络深度增加而逐渐扩大</span></span> 的概念。
+        </p>
+      </div>
+
+      <div class="principle-item">
+        <h4>第三个关键洞察：参数共享与平移不变性</h4>
+        <p>
+          猫的耳朵可能出现在图像的任何位置。如果每个位置都用不同的参数来检测，参数量将爆炸性增长。
+          <strong>卷积核在整个图像上共享权重</strong>——同一组参数在不同位置重复使用，实现"平移等变性"。
+          这就像建筑中的标准化模块：同一种规格的钢筋，用在大楼的每一层。
+        </p>
+      </div>
+
+      <div class="principle-item">
+        <h4>架构哲学：分层抽象</h4>
+        <p>
+          建筑的地基支撑梁，梁支撑楼板，楼板支撑墙体——从简单到复杂，层层递进。
+          CNN 完全相同：<strong>底层卷积检测边缘和纹理，中层组合成形状和部件，高层形成完整的语义概念</strong>。
+          这种层级化的特征抽象，是 CNN 最深刻的架构洞察。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 02 核心机制 ========== -->
+<section id="core-concepts">
+  <div class="container">
+    <div class="section-number">02</div>
+    <div class="section-tag">CORE MECHANISMS</div>
+    <h2 class="section-title">核心机制：四大构件</h2>
+    <p class="section-desc">
+      如果说 CNN 是一栋智能大厦，那么卷积层、池化层、激活函数和全连接层就是它的四大结构构件。每一个构件都承担着不可替代的功能。
+    </p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">◈</div>
+        <h3>卷积层 Convolution</h3>
+        <p>
+          大厦的结构框架。卷积核以固定步幅在输入特征图上滑动，执行逐元素乘法并求和，
+          生成新的特征图。每个卷积核学习检测一种特定的局部模式——水平边缘、垂直纹理、颜色渐变等。
+          关键超参数：<strong>核大小、步幅、填充</strong>。
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">◇</div>
+        <h3>池化层 Pooling</h3>
+        <p>
+          大厦的空间压缩机制。通过取局部区域的最大值（Max Pooling）或平均值（Average Pooling），
+          在保留关键特征的同时减少空间维度。这不仅降低了计算量，还赋予模型一定的
+          <strong>平移和形变容忍度</strong>——就像结构中的减震器。
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">△</div>
+        <h3>激活函数 Activation</h3>
+        <p>
+          大厦的非线性节点。没有激活函数，多层卷积等价于单层线性变换——堆再高也没有意义。
+          ReLU 的简洁设计（max(0, x)）既引入了非线性，又避免了梯度消失问题。
+          它是<strong>赋予网络表达复杂函数能力的关键</strong>。
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">□</div>
+        <h3>全连接层 Fully Connected</h3>
+        <p>
+          大厦的决策层。卷积层提取的高层特征在全连接层被展平并整合，
+          完成从"特征空间"到"类别概率"的最终映射。
+          现代架构中常被 <strong>全局平均池化（GAP）</strong> 替代以减少参数，但决策整合的本质不变。
+        </p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th>构件</th>
+          <th>核心功能</th>
+          <th>类比建筑</th>
+          <th>输出维度公式</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>卷积层</td>
+          <td>局部特征提取</td>
+          <td>结构框架/梁柱</td>
+          <td>(W - K + 2P) / S + 1</td>
+        </tr>
+        <tr>
+          <td>池化层</td>
+          <td>空间降维与不变性</td>
+          <td>减震器/压缩机</td>
+          <td>(W - K) / S + 1</td>
+        </tr>
+        <tr>
+          <td>激活函数</td>
+          <td>引入非线性</td>
+          <td>传动机构</td>
+          <td>维度不变</td>
+        </tr>
+        <tr>
+          <td>全连接层</td>
+          <td>全局决策映射</td>
+          <td>决策指挥中心</td>
+          <td>自定义</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ========== 03 交互实验 ========== -->
+<section id="interactive">
+  <div class="container">
+    <div class="section-number">03</div>
+    <div class="section-tag">INTERACTIVE LAB</div>
+    <h2 class="section-title">交互实验：感受卷积</h2>
+    <p class="section-desc">
+      亲手操作卷积核在矩阵上滑动，直观感受卷积运算如何从原始像素中提取特征。
+      点击下方按钮或矩阵元素，观察变化。
+    </p>
+
+    <div class="interactive-panel">
+      <h3>卷积运算模拟器</h3>
+      <p class="caption">选择不同的卷积核，观察其对输入矩阵的卷积结果</p>
+
+      <div class="convolution-demo">
+        <!-- Input Matrix -->
+        <div class="matrix-row">
+          <span class="matrix-label">输入</span>
+          <div class="matrix" id="inputMatrix" style="grid-template-columns: repeat(5, 52px);"></div>
+          <span class="operator">×</span>
+          <span class="matrix-label">核</span>
+          <div class="matrix" id="kernelMatrix" style="grid-template-columns: repeat(3, 52px);"></div>
+          <span class="operator">=</span>
+          <span class="matrix-label">输出</span>
+          <div class="matrix" id="outputMatrix" style="grid-template-columns: repeat(3, 52px);"></div>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 1rem;">
+        <p id="convDescription" style="font-size: 0.78rem; color: var(--text-secondary); min-height: 2.5em;"></p>
+      </div>
+
+      <div class="conv-controls">
+        <button class="conv-btn active-btn" onclick="setKernel('identity')">恒等核</button>
+        <button class="conv-btn" onclick="setKernel('sobel_x')">Sobel X (竖边缘)</button>
+        <button class="conv-btn" onclick="setKernel('sobel_y')">Sobel Y (横边缘)</button>
+        <button class="conv-btn" onclick="setKernel('sharpen')">锐化核</button>
+        <button class="conv-btn" onclick="setKernel('blur')">模糊核</button>
+        <button class="conv-btn" onclick="randomizeInput()">随机输入</button>
+        <button class="conv-btn" onclick="animateConvolution()">▶ 逐步动画</button>
+      </div>
+    </div>
+
+    <div class="interactive-panel" style="margin-top: 2rem;">
+      <h3>特征图可视化</h3>
+      <p class="caption">模拟 CNN 各层的特征图响应——从边缘到纹理到高级语义</p>
+      <div class="feature-map-container" id="featureMapContainer">
+        <!-- Generated by JS -->
+      </div>
+      <div style="text-align: center; margin-top: 1rem;">
+        <button class="conv-btn" onclick="regenerateFeatures()">重新生成特征图</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 04 架构演进 ========== -->
+<section id="architecture">
+  <div class="container">
+    <div class="section-number">04</div>
+    <div class="section-tag">ARCHITECTURE EVOLUTION</div>
+    <h2 class="section-title">架构演进：从 LeNet 到现代</h2>
+    <p class="section-desc">
+      CNN 的架构演进就像建筑史——从简陋的茅屋到摩天大楼，每一代都在前人的基础上解决新的工程挑战。
+    </p>
+
+    <div class="architecture-visual">
+      <div class="arch-flow">
+        <div class="arch-node" title="输入层">
+          <div class="arch-box"><div class="inner">Input<br>224×224×3</div></div>
+          <div class="arch-label">输入图像</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node" title="卷积层1">
+          <div class="arch-box"><div class="inner">Conv1<br>64 filters</div></div>
+          <div class="arch-label">低层特征</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node" title="卷积层2">
+          <div class="arch-box"><div class="inner">Conv2<br>128 filters</div></div>
+          <div class="arch-label">中层特征</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node" title="卷积层3">
+          <div class="arch-box"><div class="inner">Conv3<br>256 filters</div></div>
+          <div class="arch-label">高层特征</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node" title="池化层">
+          <div class="arch-box"><div class="inner">GAP</div></div>
+          <div class="arch-label">全局池化</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node" title="输出">
+          <div class="arch-box"><div class="inner">FC<br>1000</div></div>
+          <div class="arch-label">分类输出</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="case-grid">
+      <div class="case-card">
+        <div class="year">1998 · 开端</div>
+        <h4>LeNet-5</h4>
+        <p>Yann LeCun 提出。用于手写数字识别，5 层结构，确立了"卷积-池化-全连接"的基本范式。
+        参数约 60K，输入 32×32。这是 CNN 的奠基石。</p>
+      </div>
+      <div class="case-card">
+        <div class="year">2012 · 革命</div>
+        <h4>AlexNet</h4>
+        <p>ImageNet 竞赛冠军。首次大规模使用 ReLU 和 Dropout，利用 GPU 训练。
+        Top-5 错误率从 26% 暴降至 16.4%，宣告深度学习时代到来。</p>
+      </div>
+      <div class="case-card">
+        <div class="year">2014 · 深化</div>
+        <h4>VGGNet & GoogLeNet</h4>
+        <p>VGG 证明"更深=更好"，用 3×3 小核堆叠到 19 层。GoogLeNet 引入 Inception 模块，
+        多尺度卷积并行提取特征，22 层但参数量仅 5M。</p>
+      </div>
+      <div class="case-card">
+        <div class="year">2015 · 突破</div>
+        <h4>ResNet</h4>
+        <p>残差连接（Skip Connection）解决了深层网络的退化问题，首次将网络深度推至 152 层。
+        这是一个优雅的工程方案：F(x) + x，让梯度有"高速公路"可走。</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 2rem;">
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th>模型</th>
+            <th>年份</th>
+            <th>深度</th>
+            <th>参数量</th>
+            <th>Top-5 错误率</th>
+            <th>关键创新</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>LeNet-5</td><td>1998</td><td>5</td><td>60K</td><td>N/A</td><td>卷积+池化范式</td></tr>
+          <tr><td>AlexNet</td><td>2012</td><td>8</td><td>60M</td><td>16.4%</td><td>ReLU, Dropout, GPU</td></tr>
+          <tr><td>VGG-16</td><td>2014</td><td>16</td><td>138M</td><td>7.3%</td><td>3×3 小核堆叠</td></tr>
+          <tr><td>GoogLeNet</td><td>2014</td><td>22</td><td>5M</td><td>6.7%</td><td>Inception 多尺度</td></tr>
+          <tr><td>ResNet-152</td><td>2015</td><td>152</td><td>60M</td><td>3.6%</td><td>残差连接</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 05 层结构详解 ========== -->
+<section id="layers">
+  <div class="container">
+    <div class="section-number">05</div>
+    <div class="section-tag">LAYER DEEP DIVE</div>
+    <h2 class="section-title">层结构详解：逐层拆解</h2>
+    <p class="section-desc">
+      点击下方标签，深入每一层的工作原理，理解数据在 CNN 中是如何一步步从像素变为智能的。
+    </p>
+
+    <div class="layer-explorer">
+      <div class="layer-tabs">
+        <button class="layer-tab active" onclick="switchLayer(0, this)">卷积层</button>
+        <button class="layer-tab" onclick="switchLayer(1, this)">池化层</button>
+        <button class="layer-tab" onclick="switchLayer(2, this)">激活函数</button>
+        <button class="layer-tab" onclick="switchLayer(3, this)">BatchNorm</button>
+        <button class="layer-tab" onclick="switchLayer(4, this)">Dropout</button>
+        <button class="layer-tab" onclick="switchLayer(5, this)">残差连接</button>
+      </div>
+      <div class="layer-content">
+        <div class="layer-panel active">
+          <h4>卷积层 Convolutional Layer</h4>
+          <p>卷积层是 CNN 的核心。每个卷积核是一个小的权重矩阵（如 3×3），在输入特征图上以指定步幅滑动，
+          对局部区域执行逐元素乘法并求和，加上偏置项后输出一个值。</p>
+          <div class="formula">
+            Output(i,j) = Σ Σ Input(i+m, j+n) × Kernel(m, n) + bias
+          </div>
+          <p><strong>关键参数：</strong></p>
+          <p>· <strong>核大小（Kernel Size）</strong>：3×3 是最常用的选择（VGG 的贡献），两个 3×3 核的感受野等于一个 5×5 核，但参数更少、非线性更强。</p>
+          <p>· <strong>步幅（Stride）</strong>：步幅为 2 可以代替池化实现降采样。</p>
+          <p>· <strong>填充（Padding）</strong>：'same' 填充保持输出尺寸不变，'valid' 不填充。</p>
+          <div class="tag-row">
+            <span class="tag cyan">参数共享</span>
+            <span class="tag cyan">局部连接</span>
+            <span class="tag orange">平移等变性</span>
+            <span class="tag green">稀疏交互</span>
+          </div>
+        </div>
+
+        <div class="layer-panel">
+          <h4>池化层 Pooling Layer</h4>
+          <p>池化层对输入特征图进行空间下采样，在保留最显著特征的同时减少数据维度和计算量。</p>
+          <div class="formula">
+            MaxPool(i,j) = max( Input(i×s + m, j×s + n) ) , m,n ∈ [0, k)
+          </div>
+          <p><strong>Max Pooling vs Average Pooling：</strong></p>
+          <p>· Max Pooling 保留最强激活，适合纹理和边缘特征，在分类任务中更常用。</p>
+          <p>· Average Pooling 保留整体统计信息，常用于最后一层的全局平均池化（GAP），替代全连接层以减少参数。</p>
+          <p><strong>不变性贡献：</strong>池化赋予模型对微小平移和形变的容忍度。即使目标在图像中略有偏移，池化后的特征图仍然保持相似的激活模式。</p>
+          <div class="tag-row">
+            <span class="tag cyan">降维</span>
+            <span class="tag orange">平移容忍</span>
+            <span class="tag green">防过拟合</span>
+          </div>
+        </div>
+
+        <div class="layer-panel">
+          <h4>激活函数 Activation Functions</h4>
+          <p>激活函数将非线性引入网络。没有它，无论多少层卷积，整体仍然是一个线性变换。</p>
+          <div class="formula">
+            ReLU: f(x) = max(0, x)<br>
+            Leaky ReLU: f(x) = max(0.01x, x)<br>
+            GELU: f(x) = x · Φ(x) — 近年 Transformer 中常用
+          </div>
+          <p><strong>ReLU 的胜利：</strong></p>
+          <p>· 计算极其简单，训练速度快。</p>
+          <p>· 有效缓解梯度消失问题（正区间梯度恒为 1）。</p>
+          <p>· 引入稀疏性（约 50% 的神经元输出为 0）。</p>
+          <p><strong>Dead ReLU 问题：</strong>当输入恒为负时，神经元"死亡"。Leaky ReLU 和 PReLU 通过给负区间一个微小斜率来解决。</p>
+          <div class="tag-row">
+            <span class="tag cyan">非线性</span>
+            <span class="tag orange">稀疏激活</span>
+            <span class="tag green">梯度流</span>
+          </div>
+        </div>
+
+        <div class="layer-panel">
+          <h4>Batch Normalization</h4>
+          <p>对每个 mini-batch 的特征进行归一化，使其均值为 0、方差为 1，然后通过可学习的缩放和平移参数恢复表达能力。</p>
+          <div class="formula">
+            x̂ = (x - μ_batch) / √(σ²_batch + ε)<br>
+            y = γ · x̂ + β  (γ, β 可学习)
+          </div>
+          <p><strong>核心贡献：</strong></p>
+          <p>· 缓解 Internal Covariate Shift（内部协变量偏移），加速收敛。</p>
+          <p>· 允许更大的学习率。</p>
+          <p>· 提供轻微的正则化效果。</p>
+          <p><strong>工程建议：</strong>在卷积层后、激活函数前使用（Conv → BN → ReLU）。</p>
+          <div class="tag-row">
+            <span class="tag cyan">加速收敛</span>
+            <span class="tag orange">稳定训练</span>
+            <span class="tag green">正则化</span>
+          </div>
+        </div>
+
+        <div class="layer-panel">
+          <h4>Dropout 正则化</h4>
+          <p>在训练时随机将一定比例的神经元输出置为 0，迫使网络学习更鲁棒的特征表示。</p>
+          <div class="formula">
+            训练: y = (mask · x) / (1 - p)  , mask ~ Bernoulli(1-p)<br>
+            推理: y = x  (不做 Dropout)
+          </div>
+          <p><strong>直觉理解：</strong>Dropout 等价于训练一个庞大的"子网络集成"。每次前向传播随机选择不同的子网络，最终预测是所有子网络的隐式集成。</p>
+          <p><strong>典型比例：</strong>全连接层 p=0.5，卷积层 p=0.1~0.3 或不使用（现代实践倾向用 BN 替代）。</p>
+          <div class="tag-row">
+            <span class="tag cyan">防过拟合</span>
+            <span class="tag orange">隐式集成</span>
+            <span class="tag green">增强泛化</span>
+          </div>
+        </div>
+
+        <div class="layer-panel">
+          <h4>残差连接 Residual Connection</h4>
+          <p>ResNet 的核心创新。让输入直接"跳跃"到更深层的输出，网络只需学习"残差映射" F(x) = H(x) - x，而非完整的 H(x)。</p>
+          <div class="formula">
+            Output = F(x, {Wi}) + x<br>
+            其中 F(x) 是两层卷积的非线性映射，x 是恒等映射
+          </div>
+          <p><strong>为什么有效？</strong></p>
+          <p>· 梯度高速公路：梯度可以无损地通过恒等连接回传，解决深层网络的梯度消失。</p>
+          <p>· 学习残差更容易：如果某层不需要变换，网络只需将 F(x) 学为 0，保留恒等映射。</p>
+          <p>· 集成效应：深层 ResNet 可以看作指数多路径的隐式集成。</p>
+          <p><strong>架构影响：</strong>残差连接是当代所有深度网络（包括 Transformer）的标配组件。</p>
+          <div class="tag-row">
+            <span class="tag cyan">梯度流</span>
+            <span class="tag orange">深度突破</span>
+            <span class="tag green">恒等映射</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 06 实战案例 ========== -->
+<section id="cases">
+  <div class="container">
+    <div class="section-number">06</div>
+    <div class="section-tag">REAL-WORLD APPLICATIONS</div>
+    <h2 class="section-title">实战案例：CNN 在行动</h2>
+    <p class="section-desc">
+      理论终归要落地。以下是 CNN 在工业界最具影响力的应用场景，每一个都改变了行业格局。
+    </p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">◉</div>
+        <h3>医学影像诊断</h3>
+        <p>
+          CNN 在视网膜病变检测、肺部 CT 结节识别、皮肤癌分类等任务上已达到甚至超过专业医生水平。
+          <strong>迁移学习</strong>是关键——在 ImageNet 上预训练的模型微调后即可适应医学领域。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">◎</div>
+        <h3>自动驾驶感知</h3>
+        <p>
+          CNN 作为感知系统的核心，负责实时目标检测（行人、车辆、交通标志）和语义分割（道路、人行道、建筑物）。
+          YOLO 系列将检测速度推至<strong>实时级别</strong>。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⬢</div>
+        <h3>人脸识别与安防</h3>
+        <p>
+          从人脸检测到特征提取再到身份匹配，整个流程都由不同结构的 CNN 完成。
+          ArcFace 等方法通过改进损失函数，在 LFW 基准上达到 <strong>99.8%+ 准确率</strong>。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">◆</div>
+        <h3>工业质检</h3>
+        <p>
+          在制造业中，CNN 用于产品表面缺陷检测——划痕、凹坑、色差等。
+          相比人工检测，CNN 可以做到<strong>7×24小时</strong>不疲劳、不遗漏、不主观。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">▲</div>
+        <h3>图像生成 (GAN / Diffusion)</h3>
+        <p>
+          生成对抗网络（GAN）中的判别器就是一个 CNN。StyleGAN 可以生成逼真人脸，
+          Stable Diffusion 中的 U-Net 编码器也是<strong>卷积架构的变体</strong>。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">◎</div>
+        <h3>遥感与农业</h3>
+        <p>
+          利用卫星图像，CNN 可以进行农作物分类、产量预测、灾害评估和城市变化检测。
+          语义分割模型如 DeepLab 在这类<strong>像素级理解</strong>任务中表现出色。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 07 指导建议 ========== -->
+<section id="guidance">
+  <div class="container">
+    <div class="section-number">07</div>
+    <div class="section-tag">GUIDANCE</div>
+    <h2 class="section-title">建筑师的指导手册</h2>
+    <p class="section-desc">
+      以建筑师的严谨和全局观，我将 CNN 的工程实践经验提炼为以下指导原则。每一条都是从实践中反复验证的结论。
+    </p>
+
+    <div class="principle-chain">
+      <div class="principle-item">
+        <h4>1. 从迁移学习开始，不要从零搭建</h4>
+        <p>
+          就像建筑师不会从烧砖开始建楼——使用 ImageNet 上预训练的 ResNet、EfficientNet 作为基础模型，
+          仅替换最后的分类头并微调后几层。这能将训练数据需求减少 10 倍以上，同时大幅提升性能。
+        </p>
+      </div>
+
+      <div class="principle-item">
+        <h4>2. 数据质量 > 模型复杂度</h4>
+        <p>
+          地基不稳，大楼再高也会倒。花 80% 的时间在数据上：清洗标注、处理类别不平衡、数据增强（随机裁剪、翻转、颜色抖动、Mixup）。
+          <strong>好的数据比花哨的模型更重要。</strong>
+        </p>
+      </div>
+
+      <div class="principle-item">
+        <h4>3. 选择合适的模型规模</h4>
+        <p>
+          不要用 ResNet-152 去做 MNIST。模型容量应与数据量和任务复杂度匹配。
+          边缘部署优先选择 MobileNet、EfficientNet-Lite；追求精度可用 ConvNeXt 或 Ensemble。
+        </p>
+      </div>
+
+      <div class="principle-item">
+        <h4>4. 监控训练曲线，及时干预</h4>
+        <p>
+          建筑师不会等大楼歪了才去检查水平仪。使用 TensorBoard/WandB 监控 loss、accuracy、learning rate。
+          训练 loss 不降——检查学习率和数据管道。验证 loss 上升——过拟合，增加正则化。
+        </p>
+      </div>
+
+      <div class="principle-item">
+        <h4>5. 理解 CNN 与 ViT 的关系</h4>
+        <p>
+          Vision Transformer（ViT）在大数据集上展现了超越 CNN 的性能，但 CNN 的归纳偏置（局部性、平移不变性）
+          使其在中小数据集上仍然是更稳健的选择。<strong>两者不是替代关系，而是互补。</strong>
+          ConvNeXt 等工作证明，现代化的纯 CNN 架构同样可以达到 Transformer 的性能。
+        </p>
+      </div>
+
+      <div class="principle-item">
+        <h4>6. 部署优化不可忽视</h4>
+        <p>
+          模型训练只是 50% 的工作。量化（INT8）、剪枝、知识蒸馏是将模型部署到移动端和边缘设备的必备技能。
+          使用 ONNX、TensorRT 进行推理优化，可以将推理速度提升 <strong>2~5 倍</strong>。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 08 代码示例 ========== -->
+<section id="code">
+  <div class="container">
+    <div class="section-number">08</div>
+    <div class="section-tag">IMPLEMENTATION</div>
+    <h2 class="section-title">实现蓝图：PyTorch 代码</h2>
+    <p class="section-desc">
+      以下是一个简洁而完整的 CNN 分类网络实现，包含所有核心构件。
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>cnn_model.py</span>
+      </div>
+      <div class="code-body">
+<span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="kw">class</span> <span class="fn">ArchitectCNN</span>(nn.Module):
+    <span class="str">"""以建筑师思维设计的 CNN"""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, num_classes=<span class="num">10</span>):
+        <span class="fn">super</span>().__init__()
+
+        <span class="cm"># === 地基：低层特征提取 ===</span>
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(<span class="num">3</span>, <span class="num">32</span>, kernel_size=<span class="num">3</span>, padding=<span class="str">'same'</span>),
+            nn.BatchNorm2d(<span class="num">32</span>),
+            nn.ReLU(inplace=<span class="kw">True</span>),
+            nn.Conv2d(<span class="num">32</span>, <span class="num">64</span>, kernel_size=<span class="num">3</span>, padding=<span class="str">'same'</span>),
+            nn.BatchNorm2d(<span class="num">64</span>),
+            nn.ReLU(inplace=<span class="kw">True</span>),
+            nn.MaxPool2d(<span class="num">2</span>, <span class="num">2</span>)  <span class="cm"># 32×32 → 16×16</span>
+        )
+
+        <span class="cm"># === 结构体：中层特征深化 ===</span>
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(<span class="num">64</span>, <span class="num">128</span>, kernel_size=<span class="num">3</span>, padding=<span class="str">'same'</span>),
+            nn.BatchNorm2d(<span class="num">128</span>),
+            nn.ReLU(inplace=<span class="kw">True</span>),
+            nn.Conv2d(<span class="num">128</span>, <span class="num">128</span>, kernel_size=<span class="num">3</span>, padding=<span class="str">'same'</span>),
+            nn.BatchNorm2d(<span class="num">128</span>),
+            nn.ReLU(inplace=<span class="kw">True</span>),
+            nn.MaxPool2d(<span class="num">2</span>, <span class="num">2</span>)  <span class="cm"># 16×16 → 8×8</span>
+        )
+
+        <span class="cm"># === 穹顶：高层抽象 + 决策 ===</span>
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d((<span class="num">1</span>, <span class="num">1</span>)),  <span class="cm"># 全局平均池化</span>
+            nn.Flatten(),
+            nn.Dropout(<span class="num">0.3</span>),
+            nn.Linear(<span class="num">128</span>, num_classes)
+        )
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.classifier(x)
+        <span class="kw">return</span> x
+
+<span class="cm"># === 快速验证 ===</span>
+model = ArchitectCNN(num_classes=<span class="num">10</span>)
+dummy = torch.randn(<span class="num">1</span>, <span class="num">3</span>, <span class="num">32</span>, <span class="num">32</span>)
+<span class="fn">print</span>(f<span class="str">"输出形状: {model(dummy).shape}"</span>)
+<span class="fn">print</span>(f<span class="str">"参数量: {sum(p.numel() for p in model.parameters()):,}"</span>)
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 09 知识验证 ========== -->
+<section id="quiz">
+  <div class="container">
+    <div class="section-number">09</div>
+    <div class="section-tag">KNOWLEDGE CHECK</div>
+    <h2 class="section-title">知识验证：你理解了吗？</h2>
+    <p class="section-desc">
+      检验你对 CNN 核心概念的理解。点击选项查看反馈。
+    </p>
+
+    <div class="quiz-box" id="quiz1">
+      <div class="quiz-question">Q1: 为什么 CNN 使用卷积而不是全连接来处理图像？</div>
+      <div class="quiz-options">
+        <button class="quiz-option" onclick="checkAnswer(this, false)">A. 卷积计算更快</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">B. 卷积保留了空间局部性并实现参数共享</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">C. 卷积可以处理任意大小的图像</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">D. 卷积不需要激活函数</button>
+      </div>
+      <div class="quiz-feedback" id="feedback1">
+        正确！CNN 的两大核心设计——<strong>局部感受野</strong>和<strong>参数共享</strong>——既保留了像素间的空间关系，
+        又大幅减少了参数量（例如一个 3×3×64 的卷积核只有 576 个参数，而等价的全连接层可能有数百万参数）。
+      </div>
+    </div>
+
+    <div class="quiz-box" id="quiz2">
+      <div class="quiz-question">Q2: ResNet 中残差连接的核心作用是什么？</div>
+      <div class="quiz-options">
+        <button class="quiz-option" onclick="checkAnswer2(this, false)">A. 增加网络宽度</button>
+        <button class="quiz-option" onclick="checkAnswer2(this, false)">B. 减少参数量</button>
+        <button class="quiz-option" onclick="checkAnswer2(this, true)">C. 缓解深层网络的梯度消失和退化问题</button>
+        <button class="quiz-option" onclick="checkAnswer2(this, false)">D. 替代池化层的功能</button>
+      </div>
+      <div class="quiz-feedback" id="feedback2">
+        正确！残差连接为梯度提供了一条"高速公路"，让梯度能够直接回传到浅层，解决了深层网络训练困难的问题。
+        同时，网络只需学习残差映射 F(x) = H(x) - x，比直接学习 H(x) 更容易优化。
+      </div>
+    </div>
+
+    <div class="quiz-box" id="quiz3">
+      <div class="quiz-question">Q3: 以下哪个操作不能减少特征图的空间尺寸？</div>
+      <div class="quiz-options">
+        <button class="quiz-option" onclick="checkAnswer3(this, false)">A. Max Pooling (stride=2)</button>
+        <button class="quiz-option" onclick="checkAnswer3(this, true)">B. Conv2d (stride=1, padding='same')</button>
+        <button class="quiz-option" onclick="checkAnswer3(this, false)">C. Conv2d (stride=2)</button>
+        <button class="quiz-option" onclick="checkAnswer3(this, false)">D. Adaptive Average Pooling</button>
+      </div>
+      <div class="quiz-feedback" id="feedback3">
+        正确！当步幅为 1 且使用 'same' 填充时，卷积操作保持输出尺寸与输入相同——它只改变通道数，不改变空间分辨率。
+        降采样需要步幅 > 1 或池化操作。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="footer">
+  <div class="container">
+    <p>CNN 深度研究报告 · 建筑师视角 · 第一性原理</p>
+    <p style="margin-top: 0.5rem; font-size: 0.6rem;">BUILT WITH ARCHITECTURAL PRECISION · 2025</p>
+  </div>
+</footer>
+
+<script>
+  // ========== SCROLL PROGRESS ==========
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    document.getElementById('progressBar').style.width = (scrolled / total * 100) + '%';
+
+    // Nav active state
+    const sections = document.querySelectorAll('section, header');
+    const navLinks = document.querySelectorAll('.nav-toc a');
+    let current = '';
+    sections.forEach(s => {
+      if (scrolled >= s.offsetTop - 300) current = s.id;
+    });
+    navLinks.forEach(l => {
+      l.classList.remove('active');
+      if (l.getAttribute('href') === '#' + current) l.classList.add('active');
+    });
+  });
+
+  // ========== INTERSECTION OBSERVER ==========
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+  document.querySelectorAll('.card, .principle-item, .case-card').forEach(el => observer.observe(el));
+
+  // ========== CONVOLUTION DEMO ==========
+  const kernels = {
+    identity: { data: [0,0,0, 0,1,0, 0,0,0], desc: '恒等核：输出与输入相同，不做任何变换。这是卷积操作的"基准线"。' },
+    sobel_x:  { data: [-1,0,1, -2,0,2, -1,0,1], desc: 'Sobel X 核：检测垂直边缘。水平方向梯度大的区域会被高亮。' },
+    sobel_y:  { data: [-1,-2,-1, 0,0,0, 1,2,1], desc: 'Sobel Y 核：检测水平边缘。垂直方向梯度大的区域会被高亮。' },
+    sharpen:  { data: [0,-1,0, -1,5,-1, 0,-1,0], desc: '锐化核：增强中心像素与邻域的差异，使图像更锐利。' },
+    blur:     { data: [1,1,1, 1,1,1, 1,1,1], desc: '均值模糊核：对邻域取平均，平滑图像。每个值为 1/9。' }
+  };
+
+  let currentKernel = 'identity';
+  let inputData = [1,0,1,0,1, 0,1,0,1,0, 1,0,5,0,1, 0,1,0,1,0, 1,0,1,0,1];
+
+  function buildMatrix(container, data, cols, isInput) {
+    container.innerHTML = '';
+    data.forEach((val, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'matrix-cell' + (isInput ? ' input-cell' : '');
+      cell.textContent = val;
+      cell.dataset.index = i;
+      container.appendChild(cell);
+    });
+  }
+
+  function computeConvolution() {
+    const kernel = kernels[currentKernel].data;
+    const out = [];
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < 3; x++) {
+        let sum = 0;
+        for (let ky = 0; ky < 3; ky++) {
+          for (let kx = 0; kx < 3; kx++) {
+            const iy = y + ky;
+            const ix = x + kx;
+            sum += inputData[iy * 5 + ix] * kernel[ky * 3 + kx];
+          }
+        }
+        out.push(sum);
+      }
+    }
+    return out;
+  }
+
+  function updateConvDemo() {
+    const isBlur = currentKernel === 'blur';
+    const displayKernel = isBlur ? kernels.blur.data.map(v => (v / 9).toFixed(1)) : kernels[currentKernel].data;
+
+    buildMatrix(document.getElementById('inputMatrix'), inputData, 5, true);
+    buildMatrix(document.getElementById('kernelMatrix'), displayKernel, 3, false);
+
+    const output = computeConvolution();
+    const outContainer = document.getElementById('outputMatrix');
+    outContainer.innerHTML = '';
+    output.forEach(val => {
+      const cell = document.createElement('div');
+      cell.className = 'matrix-cell result-cell';
+      cell.textContent = typeof val === 'number' ? (Number.isInteger(val) ? val : val.toFixed(1)) : val;
+      outContainer.appendChild(cell);
+    });
+
+    document.getElementById('convDescription').textContent = kernels[currentKernel].desc;
+
+    // Update button states
+    document.querySelectorAll('.conv-controls .conv-btn').forEach(btn => btn.classList.remove('active-btn'));
+    document.querySelectorAll('.conv-controls .conv-btn').forEach(btn => {
+      if (btn.textContent.includes(
+        currentKernel === 'identity' ? '恒等' :
+        currentKernel === 'sobel_x' ? 'Sobel X' :
+        currentKernel === 'sobel_y' ? 'Sobel Y' :
+        currentKernel === 'sharpen' ? '锐化' : '模糊'
+      )) btn.classList.add('active-btn');
+    });
+  }
+
+  function setKernel(name) {
+    currentKernel = name;
+    updateConvDemo();
+  }
+
+  function randomizeInput() {
+    inputData = Array.from({length: 25}, () => Math.floor(Math.random() * 10));
+    updateConvDemo();
+  }
+
+  async function animateConvolution() {
+    const inputCells = document.querySelectorAll('#inputMatrix .matrix-cell');
+    const kernel = kernels[currentKernel].data;
+    const positions = [];
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < 3; x++) {
+        positions.push({y, x});
+      }
+    }
+
+    for (let pos of positions) {
+      // Highlight input cells
+      inputCells.forEach(c => c.classList.remove('highlight'));
+      for (let ky = 0; ky < 3; ky++) {
+        for (let kx = 0; kx < 3; kx++) {
+          const idx = (pos.y + ky) * 5 + (pos.x + kx);
+          if (inputCells[idx]) inputCells[idx].classList.add('highlight');
+        }
+      }
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    inputCells.forEach(c => c.classList.remove('highlight'));
+  }
+
+  // ========== FEATURE MAP VIS ==========
+  function regenerateFeatures() {
+    const container = document.getElementById('featureMapContainer');
+    container.innerHTML = '';
+
+    const stages = [
+      { label: '输入', size: 7, patterns: 'random' },
+      { label: '边缘检测', size: 7, patterns: 'edges' },
+      { label: '纹理特征', size: 5, patterns: 'texture' },
+      { label: '高级语义', size: 3, patterns: 'semantic' }
+    ];
+
+    stages.forEach((stage, si) => {
+      if (si > 0) {
+        const arrow = document.createElement('span');
+        arrow.className = 'operator';
+        arrow.textContent = '→';
+        container.appendChild(arrow);
+      }
+
+      const wrapper = document.createElement('div');
+      wrapper.style.textAlign = 'center';
+
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 0.1em;';
+      label.textContent = stage.label;
+      wrapper.appendChild(label);
+
+      const grid = document.createElement('div');
+      grid.className = 'feature-grid';
+      grid.style.gridTemplateColumns = `repeat(${stage.size}, 36px)`;
+
+      for (let i = 0; i < stage.size * stage.size; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'feature-cell';
+        const row = Math.floor(i / stage.size);
+        const col = i % stage.size;
+        let prob = 0;
+
+        if (stage.patterns === 'random') prob = Math.random() > 0.4 ? 1 : 0;
+        else if (stage.patterns === 'edges') {
+          prob = (row === 0 || row === stage.size - 1 || col === 0 || col === stage.size - 1) ?
+            (Math.random() > 0.3 ? 1 : 0.5) : (Math.random() > 0.8 ? 0.5 : 0);
+        }
+        else if (stage.patterns === 'texture') {
+          prob = (row + col) % 2 === 0 ? (Math.random() > 0.2 ? 1 : 0) : (Math.random() > 0.7 ? 0.5 : 0);
+        }
+        else if (stage.patterns === 'semantic') {
+          const center = (stage.size - 1) / 2;
+          const dist = Math.abs(row - center) + Math.abs(col - center);
+          prob = dist <= 1 ? 1 : (dist <= 2 ? 0.5 : 0);
+        }
+
+        if (prob === 1) cell.classList.add('active');
+        else if (prob === 0.5) cell.classList.add('active-dim');
+        grid.appendChild(cell);
+      }
+      wrapper.appendChild(grid);
+      container.appendChild(wrapper);
+    });
+  }
+
+  // ========== LAYER TABS ==========
+  function switchLayer(idx, btn) {
+    document.querySelectorAll('.layer-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.layer-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.layer-panel')[idx].classList.add('active');
+  }
+
+  // ========== QUIZ ==========
+  function checkAnswer(el, correct) {
+    const box = el.closest('.quiz-box');
+    box.querySelectorAll('.quiz-option').forEach(o => {
+      o.disabled = true;
+      o.style.pointerEvents = 'none';
+    });
+    if (correct) {
+      el.classList.add('correct');
+      document.getElementById('feedback1').style.color = 'var(--green)';
+    } else {
+      el.classList.add('wrong');
+      box.querySelectorAll('.quiz-option')[1].classList.add('correct');
+    }
+    document.getElementById('feedback1').classList.add('show');
+  }
+
+  function checkAnswer2(el, correct) {
+    const box = el.closest('.quiz-box');
+    box.querySelectorAll('.quiz-option').forEach(o => {
+      o.disabled = true;
+      o.style.pointerEvents = 'none';
+    });
+    if (correct) {
+      el.classList.add('correct');
+      document.getElementById('feedback2').style.color = 'var(--green)';
+    } else {
+      el.classList.add('wrong');
+      box.querySelectorAll('.quiz-option')[2].classList.add('correct');
+    }
+    document.getElementById('feedback2').classList.add('show');
+  }
+
+  function checkAnswer3(el, correct) {
+    const box = el.closest('.quiz-box');
+    box.querySelectorAll('.quiz-option').forEach(o => {
+      o.disabled = true;
+      o.style.pointerEvents = 'none';
+    });
+    if (correct) {
+      el.classList.add('correct');
+      document.getElementById('feedback3').style.color = 'var(--green)';
+    } else {
+      el.classList.add('wrong');
+      box.querySelectorAll('.quiz-option')[1].classList.add('correct');
+    }
+    document.getElementById('feedback3').classList.add('show');
+  }
+
+  // ========== INIT ==========
+  updateConvDemo();
+  regenerateFeatures();
+</script>
+</body>
+</html>

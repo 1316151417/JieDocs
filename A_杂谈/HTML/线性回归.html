@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>线性回归 · 第一性原理研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@300;400;600&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #060d1a;
+    --bg-surface: #0b1528;
+    --bg-card: #0f1d35;
+    --bg-card-hover: #142544;
+    --blueprint-line: rgba(0, 180, 255, 0.06);
+    --blueprint-line-strong: rgba(0, 180, 255, 0.12);
+    --accent: #00c8ff;
+    --accent-warm: #ff6b35;
+    --accent-green: #00e68a;
+    --accent-purple: #a78bfa;
+    --accent-pink: #f472b6;
+    --text-primary: #e8edf5;
+    --text-secondary: #8b9cc0;
+    --text-muted: #4a5a80;
+    --grid-color: rgba(0, 180, 255, 0.04);
+    --border: rgba(0, 180, 255, 0.12);
+    --glow: rgba(0, 200, 255, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) var(--bg-deep);
+  }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    line-height: 1.8;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Blueprint grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--blueprint-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--blueprint-line) 1px, transparent 1px),
+      linear-gradient(var(--blueprint-line-strong) 1px, transparent 1px),
+      linear-gradient(90deg, var(--blueprint-line-strong) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 15% 20%, rgba(0, 100, 200, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 60%, rgba(0, 60, 150, 0.06) 0%, transparent 40%),
+      radial-gradient(ellipse at 50% 100%, rgba(0, 40, 100, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 40px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ========== NAV ========== */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(6, 13, 26, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    transition: transform 0.3s ease;
+  }
+  nav .nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+  nav .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  nav .nav-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+  }
+  nav .nav-links a {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+  }
+  nav .nav-links a:hover { color: var(--accent); }
+
+  /* ========== HERO ========== */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    padding-top: 60px;
+  }
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.2s forwards;
+  }
+  .hero h1 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: clamp(42px, 6vw, 72px);
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.4s forwards;
+  }
+  .hero h1 .accent { color: var(--accent); }
+  .hero-subtitle {
+    font-size: 18px;
+    color: var(--text-secondary);
+    max-width: 600px;
+    line-height: 1.9;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.6s forwards;
+  }
+  .hero-equation {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(20px, 3vw, 32px);
+    color: var(--accent);
+    padding: 24px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.8s forwards;
+  }
+  .hero-equation span { color: var(--text-muted); }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 1.2s forwards;
+  }
+  .scroll-hint::after {
+    content: '';
+    display: block;
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--text-muted), transparent);
+    margin: 12px auto 0;
+    animation: scrollPulse 2s ease infinite;
+  }
+
+  /* ========== SECTIONS ========== */
+  section {
+    padding: 100px 0;
+    position: relative;
+  }
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .section-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 700;
+    margin-bottom: 16px;
+    line-height: 1.3;
+  }
+  .section-desc {
+    font-size: 16px;
+    color: var(--text-secondary);
+    max-width: 680px;
+    margin-bottom: 48px;
+    line-height: 1.9;
+  }
+
+  /* ========== CARD GRID ========== */
+  .pillar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 32px;
+  }
+  .pillar-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .pillar-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .pillar-card:hover {
+    background: var(--bg-card-hover);
+    border-color: rgba(0, 180, 255, 0.25);
+    transform: translateY(-2px);
+  }
+  .pillar-card:hover::before { opacity: 1; }
+  .pillar-icon {
+    font-size: 28px;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .pillar-card h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 20px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+  }
+  .pillar-card p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+  .pillar-card .formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    background: rgba(0, 200, 255, 0.06);
+    padding: 8px 14px;
+    border-radius: 4px;
+    margin-top: 16px;
+    display: inline-block;
+  }
+
+  /* ========== INTERACTIVE SECTION ========== */
+  .interactive-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 32px 0;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: rgba(0, 200, 255, 0.04);
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-header h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+  .panel-body {
+    padding: 24px;
+  }
+  .panel-body canvas {
+    width: 100%;
+    border-radius: 6px;
+    cursor: crosshair;
+    display: block;
+  }
+
+  .controls-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 20px 24px;
+    border-top: 1px solid var(--border);
+    background: rgba(0, 200, 255, 0.02);
+  }
+  .control-group {
+    flex: 1;
+    min-width: 180px;
+  }
+  .control-group label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .control-group input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    margin-top: 4px;
+  }
+  .control-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--glow);
+  }
+  .control-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 10px 20px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.2s ease;
+  }
+  .btn:hover {
+    background: var(--accent);
+    color: var(--bg-deep);
+  }
+  .btn-warm {
+    border-color: var(--accent-warm);
+    color: var(--accent-warm);
+  }
+  .btn-warm:hover {
+    background: var(--accent-warm);
+    color: var(--bg-deep);
+  }
+  .btn-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* ========== METRICS DISPLAY ========== */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+  }
+  .metric-card .metric-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .metric-card .metric-value.warn { color: var(--accent-warm); }
+  .metric-card .metric-value.good { color: var(--accent-green); }
+  .metric-card .metric-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ========== STEP CARDS ========== */
+  .step-list {
+    position: relative;
+    padding-left: 40px;
+  }
+  .step-list::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent), var(--border), transparent);
+  }
+  .step-item {
+    position: relative;
+    margin-bottom: 40px;
+    padding: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+  .step-item:hover {
+    border-color: rgba(0, 180, 255, 0.25);
+    transform: translateX(4px);
+  }
+  .step-item::before {
+    content: '';
+    position: absolute;
+    left: -33px;
+    top: 30px;
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--glow);
+  }
+  .step-item h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  .step-item p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* ========== COMPARISON TABLE ========== */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 14px;
+  }
+  .comparison-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+  }
+  .comparison-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(0, 180, 255, 0.06);
+    color: var(--text-secondary);
+  }
+  .comparison-table tr:hover td {
+    background: rgba(0, 200, 255, 0.02);
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .tag-blue { background: rgba(0, 200, 255, 0.1); color: var(--accent); }
+  .tag-warm { background: rgba(255, 107, 53, 0.1); color: var(--accent-warm); }
+  .tag-green { background: rgba(0, 230, 138, 0.1); color: var(--accent-green); }
+  .tag-purple { background: rgba(167, 139, 250, 0.1); color: var(--accent-purple); }
+
+  /* ========== GRADIENT DESCENT VIZ ========== */
+  .gd-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) {
+    .gd-split { grid-template-columns: 1fr; }
+  }
+
+  /* ========== INSIGHT BOX ========== */
+  .insight-box {
+    background: rgba(0, 200, 255, 0.04);
+    border-left: 3px solid var(--accent);
+    padding: 24px 28px;
+    margin: 32px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .insight-box .insight-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .insight-box p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+
+  .warning-box {
+    background: rgba(255, 107, 53, 0.04);
+    border-left: 3px solid var(--accent-warm);
+    padding: 24px 28px;
+    margin: 32px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .warning-box .insight-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-warm);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .warning-box p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+
+  /* ========== FOOTER ========== */
+  footer {
+    padding: 60px 0 40px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  footer p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* ========== ANIMATIONS ========== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.2); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ========== REGULARIZATION VIZ ========== */
+  .reg-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+  .reg-tab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 12px 24px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .reg-tab:hover { color: var(--text-secondary); }
+  .reg-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .reg-content {
+    display: none;
+    padding: 24px;
+  }
+  .reg-content.active { display: block; }
+
+  /* ========== RESPONSIVE ========== */
+  @media (max-width: 640px) {
+    .container { padding: 0 20px; }
+    nav .nav-inner { padding: 0 20px; }
+    nav .nav-links { display: none; }
+    section { padding: 60px 0; }
+    .pillar-grid { grid-template-columns: 1fr; }
+    .controls-row { padding: 16px; gap: 16px; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo">LR · Research</div>
+    <ul class="nav-links">
+      <li><a href="#deconstruct">解构</a></li>
+      <li><a href="#pillars">五支柱</a></li>
+      <li><a href="#interactive">拟合实验</a></li>
+      <li><a href="#gradient">梯度下降</a></li>
+      <li><a href="#regularization">正则化</a></li>
+      <li><a href="#practice">实践指南</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="container">
+    <div class="hero-label">First-Principles Research Report</div>
+    <h1>线性回归<br><span class="accent">第一性原理</span>深度研究</h1>
+    <p class="hero-subtitle">
+      以建筑师的思维，将机器学习中最基础的算法拆解至原子层面——
+      重新理解「拟合」的本质，从零构建完整的认知框架。
+    </p>
+    <div class="hero-equation">
+      <span>Objective:</span> min Σ(y<sub>i</sub> - <span>ŷ</span><sub>i</sub>)² <span>=</span> min ||<b>y</b> - <b>Xw</b>||²
+    </div>
+  </div>
+  <div class="scroll-hint">SCROLL TO EXPLORE</div>
+</header>
+
+<!-- Section 1: Deconstruct -->
+<section id="deconstruct">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-num">01 — Deconstruct</div>
+      <h2 class="section-title">回到原子：什么是「回归」的本质？</h2>
+      <p class="section-desc">
+        建筑师不会从「这是一栋房子」开始思考，而是从「人需要遮蔽、空间需要结构力」开始。
+        同样，我们不从公式出发，而是从最根本的问题出发。
+      </p>
+    </div>
+
+    <div class="reveal">
+      <div class="insight-box">
+        <div class="insight-label">第一性问题</div>
+        <p>
+          观测到一组数据 (x, y)，我们认为它们之间存在某种 <strong>确定性趋势</strong> 和 <strong>随机噪声</strong>。
+          核心任务是：如何从噪声中提取出那个确定性信号？线性回归的假设是——这个信号可以用一条直线（或超平面）来描述。
+        </p>
+      </div>
+    </div>
+
+    <div class="step-list reveal">
+      <div class="step-item">
+        <h4>Step 1 · 从直觉到模型</h4>
+        <p>
+          散点图上的点大致沿某条线分布。我们假设真实关系为 <code style="color:var(--accent)">y = f(x) + ε</code>，
+          其中 f(x) 是我们要找的规律，ε 是不可消除的噪声。当假设 f(x) 为线性函数时，
+          得到 <code style="color:var(--accent)">y = w₀ + w₁x₁ + ... + wₙxₙ + ε</code>。
+        </p>
+      </div>
+      <div class="step-item">
+        <h4>Step 2 · 从模型到优化目标</h4>
+        <p>
+          有了模型，如何找到最佳的 w？我们需要一个「好」的定义。最自然的定义是：预测值与真实值的差距尽量小。
+          用平方和来度量这个差距，得到 <code style="color:var(--accent)">Loss = Σ(yᵢ - ŷᵢ)²</code>。
+          为什么是平方？因为它处处可导、对大误差惩罚更重、有统计学上的最大似然解释。
+        </p>
+      </div>
+      <div class="step-item">
+        <h4>Step 3 · 从优化到解析解</h4>
+        <p>
+          对 Loss 求导并令其为零：∂L/∂w = 0，可以得到闭合解
+          <code style="color:var(--accent)">w = (XᵀX)⁻¹Xᵀy</code>。
+          这是线性回归最优雅的地方——存在全局最优解，且可以一步计算得出。
+        </p>
+      </div>
+      <div class="step-item">
+        <h4>Step 4 · 从解析到迭代</h4>
+        <p>
+          当数据量极大或特征极多时，矩阵求逆代价高昂。梯度下降提供了一条迭代路径：
+          沿着损失函数的负梯度方向一步步移动，直到收敛。
+          <code style="color:var(--accent)">w ← w - α · ∂L/∂w</code>。
+          这是从计算视角的第二条道路。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2: Five Pillars -->
+<section id="pillars">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-num">02 — Five Pillars</div>
+      <h2 class="section-title">五大核心支柱</h2>
+      <p class="section-desc">
+        线性回归的完整理解依赖于五个相互关联的支柱。
+        拆掉任何一个，整个建筑就会倾斜。
+      </p>
+    </div>
+
+    <div class="pillar-grid reveal">
+      <div class="pillar-card">
+        <span class="pillar-icon">⃝</span>
+        <h3>假设条件</h3>
+        <p>
+          线性性：因变量与自变量呈线性关系。独立性：观测值相互独立。同方差性：误差方差恒定。正态性：误差服从正态分布。违反假设会导致估计偏误或无效。
+        </p>
+        <div class="formula">y = Xβ + ε, ε ~ N(0, σ²I)</div>
+      </div>
+
+      <div class="pillar-card">
+        <span class="pillar-icon">▽</span>
+        <h3>损失函数</h3>
+        <p>
+          均方误差 MSE 是线性回归的原生损失函数。它来自最大似然估计——假设噪声服从正态分布时，最小化 MSE 等价于最大化似然函数。
+        </p>
+        <div class="formula">MSE = (1/n) Σ(yᵢ - ŷᵢ)²</div>
+      </div>
+
+      <div class="pillar-card">
+        <span class="pillar-icon">→</span>
+        <h3>求解方法</h3>
+        <p>
+          闭合解 (Normal Equation) 一步到位；梯度下降在大数据场景下更实用；QR 分解在数值稳定性上更优。三条路，殊途同归。
+        </p>
+        <div class="formula">w = (XᵀX)⁻¹Xᵀy</div>
+      </div>
+
+      <div class="pillar-card">
+        <span class="pillar-icon">◎</span>
+        <h3>模型评估</h3>
+        <p>
+          R² 衡量解释力（方差占比），RMSE 提供可解释的误差度量，调整 R² 惩罚多余特征。三者结合才能全面评估模型质量。
+        </p>
+        <div class="formula">R² = 1 - SS_res / SS_tot</div>
+      </div>
+
+      <div class="pillar-card">
+        <span class="pillar-icon">⊞</span>
+        <h3>正则化</h3>
+        <p>
+          过拟合是线性回归的宿敌。Ridge (L2) 收缩系数、Lasso (L1) 产生稀疏解、Elastic Net 两者兼顾。本质是在损失函数中加入先验约束。
+        </p>
+        <div class="formula">L = ||y - Xw||² + λ||w||²</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 3: Interactive Fitting -->
+<section id="interactive">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-num">03 — Interactive Lab</div>
+      <h2 class="section-title">手动拟合实验</h2>
+      <p class="section-desc">
+        拖动截距和斜率滑块，亲手「拟合」一条直线。
+        观察 MSE 如何变化，直觉性地理解「最小二乘」的意义。
+        点击画布可以添加新数据点。
+      </p>
+    </div>
+
+    <div class="interactive-panel reveal">
+      <div class="panel-header">
+        <h4>MANUAL FITTING LAB</h4>
+        <div class="btn-group">
+          <button class="btn" onclick="resetData()">重置数据</button>
+          <button class="btn" onclick="autoFit()">自动拟合 (OLS)</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <canvas id="fitCanvas" width="1000" height="500"></canvas>
+      </div>
+      <div class="controls-row">
+        <div class="control-group">
+          <label>截距 w₀ (bias)</label>
+          <input type="range" id="biasSlider" min="-100" max="100" value="20" step="1">
+          <div class="control-value" id="biasValue">20</div>
+        </div>
+        <div class="control-group">
+          <label>斜率 w₁ (weight)</label>
+          <input type="range" id="slopeSlider" min="-300" max="300" value="60" step="1">
+          <div class="control-value" id="slopeValue">0.60</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="metrics-grid reveal" id="manualMetrics">
+      <div class="metric-card">
+        <div class="metric-value" id="metricMSE">—</div>
+        <div class="metric-label">MSE</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="metricRMSE">—</div>
+        <div class="metric-label">RMSE</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="metricR2">—</div>
+        <div class="metric-label">R² Score</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="metricMAE">—</div>
+        <div class="metric-label">MAE</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 4: Gradient Descent -->
+<section id="gradient">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-num">04 — Gradient Descent</div>
+      <h2 class="section-title">梯度下降：一步一步走向最优</h2>
+      <p class="section-desc">
+        如果说闭合解是「一步登顶」，梯度下降就是「沿坡而上」。
+        调整学习率，观察它如何影响收敛过程——太大会震荡发散，太小则龟速前进。
+      </p>
+    </div>
+
+    <div class="gd-split reveal">
+      <div class="interactive-panel" style="margin:0">
+        <div class="panel-header">
+          <h4>PARAMETER SPACE</h4>
+          <button class="btn" id="gdBtn" onclick="startGD()">开始梯度下降</button>
+        </div>
+        <div class="panel-body">
+          <canvas id="gdCanvas" width="500" height="450"></canvas>
+        </div>
+      </div>
+      <div class="interactive-panel" style="margin:0">
+        <div class="panel-header">
+          <h4>LOSS LANDSCAPE</h4>
+          <span id="gdIter" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)">iter: 0</span>
+        </div>
+        <div class="panel-body">
+          <canvas id="lossCanvas" width="500" height="350"></canvas>
+        </div>
+        <div class="controls-row">
+          <div class="control-group">
+            <label>学习率 α</label>
+            <input type="range" id="lrSlider" min="1" max="100" value="15" step="1">
+            <div class="control-value" id="lrValue">0.0015</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box reveal">
+      <div class="insight-label">建筑师洞察</div>
+      <p>
+        学习率就像浇灌混凝土的速率——太快会导致结构开裂（梯度爆炸），太慢则永远无法完工（收敛过慢）。
+        实践中常用学习率衰减策略：初期大步探索，后期小步精调。
+        当损失不再明显下降时，你已经到达了「地形」的谷底。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 5: Regularization -->
+<section id="regularization">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-num">05 — Regularization</div>
+      <h2 class="section-title">正则化：约束即自由</h2>
+      <p class="section-desc">
+        无约束的线性回归容易过拟合——模型记住了噪声而非规律。
+        正则化通过限制参数大小，迫使模型找到更简洁、更泛化的解释。
+      </p>
+    </div>
+
+    <div class="interactive-panel reveal">
+      <div class="reg-tabs">
+        <button class="reg-tab active" onclick="switchReg('ridge')">Ridge (L2)</button>
+        <button class="reg-tab" onclick="switchReg('lasso')">Lasso (L1)</button>
+        <button class="reg-tab" onclick="switchReg('elastic')">Elastic Net</button>
+        <button class="reg-tab" onclick="switchReg('compare')">对比</button>
+      </div>
+
+      <div class="reg-content active" id="reg-ridge">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center">
+          <div>
+            <p style="color:var(--text-secondary);font-size:14px;line-height:1.9;margin-bottom:16px">
+              Ridge 回归在损失函数中添加系数的 L2 范数惩罚。它会将系数 <strong>收缩</strong> 向零，
+              但永远不会精确为零——所有特征都被保留，只是影响被削弱。
+            </p>
+            <div class="formula" style="display:block;text-align:center;font-size:16px;padding:16px">
+              L = ||y - Xw||² + α||w||²
+            </div>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:16px">
+              适用场景：特征之间存在多重共线性、特征数量接近样本量。
+            </p>
+          </div>
+          <div>
+            <canvas id="ridgeCanvas" width="400" height="300"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="reg-content" id="reg-lasso">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center">
+          <div>
+            <p style="color:var(--text-secondary);font-size:14px;line-height:1.9;margin-bottom:16px">
+              Lasso 使用 L1 范数惩罚，其独特之处在于能将某些系数压缩到 <strong>精确为零</strong>，
+              从而实现特征选择。它像一把精密的手术刀，自动切除不重要的特征。
+            </p>
+            <div class="formula" style="display:block;text-align:center;font-size:16px;padding:16px">
+              L = ||y - Xw||² + α||w||₁
+            </div>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:16px">
+              适用场景：高维稀疏数据、需要特征选择、模型可解释性要求高。
+            </p>
+          </div>
+          <div>
+            <canvas id="lassoCanvas" width="400" height="300"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="reg-content" id="reg-elastic">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center">
+          <div>
+            <p style="color:var(--text-secondary);font-size:14px;line-height:1.9;margin-bottom:16px">
+              Elastic Net 结合了 Ridge 和 Lasso 的优点。通过混合参数 l1_ratio 控制两者的比例，
+              既保留了特征选择能力，又在特征高度相关时更加稳定。
+            </p>
+            <div class="formula" style="display:block;text-align:center;font-size:16px;padding:16px">
+              L = ||y - Xw||² + α₁||w||₁ + α₂||w||²
+            </div>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:16px">
+              适用场景：特征数量远大于样本量、特征组之间存在相关性。
+            </p>
+          </div>
+          <div>
+            <canvas id="elasticCanvas" width="400" height="300"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="reg-content" id="reg-compare">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>OLS</th>
+              <th>Ridge</th>
+              <th>Lasso</th>
+              <th>Elastic Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>惩罚项</td>
+              <td><span class="tag tag-blue">无</span></td>
+              <td><span class="tag tag-green">L2</span></td>
+              <td><span class="tag tag-warm">L1</span></td>
+              <td><span class="tag tag-purple">L1 + L2</span></td>
+            </tr>
+            <tr>
+              <td>特征选择</td>
+              <td>✗</td>
+              <td>✗（仅收缩）</td>
+              <td>✓（稀疏解）</td>
+              <td>✓</td>
+            </tr>
+            <tr>
+              <td>多重共线性</td>
+              <td>不稳定</td>
+              <td>较好处理</td>
+              <td>随机选择一个</td>
+              <td>稳定处理</td>
+            </tr>
+            <tr>
+              <td>偏差-方差</td>
+              <td>低偏差高方差</td>
+              <td>略高偏差低方差</td>
+              <td>略高偏差低方差</td>
+              <td>平衡</td>
+            </tr>
+            <tr>
+              <td>超参数</td>
+              <td>无</td>
+              <td>α</td>
+              <td>α</td>
+              <td>α, l1_ratio</td>
+            </tr>
+            <tr>
+              <td>闭合解</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✗（迭代）</td>
+              <td>✗（迭代）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 6: Practice Guide -->
+<section id="practice">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-num">06 — Practice Guide</div>
+      <h2 class="section-title">实践指导：建筑师的施工手册</h2>
+      <p class="section-desc">
+        理论到实践之间隔着一条河。这里是帮你架桥的实操指南——
+        从数据检查到模型部署的完整决策链。
+      </p>
+    </div>
+
+    <div class="pillar-grid reveal">
+      <div class="pillar-card">
+        <span class="pillar-icon">①</span>
+        <h3>数据先行</h3>
+        <p>
+          先画散点图，肉眼确认线性趋势。检查缺失值、异常值（Cook's Distance > 4/n 要警惕）。
+          对偏态分布的变量做对数变换。记住：垃圾进，垃圾出。
+        </p>
+      </div>
+      <div class="pillar-card">
+        <span class="pillar-icon">②</span>
+        <h3>特征工程</h3>
+        <p>
+          数值特征标准化（Z-score 或 Min-Max），类别变量独热编码。
+          检查 VIF（方差膨胀因子）排查多重共线性，VIF > 10 需要处理。
+        </p>
+      </div>
+      <div class="pillar-card">
+        <span class="pillar-icon">③</span>
+        <h3>模型选择</h3>
+        <p>
+          特征少、样本多 → 普通 OLS。特征多、有共线性 → Ridge。
+          需要特征选择 → Lasso。不确定 → Elastic Net + 交叉验证选参。
+        </p>
+      </div>
+      <div class="pillar-card">
+        <span class="pillar-icon">④</span>
+        <h3>诊断验证</h3>
+        <p>
+          残差图应随机散布（无模式）。Q-Q 图检验正态性。
+          5-fold 交叉验证评估泛化能力。训练 R² 与验证 R² 差距大 = 过拟合。
+        </p>
+      </div>
+    </div>
+
+    <div class="warning-box reveal">
+      <div class="insight-label">常见陷阱</div>
+      <p>
+        <strong>1. 相关不等于因果</strong>——线性回归只能发现相关性，不能证明因果关系。<br>
+        <strong>2. 外推是危险的</strong>——模型只在训练数据范围内有效，超出范围的预测毫无根据。<br>
+        <strong>3. R² 高不等于好模型</strong>——加入无关特征 R² 只升不降，要用调整 R²。<br>
+        <strong>4. 不要忽略假设检验</strong>——残差不满足假设时，所有推断（p 值、置信区间）都不可信。
+      </p>
+    </div>
+
+    <div class="insight-box reveal">
+      <div class="insight-label">建筑师寄语</div>
+      <p>
+        线性回归是机器学习大厦的地基。它简单，但简单不等于浅薄。
+        每一个更复杂的模型——神经网络、SVM、集成方法——都在某种意义上是线性回归的延伸与推广。
+        真正理解了线性回归，你就掌握了理解整个机器学习的钥匙。
+        建筑师知道：最坚固的结构，往往来自最简洁的设计。
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>LINEAR REGRESSION · FIRST PRINCIPLES RESEARCH REPORT</p>
+    <p style="margin-top:8px;color:var(--text-muted)">Built with first-principles thinking</p>
+  </div>
+</footer>
+
+<script>
+// ========== REVEAL ON SCROLL ==========
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.15 });
+reveals.forEach(r => observer.observe(r));
+
+// ========== HELPER ==========
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// ========== MANUAL FITTING LAB ==========
+(function() {
+  const canvas = document.getElementById('fitCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  let W, H;
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    W = rect.width;
+    H = rect.height;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resizeCanvas();
+
+  // Generate data
+  let points = [];
+  function generateData() {
+    points = [];
+    for (let i = 0; i < 30; i++) {
+      const x = 40 + Math.random() * (W - 80);
+      const nx = (x - W / 2) / (W / 4);
+      const y = H / 2 - nx * 60 + (Math.random() - 0.5) * 120 + 20;
+      points.push({ x, y });
+    }
+  }
+  generateData();
+
+  // Add point on click
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    points.push({ x, y });
+    draw();
+  });
+
+  const biasSlider = document.getElementById('biasSlider');
+  const slopeSlider = document.getElementById('slopeSlider');
+  const biasValue = document.getElementById('biasValue');
+  const slopeValue = document.getElementById('slopeValue');
+
+  biasSlider.addEventListener('input', () => { draw(); });
+  slopeSlider.addEventListener('input', () => { draw(); });
+
+  function getModelParams() {
+    const bias = parseFloat(biasSlider.value);
+    const slope = parseFloat(slopeSlider.value) / 100;
+    return { bias, slope };
+  }
+
+  function draw() {
+    const { bias, slope } = getModelParams();
+    biasValue.textContent = bias;
+    slopeValue.textContent = slope.toFixed(2);
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw subtle crosshair
+    ctx.strokeStyle = 'rgba(0,180,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H);
+    ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2);
+    ctx.stroke();
+
+    // Compute line endpoints
+    const midX = W / 2;
+    const midY = H / 2 - bias;
+    const x1 = 0, y1 = midY - slope * (midX - x1);
+    const x2 = W, y2 = midY + slope * (x2 - midX);
+
+    // Compute metrics
+    let ss_res = 0, ss_tot = 0, sumY = 0, sumAbsErr = 0;
+    points.forEach(p => {
+      const predY = midY + slope * (p.x - midX);
+      sumY += p.y;
+    });
+    const meanY = sumY / points.length;
+    points.forEach(p => {
+      const predY = midY + slope * (p.x - midX);
+      ss_res += (p.y - predY) ** 2;
+      ss_tot += (p.y - meanY) ** 2;
+      sumAbsErr += Math.abs(p.y - predY);
+    });
+    const mse = points.length > 0 ? ss_res / points.length : 0;
+    const rmse = Math.sqrt(mse);
+    const r2 = ss_tot > 0 ? 1 - ss_res / ss_tot : 0;
+    const mae = points.length > 0 ? sumAbsErr / points.length : 0;
+
+    // Draw error lines (residuals)
+    points.forEach(p => {
+      const predY = midY + slope * (p.x - midX);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x, predY);
+      ctx.strokeStyle = p.y < predY ? 'rgba(255,107,53,0.4)' : 'rgba(0,200,255,0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    // Draw regression line
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = '#00c8ff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw data points
+    points.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#e8edf5';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,200,255,0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // Update metrics
+    document.getElementById('metricMSE').textContent = mse.toFixed(1);
+    document.getElementById('metricRMSE').textContent = rmse.toFixed(1);
+    const r2El = document.getElementById('metricR2');
+    r2El.textContent = r2.toFixed(4);
+    r2El.className = 'metric-value ' + (r2 > 0.7 ? 'good' : r2 > 0.3 ? '' : 'warn');
+    document.getElementById('metricMAE').textContent = mae.toFixed(1);
+  }
+
+  draw();
+
+  // Auto fit (OLS)
+  window.autoFit = function() {
+    let sumX = 0, sumY = 0, sumXX = 0, sumXY = 0;
+    const n = points.length;
+    if (n < 2) return;
+    points.forEach(p => {
+      sumX += p.x;
+      sumY += p.y;
+      sumXX += p.x * p.x;
+      sumXY += p.x * p.y;
+    });
+    const meanX = sumX / n;
+    const meanY = sumY / n;
+    const slope = (sumXY - n * meanX * meanY) / (sumXX - n * meanX * meanX);
+    const intercept = meanY - slope * meanX;
+
+    // Convert to slider space
+    const midX = W / 2;
+    const biasSliderVal = -(intercept + slope * midX - H / 2);
+    const slopeSliderVal = slope * 100;
+
+    biasSlider.value = Math.max(-100, Math.min(100, biasSliderVal));
+    slopeSlider.value = Math.max(-300, Math.min(300, slopeSliderVal));
+    draw();
+  };
+
+  window.resetData = function() {
+    generateData();
+    biasSlider.value = 20;
+    slopeSlider.value = 60;
+    draw();
+  };
+
+  window.addEventListener('resize', () => { resizeCanvas(); draw(); });
+})();
+
+// ========== GRADIENT DESCENT VISUALIZATION ==========
+(function() {
+  const gdCanvas = document.getElementById('gdCanvas');
+  const lossCanvas = document.getElementById('lossCanvas');
+  const gdCtx = gdCanvas.getContext('2d');
+  const lossCtx = lossCanvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  function setupCanvas(canvas, w, h) {
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return ctx;
+  }
+
+  let gdW, gdH, lW, lH;
+  function resizeGD() {
+    const rect1 = gdCanvas.getBoundingClientRect();
+    gdW = Math.min(rect1.width, 500);
+    gdH = Math.min(rect1.height || 450, 450);
+    gdCanvas.style.width = gdW + 'px';
+    gdCanvas.style.height = gdH + 'px';
+    gdCanvas.width = gdW * dpr;
+    gdCanvas.height = gdH * dpr;
+    gdCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const rect2 = lossCanvas.getBoundingClientRect();
+    lW = Math.min(rect2.width, 500);
+    lH = Math.min(rect2.height || 350, 350);
+    lossCanvas.style.width = lW + 'px';
+    lossCanvas.style.height = lH + 'px';
+    lossCanvas.width = lW * dpr;
+    lossCanvas.height = lH * dpr;
+    lossCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  setTimeout(resizeGD, 100);
+
+  // Fixed dataset for GD
+  const gdData = [];
+  for (let i = 0; i < 25; i++) {
+    const x = Math.random() * 400 + 50;
+    const y = 50 + x * 0.55 + (Math.random() - 0.5) * 80;
+    gdData.push({ x, y });
+  }
+
+  // Normalize for GD
+  let gdRunning = false;
+  let gdAnimId = null;
+  let gdPath = [];
+  let lossHistory = [];
+
+  function computeLoss(w0, w1) {
+    let loss = 0;
+    gdData.forEach(p => {
+      const nx = p.x / 500;
+      const ny = p.y / 500;
+      const pred = w0 + w1 * nx;
+      loss += (ny - pred) ** 2;
+    });
+    return loss / gdData.length;
+  }
+
+  function computeGradients(w0, w1) {
+    let dw0 = 0, dw1 = 0;
+    const n = gdData.length;
+    gdData.forEach(p => {
+      const nx = p.x / 500;
+      const ny = p.y / 500;
+      const pred = w0 + w1 * nx;
+      dw0 += -2 * (ny - pred);
+      dw1 += -2 * (ny - pred) * nx;
+    });
+    return [dw0 / n, dw1 / n];
+  }
+
+  function drawGDPlot() {
+    gdCtx.clearRect(0, 0, gdW, gdH);
+
+    // Grid
+    gdCtx.strokeStyle = 'rgba(0,180,255,0.06)';
+    gdCtx.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) {
+      const x = (i / 10) * gdW;
+      const y = (i / 10) * gdH;
+      gdCtx.beginPath(); gdCtx.moveTo(x, 0); gdCtx.lineTo(x, gdH); gdCtx.stroke();
+      gdCtx.beginPath(); gdCtx.moveTo(0, y); gdCtx.lineTo(gdW, y); gdCtx.stroke();
+    }
+
+    // Axes labels
+    gdCtx.fillStyle = 'rgba(139,156,192,0.5)';
+    gdCtx.font = '10px JetBrains Mono';
+    gdCtx.fillText('w₁ (slope)', gdW - 60, gdH - 8);
+    gdCtx.fillText('w₀', 8, 14);
+
+    // Draw data points
+    gdData.forEach(p => {
+      gdCtx.beginPath();
+      gdCtx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      gdCtx.fillStyle = 'rgba(232,237,245,0.5)';
+      gdCtx.fill();
+    });
+
+    // Draw current line if path exists
+    if (gdPath.length > 0) {
+      const last = gdPath[gdPath.length - 1];
+      const w0 = last[0], w1 = last[1];
+      const y1 = (w0 * 500);
+      const y2 = (w0 + w1) * 500;
+      gdCtx.beginPath();
+      gdCtx.moveTo(0, y1);
+      gdCtx.lineTo(gdW, y2);
+      gdCtx.strokeStyle = '#00c8ff';
+      gdCtx.lineWidth = 2;
+      gdCtx.stroke();
+
+      // Draw path
+      if (gdPath.length > 1) {
+        for (let i = 1; i < gdPath.length; i++) {
+          const prev = gdPath[i - 1];
+          const curr = gdPath[i];
+          const px = prev[1] * 500 + gdW / 2;
+          const py = -prev[0] * 500 + gdH / 2;
+          const cx = curr[1] * 500 + gdW / 2;
+          const cy = -curr[0] * 500 + gdH / 2;
+          gdCtx.beginPath();
+          gdCtx.arc(cx, cy, 2, 0, Math.PI * 2);
+          gdCtx.fillStyle = `rgba(0,200,255,${0.2 + 0.6 * (i / gdPath.length)})`;
+          gdCtx.fill();
+        }
+      }
+    }
+  }
+
+  function drawLossPlot() {
+    lossCtx.clearRect(0, 0, lW, lH);
+
+    // Grid
+    lossCtx.strokeStyle = 'rgba(0,180,255,0.06)';
+    lossCtx.lineWidth = 1;
+    for (let i = 0; i <= 8; i++) {
+      const y = (i / 8) * lH;
+      lossCtx.beginPath(); lossCtx.moveTo(40, y); lossCtx.lineTo(lW, y); lossCtx.stroke();
+    }
+
+    if (lossHistory.length < 2) {
+      lossCtx.fillStyle = 'rgba(139,156,192,0.3)';
+      lossCtx.font = '12px JetBrains Mono';
+      lossCtx.fillText('等待梯度下降开始...', lW / 2 - 80, lH / 2);
+      return;
+    }
+
+    const maxLoss = Math.max(...lossHistory);
+    const minLoss = Math.min(...lossHistory);
+    const padding = 40;
+    const plotW = lW - padding * 2;
+    const plotH = lH - padding * 2;
+
+    // Y axis label
+    lossCtx.fillStyle = 'rgba(139,156,192,0.5)';
+    lossCtx.font = '10px JetBrains Mono';
+    lossCtx.fillText('Loss', 4, 20);
+    lossCtx.fillText(maxLoss.toFixed(4), 4, padding);
+    lossCtx.fillText(minLoss.toFixed(4), 4, lH - padding + 14);
+
+    // Draw loss curve
+    lossCtx.beginPath();
+    for (let i = 0; i < lossHistory.length; i++) {
+      const x = padding + (i / (lossHistory.length - 1)) * plotW;
+      const norm = maxLoss > minLoss ? (lossHistory[i] - minLoss) / (maxLoss - minLoss) : 0;
+      const y = padding + (1 - norm) * plotH;
+      if (i === 0) lossCtx.moveTo(x, y);
+      else lossCtx.lineTo(x, y);
+    }
+    lossCtx.strokeStyle = '#00e68a';
+    lossCtx.lineWidth = 2;
+    lossCtx.stroke();
+
+    // Glow effect
+    const lastI = lossHistory.length - 1;
+    const lastX = padding + (lastI / Math.max(1, lossHistory.length - 1)) * plotW;
+    const lastNorm = maxLoss > minLoss ? (lossHistory[lastI] - minLoss) / (maxLoss - minLoss) : 0;
+    const lastY = padding + (1 - lastNorm) * plotH;
+    lossCtx.beginPath();
+    lossCtx.arc(lastX, lastY, 5, 0, Math.PI * 2);
+    lossCtx.fillStyle = '#00e68a';
+    lossCtx.fill();
+    lossCtx.beginPath();
+    lossCtx.arc(lastX, lastY, 12, 0, Math.PI * 2);
+    lossCtx.fillStyle = 'rgba(0,230,138,0.2)';
+    lossCtx.fill();
+  }
+
+  let w0 = 0, w1 = 0.2;
+  const lrSlider = document.getElementById('lrSlider');
+  const lrValue = document.getElementById('lrValue');
+
+  lrSlider.addEventListener('input', () => {
+    lrValue.textContent = (parseFloat(lrSlider.value) / 10000).toFixed(4);
+  });
+
+  window.startGD = function() {
+    if (gdRunning) {
+      gdRunning = false;
+      cancelAnimationFrame(gdAnimId);
+      document.getElementById('gdBtn').textContent = '开始梯度下降';
+      return;
+    }
+
+    gdRunning = true;
+    document.getElementById('gdBtn').textContent = '停止';
+    w0 = 0;
+    w1 = 0.2;
+    gdPath = [[w0, w1]];
+    lossHistory = [computeLoss(w0, w1)];
+
+    function step() {
+      if (!gdRunning) return;
+      const lr = parseFloat(lrSlider.value) / 10000;
+      const [dw0, dw1] = computeGradients(w0, w1);
+      w0 -= lr * dw0;
+      w1 -= lr * dw1;
+      gdPath.push([w0, w1]);
+      lossHistory.push(computeLoss(w0, w1));
+
+      document.getElementById('gdIter').textContent = `iter: ${gdPath.length - 1}`;
+
+      drawGDPlot();
+      drawLossPlot();
+
+      if (gdPath.length < 500) {
+        gdAnimId = requestAnimationFrame(step);
+      } else {
+        gdRunning = false;
+        document.getElementById('gdBtn').textContent = '重新开始';
+      }
+    }
+    step();
+  };
+
+  // Initial draw
+  setTimeout(() => {
+    drawGDPlot();
+    drawLossPlot();
+  }, 200);
+})();
+
+// ========== REGULARIZATION VIZ ==========
+(function() {
+  window.switchReg = function(type) {
+    document.querySelectorAll('.reg-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.reg-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('reg-' + type).classList.add('active');
+  };
+
+  function drawNormBall(canvasId, type) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.min(rect.width, 400);
+    const h = Math.min(rect.height, 300);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const scale = 80;
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0,180,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = -5; i <= 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + i * scale / 2, 0);
+      ctx.lineTo(cx + i * scale / 2, h);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, cy + i * scale / 2);
+      ctx.lineTo(w, cy + i * scale / 2);
+      ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = 'rgba(0,180,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+    ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = 'rgba(139,156,192,0.5)';
+    ctx.font = '11px JetBrains Mono';
+    ctx.fillText('w₁', w - 20, cy - 8);
+    ctx.fillText('w₀', cx + 8, 16);
+
+    // Draw constraint region
+    ctx.beginPath();
+    if (type === 'l1' || type === 'lasso') {
+      // Diamond (L1)
+      const r = scale;
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx + r, cy);
+      ctx.lineTo(cx, cy + r);
+      ctx.lineTo(cx - r, cy);
+      ctx.closePath();
+    } else {
+      // Circle (L2)
+      ctx.arc(cx, cy, scale, 0, Math.PI * 2);
+    }
+    ctx.fillStyle = 'rgba(0,200,255,0.08)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,200,255,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Draw loss contours (ellipses)
+    for (let r = 1; r <= 4; r++) {
+      ctx.beginPath();
+      ctx.ellipse(cx + scale * 0.6, cy - scale * 0.3, r * scale * 0.5, r * scale * 0.35, 0.3, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,107,53,${0.15 + r * 0.05})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Intersection point
+    let ix, iy;
+    if (type === 'l1' || type === 'lasso') {
+      ix = cx;
+      iy = cy - scale;
+    } else {
+      const angle = Math.atan2(-0.3, 0.6);
+      ix = cx + scale * Math.cos(angle);
+      iy = cy + scale * Math.sin(angle);
+    }
+    ctx.beginPath();
+    ctx.arc(ix, iy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#00e68a';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(ix, iy, 10, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,230,138,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Title
+    ctx.fillStyle = 'rgba(139,156,192,0.4)';
+    ctx.font = '10px JetBrains Mono';
+    if (type === 'l1' || type === 'lasso') {
+      ctx.fillText('L1 constraint (diamond)', 8, h - 8);
+    } else {
+      ctx.fillText('L2 constraint (circle)', 8, h - 8);
+    }
+  }
+
+  setTimeout(() => {
+    drawNormBall('ridgeCanvas', 'l2');
+    drawNormBall('lassoCanvas', 'l1');
+    drawNormBall('elasticCanvas', 'l2');
+  }, 300);
+})();
+
+// ========== SMOOTH REVEAL FOR SECTIONS ==========
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function(e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+</body>
+</html>

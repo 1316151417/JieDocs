@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>刻意练习 · 第一性原理研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0a0e17;
+  --bg-surface: #111827;
+  --bg-card: #1a2332;
+  --bg-elevated: #1f2d3d;
+  --accent-gold: #d4a853;
+  --accent-amber: #f0b429;
+  --accent-warm: #e8915a;
+  --text-primary: #e8e2d6;
+  --text-secondary: #9ca3af;
+  --text-muted: #5c6574;
+  --border: #2a3545;
+  --border-accent: rgba(212, 168, 83, 0.3);
+  --gradient-gold: linear-gradient(135deg, #d4a853, #e8915a);
+  --gradient-blueprint: linear-gradient(180deg, rgba(212,168,83,0.03) 0%, rgba(10,14,23,0) 100%);
+}
+
+html { scroll-behavior: smooth; font-size: 16px; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: 'Noto Serif SC', serif;
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+/* Blueprint Grid Background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(212,168,83,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212,168,83,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+::selection { background: rgba(212,168,83,0.3); color: var(--text-primary); }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-gold); }
+
+/* ── Layout ── */
+.container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; position: relative; z-index: 1; }
+
+/* ── Hero ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(212,168,83,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(232,145,90,0.05) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 50%, rgba(10,14,23,1) 0%, var(--bg-deep) 100%);
+}
+
+.hero-content {
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  margin-bottom: 2rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.2s forwards;
+}
+
+.hero-title {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 900;
+  font-size: clamp(3rem, 8vw, 7rem);
+  line-height: 1.1;
+  margin-bottom: 1rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.4s forwards;
+}
+
+.hero-title .highlight {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-subtitle {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.6s forwards;
+}
+
+.hero-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.8s forwards;
+}
+
+.hero-meta span { color: var(--accent-gold); }
+
+.scroll-hint {
+  position: absolute;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 1s forwards;
+}
+
+.scroll-hint span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.scroll-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--accent-gold), transparent);
+  animation: scrollPulse 2s ease infinite;
+}
+
+@keyframes scrollPulse {
+  0%, 100% { opacity: 1; transform: scaleY(1); }
+  50% { opacity: 0.3; transform: scaleY(0.6); }
+}
+
+/* ── Navigation ── */
+.nav-toc {
+  position: fixed;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.nav-dot {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--text-muted);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nav-dot::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.nav-dot:hover::after { opacity: 1; }
+.nav-dot.active {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 12px rgba(212,168,83,0.4);
+}
+
+/* ── Sections ── */
+.section {
+  padding: 8rem 0;
+  position: relative;
+}
+
+.section-header {
+  margin-bottom: 4rem;
+  position: relative;
+}
+
+.section-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.section-number::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border-accent), transparent);
+}
+
+.section-title {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 900;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+.section-title .accent { color: var(--accent-gold); }
+
+.section-desc {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 680px;
+  line-height: 2;
+}
+
+/* ── Cards ── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s ease;
+  cursor: default;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-gold);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.card:hover { border-color: var(--border-accent); transform: translateY(-4px); }
+.card:hover::before { transform: scaleX(1); }
+
+.card-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.card-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  margin-bottom: 0.8rem;
+}
+
+.card h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+  line-height: 1.4;
+}
+
+.card p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+/* ── First Principles Breakdown ── */
+.principle-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 2rem;
+}
+
+.principle-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.principle-header {
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.3s ease;
+}
+
+.principle-header:hover { background: var(--bg-elevated); }
+
+.principle-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bg-deep);
+  background: var(--accent-gold);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.principle-header h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.principle-toggle {
+  width: 24px;
+  height: 24px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.principle-toggle::before,
+.principle-toggle::after {
+  content: '';
+  position: absolute;
+  background: var(--accent-gold);
+  transition: transform 0.3s ease;
+}
+
+.principle-toggle::before {
+  width: 14px;
+  height: 2px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.principle-toggle::after {
+  width: 2px;
+  height: 14px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.principle-item.open .principle-toggle::after { transform: translate(-50%, -50%) rotate(90deg); }
+
+.principle-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s ease;
+}
+
+.principle-item.open .principle-body { max-height: 800px; }
+
+.principle-body-inner {
+  padding: 0 2rem 2rem 5rem;
+  color: var(--text-secondary);
+  line-height: 2;
+  font-size: 0.95rem;
+}
+
+.principle-body-inner strong { color: var(--accent-gold); font-weight: 700; }
+
+/* ── Comparison Table ── */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2rem;
+  font-size: 0.95rem;
+}
+
+.comparison-table th {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  padding: 1rem 1.5rem;
+  text-align: left;
+  border-bottom: 2px solid var(--accent-gold);
+}
+
+.comparison-table td {
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.comparison-table tr:hover td { background: rgba(212,168,83,0.03); }
+
+.badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.badge-danger { background: rgba(239,68,68,0.15); color: #ef4444; }
+.badge-success { background: rgba(34,197,94,0.15); color: #22c55e; }
+
+/* ── Timeline / Roadmap ── */
+.timeline {
+  position: relative;
+  padding-left: 3rem;
+  margin-top: 3rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent-gold), var(--border));
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 3rem;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: all 0.6s ease;
+}
+
+.timeline-item.visible { opacity: 1; transform: translateX(0); }
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -3rem;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  background: var(--bg-deep);
+  border: 2px solid var(--accent-gold);
+  border-radius: 50%;
+  transform: translateX(-5px);
+  z-index: 1;
+}
+
+.timeline-item.active::before {
+  background: var(--accent-gold);
+  box-shadow: 0 0 12px rgba(212,168,83,0.5);
+}
+
+.timeline-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: var(--accent-gold);
+  margin-bottom: 0.5rem;
+}
+
+.timeline-item h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.timeline-item p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+/* ── Case Study ── */
+.case-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.case-tab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  padding: 1rem 2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+
+.case-tab:hover { color: var(--text-secondary); }
+.case-tab.active {
+  color: var(--accent-gold);
+  border-bottom-color: var(--accent-gold);
+}
+
+.case-panel { display: none; animation: fadeUp 0.5s ease; }
+.case-panel.active { display: block; }
+
+.case-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 2.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+}
+
+.case-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6rem;
+  opacity: 0.8;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.case-text h4 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.case-text p {
+  color: var(--text-secondary);
+  line-height: 2;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.case-stat {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.case-stat-item .stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--accent-gold);
+  display: block;
+}
+
+.case-stat-item .stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Interactive Exercise ── */
+.exercise-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-gold);
+  border-radius: 2px;
+  padding: 2.5rem;
+  margin-top: 2rem;
+}
+
+.exercise-box h4 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+
+.exercise-step {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.exercise-step:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+.exercise-step label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+  font-size: 1.05rem;
+}
+
+.exercise-step textarea {
+  width: 100%;
+  min-height: 80px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 1rem;
+  color: var(--text-primary);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.95rem;
+  line-height: 1.8;
+  resize: vertical;
+  transition: border-color 0.3s ease;
+}
+
+.exercise-step textarea:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+.exercise-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.8rem 2rem;
+  border: 1px solid var(--accent-gold);
+  background: transparent;
+  color: var(--accent-gold);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 2px;
+}
+
+.btn:hover { background: var(--accent-gold); color: var(--bg-deep); }
+
+.btn-primary { background: var(--accent-gold); color: var(--bg-deep); }
+.btn-primary:hover { background: var(--accent-amber); }
+
+/* ── Radar Chart ── */
+.radar-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 3rem 0;
+}
+
+.radar-svg { max-width: 450px; width: 100%; }
+
+/* ── Misconceptions ── */
+.myth-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.myth-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 2rem;
+  position: relative;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.myth-card:hover { border-color: rgba(239,68,68,0.3); }
+
+.myth-front, .myth-back { transition: all 0.3s ease; }
+
+.myth-front .myth-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #ef4444;
+  margin-bottom: 0.8rem;
+}
+
+.myth-front h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.myth-front p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+.myth-back {
+  display: none;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.myth-card.revealed .myth-back { display: block; }
+
+.myth-back .truth-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #22c55e;
+  margin-bottom: 0.5rem;
+}
+
+.myth-back p {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+/* ── Quote ── */
+.quote-block {
+  position: relative;
+  padding: 3rem 0;
+  margin: 4rem 0;
+  text-align: center;
+}
+
+.quote-block::before {
+  content: '"';
+  font-family: 'Playfair Display', serif;
+  font-size: 8rem;
+  color: rgba(212,168,83,0.15);
+  position: absolute;
+  top: -1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  line-height: 1;
+}
+
+.quote-block blockquote {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+  color: var(--text-primary);
+  max-width: 700px;
+  margin: 0 auto 1rem;
+  line-height: 1.6;
+  position: relative;
+  z-index: 1;
+}
+
+.quote-block cite {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: var(--accent-gold);
+  font-style: normal;
+}
+
+/* ── Checklist ── */
+.checklist {
+  list-style: none;
+  margin-top: 2rem;
+}
+
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.checklist li:hover { padding-left: 0.5rem; }
+
+.check-box {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.checklist li.checked .check-box {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+}
+
+.checklist li.checked .check-box::after {
+  content: '✓';
+  font-size: 0.7rem;
+  color: var(--bg-deep);
+  font-weight: 700;
+}
+
+.checklist li.checked span {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* ── Progress Bar ── */
+.progress-bar-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--bg-card);
+  z-index: 200;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--gradient-gold);
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+/* ── Footer ── */
+.footer {
+  padding: 4rem 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.footer p {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Heatmap ── */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  max-width: 400px;
+  margin: 2rem auto;
+}
+
+.heat-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  cursor: default;
+  position: relative;
+}
+
+.heat-cell:hover { transform: scale(1.3); z-index: 2; }
+
+.heat-0 { background: var(--bg-elevated); }
+.heat-1 { background: rgba(212,168,83,0.15); }
+.heat-2 { background: rgba(212,168,83,0.3); }
+.heat-3 { background: rgba(212,168,83,0.5); }
+.heat-4 { background: rgba(212,168,83,0.75); }
+.heat-5 { background: rgba(212,168,83,1); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .container { padding: 0 1.2rem; }
+  .section { padding: 5rem 0; }
+  .case-content { grid-template-columns: 1fr; }
+  .nav-toc { display: none; }
+  .case-tabs { overflow-x: auto; }
+  .case-tab { padding: 0.8rem 1rem; white-space: nowrap; }
+  .card-grid { grid-template-columns: 1fr; }
+  .case-stat { flex-wrap: wrap; gap: 1rem; }
+}
+
+/* ── Tooltip ── */
+.tooltip {
+  position: absolute;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-primary);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+}
+
+/* ── Pill tabs ── */
+.pill-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+.pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  padding: 0.4rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pill:hover, .pill.active {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+  background: rgba(212,168,83,0.08);
+}
+
+/* Formula block */
+.formula-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 2rem;
+  text-align: center;
+  margin: 2rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  position: relative;
+  overflow: hidden;
+}
+
+.formula-block::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-gold);
+}
+
+.formula-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.formula {
+  font-size: clamp(1rem, 2.5vw, 1.6rem);
+  color: var(--text-primary);
+  line-height: 1.8;
+}
+
+.formula .var-highlight { color: var(--accent-gold); font-weight: 600; }
+.formula .op { color: var(--text-muted); margin: 0 0.5rem; }
+
+/* Level indicator */
+.level-indicator {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.level-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.level-fill {
+  height: 100%;
+  background: var(--gradient-gold);
+  border-radius: 2px;
+  transition: width 1s ease;
+}
+
+.level-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  min-width: 100px;
+}
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar-container">
+  <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<!-- Navigation Dots -->
+<nav class="nav-toc" id="navToc">
+  <div class="nav-dot active" data-target="hero" data-label="封面"></div>
+  <div class="nav-dot" data-target="principles" data-label="第一性原理"></div>
+  <div class="nav-dot" data-target="framework" data-label="核心框架"></div>
+  <div class="nav-dot" data-target="comparison" data-label="对比分析"></div>
+  <div class="nav-dot" data-target="cases" data-label="案例研究"></div>
+  <div class="nav-dot" data-target="misconceptions" data-label="常见误区"></div>
+  <div class="nav-dot" data-target="roadmap" data-label="实施路线"></div>
+  <div class="nav-dot" data-target="exercise" data-label="实践工坊"></div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════ HERO ══════════════════════════════════════════════════════ -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-label">Research Report · First-Principles Analysis</div>
+    <h1 class="hero-title">
+      <span class="highlight">刻意练习</span><br>深度研究报告
+    </h1>
+    <p class="hero-subtitle">The Architecture of Deliberate Practice</p>
+    <div class="hero-meta">
+      方法论 <span>·</span> 第一性原理 <span>·</span> 建筑师视角 <span>·</span> 交互式研读
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ SECTION 1 ═══════════════════════════════════════════════ -->
+<section class="section" id="principles">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">Section 01 — Deconstruction</div>
+      <h2 class="section-title">第一性原理<span class="accent">拆解</span></h2>
+      <p class="section-desc">
+        将"刻意练习"打碎到最基本的元素——不可再分的原子级真理。一切复杂的表象，都是基本元素组合的结果。
+      </p>
+    </div>
+
+    <div class="formula-block reveal">
+      <div class="formula-label">刻意练习的本质公式</div>
+      <div class="formula">
+        <span class="var-highlight">卓越表现</span>
+        <span class="op">=</span>
+        <span class="var-highlight">心理表征</span>
+        <span class="op">×</span>
+        <span class="var-highlight">精准反馈</span>
+        <span class="op">×</span>
+        <span class="var-highlight">舒适区边缘</span>
+        <span class="op">∫</span>
+        <span class="var-highlight">时间</span>
+      </div>
+    </div>
+
+    <!-- Accordion Principles -->
+    <div class="principle-stack reveal">
+      <div class="principle-item open">
+        <div class="principle-header" onclick="togglePrinciple(this)">
+          <div class="principle-num">1</div>
+          <h3>舒适区边缘——成长只发生在边界上</h3>
+          <div class="principle-toggle"></div>
+        </div>
+        <div class="principle-body">
+          <div class="principle-body-inner">
+            <strong>基本事实：</strong>人类大脑具有神经可塑性（neuroplasticity），但只有在面对"刚好超出当前能力"的任务时，神经元才会建立新的连接。太简单，大脑不做功；太困难，系统崩溃。<br><br>
+            <strong>建筑学类比：</strong>就像结构力学中的"弹性极限"——材料在弹性范围内受力可以恢复，超过屈服点才会产生永久变形（塑性形变）。学习也是如此，你需要将自己推到"屈服点"附近，才能获得真正的结构重塑。<br><br>
+            <strong>实践指导：</strong>为每次练习设定一个"刚好够不着"的目标。如果成功率低于 50%，说明太难；高于 80%，说明太简单。理想区间在 <strong>55%–75% 的成功率</strong>。
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-item">
+        <div class="principle-header" onclick="togglePrinciple(this)">
+          <div class="principle-num">2</div>
+          <h3>心理表征——专家脑中的内在地图</h3>
+          <div class="principle-toggle"></div>
+        </div>
+        <div class="principle-body">
+          <div class="principle-body-inner">
+            <strong>基本事实：</strong>专家与新手的根本区别不在于"知道更多"，而在于拥有更精细、更结构化的心理表征（mental representations）——对领域内信息的高层次组织模式。<br><br>
+            <strong>建筑学类比：</strong>新手看到一张建筑蓝图只看到线条，建筑师看到结构体系、荷载传递路径、材料应力分布、空间逻辑关系。这就是心理表征的差异——它不是知识的堆叠，而是<strong>认知结构的建筑</strong>。<br><br>
+            <strong>实践指导：</strong>刻意练习的核心不是"重复"，而是"构建和优化心理表征"。每轮练习后问自己：我脑中对这个领域的"地图"是否更精确了？我能否更快识别模式？
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-item">
+        <div class="principle-header" onclick="togglePrinciple(this)">
+          <div class="principle-num">3</div>
+          <h3>即时精准反馈——没有回路就没有进化</h3>
+          <div class="principle-toggle"></div>
+        </div>
+        <div class="principle-body">
+          <div class="principle-body-inner">
+            <strong>基本事实：</strong>大脑的学习机制依赖于"预测→行动→结果→修正"的闭环。没有反馈，大脑无法判断哪些神经通路应该强化、哪些应该修剪。反馈的质量和速度决定了学习效率。<br><br>
+            <strong>建筑学类比：</strong>这就像有限元分析（FEA）中的迭代收敛过程——每一轮计算都要对比实际应力与目标值的偏差，然后调整参数重新计算。没有收敛判据的计算永远无法得出正确解。<br><br>
+            <strong>实践指导：</strong>练习必须设计反馈机制。反馈的三个维度：<strong>即时性</strong>（越快越好）、<strong>准确性</strong>（指向具体错误而非笼统评价）、<strong>可操作性</strong>（告诉你下一步怎么改）。
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-item">
+        <div class="principle-header" onclick="togglePrinciple(this)">
+          <div class="principle-num">4</div>
+          <h3>专注力——不可压缩的认知投入</h3>
+          <div class="principle-toggle"></div>
+        </div>
+        <div class="principle-body">
+          <div class="principle-body-inner">
+            <strong>基本事实：</strong>刻意练习是高认知负荷的活动。研究表明，顶级 performers 每天真正深度专注的刻意练习时间通常不超过 <strong>4-5 小时</strong>，且通常分为 60-90 分钟的区间。<br><br>
+            <strong>建筑学类比：</strong>这就像材料的疲劳极限——持续的周期性载荷会导致裂纹萌生和扩展。大脑也需要恢复期来完成"突触巩固"（synaptic consolidation）。不懂休息的练习者，如同不知停工检修的桥梁。<br><br>
+            <strong>实践指导：</strong>用"番茄钟"变体——60-90 分钟深度专注 + 20-30 分钟完全脱离。追踪每周的"深度专注总时长"而非"练习总时长"。
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-item">
+        <div class="principle-header" onclick="togglePrinciple(this)">
+          <div class="principle-num">5</div>
+          <h3>导师与范式——站在已有架构之上</h3>
+          <div class="principle-toggle"></div>
+        </div>
+        <div class="principle-body">
+          <div class="principle-body-inner">
+            <strong>基本事实：</strong>在成熟领域，前人已经构建了大量有效的发展路径和训练方法。好的导师或训练方案可以让你跳过大量无效探索，直接进入最有效的练习区域。<br><br>
+            <strong>建筑学类比：</strong>没有建筑师是从烧砖开始学建筑的。设计规范、结构图集、经典案例都是前人经验的结晶。从零开始推导一切不仅是浪费，更是对知识传承的误解。<br><br>
+            <strong>实践指导：</strong>在投入大量时间自行摸索前，先寻找该领域最成熟的训练方案。导师的核心价值不是"教你知识"，而是<strong>"帮你设计练习"</strong>——帮你定位舒适区边缘，构建恰当的反馈回路。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ SECTION 2 ═══════════════════════════════════════════════ -->
+<section class="section" id="framework">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">Section 02 — Architecture</div>
+      <h2 class="section-title">核心<span class="accent">架构模型</span></h2>
+      <p class="section-desc">
+        将第一性原理的五个基本元素组装为一个可运行的系统——这是刻意练习的"结构设计图"。
+      </p>
+    </div>
+
+    <!-- Radar Chart -->
+    <div class="radar-container reveal">
+      <svg class="radar-svg" viewBox="0 0 400 400" id="radarChart">
+        <!-- Background pentagons -->
+        <g id="radarBg"></g>
+        <!-- Data polygon -->
+        <g id="radarData"></g>
+        <!-- Labels -->
+        <g id="radarLabels"></g>
+      </svg>
+    </div>
+
+    <div class="pill-group reveal" style="justify-content: center;">
+      <span class="pill active" onclick="setRadarPreset('beginner')">初学者模式</span>
+      <span class="pill" onclick="setRadarPreset('intermediate')">进阶者模式</span>
+      <span class="pill" onclick="setRadarPreset('expert')">专家模式</span>
+    </div>
+
+    <div class="quote-block reveal">
+      <blockquote>
+        The key to expertise is not experience per se, but deliberate practice — activities specifically designed to improve performance.
+      </blockquote>
+      <cite>— K. Anders Ericsson</cite>
+    </div>
+
+    <div class="card-grid reveal">
+      <div class="card">
+        <span class="card-icon">🎯</span>
+        <div class="card-label">Step 01</div>
+        <h3>定义明确的子目标</h3>
+        <p>将宏大目标拆解为可测量的最小技能单元。不是"弹好这首曲子"，而是"第 23-31 小节的左手八度跳跃在 tempo 120 下连续三次零失误"。</p>
+        <div class="level-indicator" style="margin-top:1.2rem;">
+          <div class="level-label">目标精度</div>
+          <div class="level-bar"><div class="level-fill" style="width:95%"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <span class="card-icon">🔬</span>
+        <div class="card-label">Step 02</div>
+        <h3>设计反馈回路</h3>
+        <p>为每个子目标配置反馈源：录音回放、教练观察、数据追踪、对标准确率。反馈必须能回答"我刚才哪里做错了？为什么？下一步怎么调？"</p>
+        <div class="level-indicator" style="margin-top:1.2rem;">
+          <div class="level-label">反馈精度</div>
+          <div class="level-bar"><div class="level-fill" style="width:88%"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <span class="card-icon">⚡</span>
+        <div class="card-label">Step 03</div>
+        <h3>精准打击弱点</h3>
+        <p>80/20 法则在练习中极化为 95/5——你 95% 的进步来自精准攻克 5% 的核心弱点。识别它们，隔离它们，集中火力消灭它们。</p>
+        <div class="level-indicator" style="margin-top:1.2rem;">
+          <div class="level-label">针对性</div>
+          <div class="level-bar"><div class="level-fill" style="width:92%"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <span class="card-icon">🔄</span>
+        <div class="card-label">Step 04</div>
+        <h3>迭代优化心理表征</h3>
+        <p>每轮练习后回顾：我的内心模型是否更精确了？能否预测下一次错误？能否即兴处理意外情况？心理表征的质量决定了迁移能力的上限。</p>
+        <div class="level-indicator" style="margin-top:1.2rem;">
+          <div class="level-label">表征深度</div>
+          <div class="level-bar"><div class="level-fill" style="width:85%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ SECTION 3 ═══════════════════════════════════════════════ -->
+<section class="section" id="comparison">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">Section 03 — Contrast</div>
+      <h2 class="section-title">刻意练习 vs <span class="accent">天真练习</span></h2>
+      <p class="section-desc">
+        大多数人把"重复"当成"练习"，把"经历"当成"经验"。这是结构工程师把"堆砌"当成"建造"。
+      </p>
+    </div>
+
+    <div class="reveal">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>天真练习 (Naive Practice)</th>
+            <th>刻意练习 (Deliberate Practice)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>目标设定</strong></td>
+            <td>模糊："今天练两小时琴" <span class="badge badge-danger">低效</span></td>
+            <td>精确："降B段落的指法转换速度提升到♩=132" <span class="badge badge-success">高效</span></td>
+          </tr>
+          <tr>
+            <td><strong>注意力</strong></td>
+            <td>自动化执行，心不在焉</td>
+            <td>高度专注，监控每个细节偏差</td>
+          </tr>
+          <tr>
+            <td><strong>反馈</strong></td>
+            <td>无反馈或笼统反馈（"感觉还行"）</td>
+            <td>即时、精准、可操作的反馈</td>
+          </tr>
+          <tr>
+            <td><strong>舒适区</strong></td>
+            <td>停留在已掌握的区域，享受"流畅感"</td>
+            <td>持续在舒适区边缘挣扎</td>
+          </tr>
+          <tr>
+            <td><strong>弱点处理</strong></td>
+            <td>回避弱点，反复练习已擅长的部分</td>
+            <td>直面弱点，隔离攻克</td>
+          </tr>
+          <tr>
+            <td><strong>时间积累效果</strong></td>
+            <td>10年经验 = 1年经验 × 10次</td>
+            <td>10年经验 = 持续进化的10个层级</td>
+          </tr>
+          <tr>
+            <td><strong>最终结果</strong></td>
+            <td>达到"还行"的水平后长期停滞</td>
+            <td>持续进步，逼近个体潜能上限</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Heatmap Visualization -->
+    <div class="reveal" style="margin-top:4rem; text-align:center;">
+      <div class="card-label" style="margin-bottom:1rem;">练习质量热力图 · 10周对比</div>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;">颜色越深 = 练习质量越高（基于专注度 × 反馈质量 × 挑战度综合评估）</p>
+      <div style="display:flex; justify-content:center; gap:3rem; flex-wrap:wrap;">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:0.65rem; letter-spacing:0.2em; color:var(--text-muted); margin-bottom:0.8rem; text-transform:uppercase;">天真练习者</div>
+          <div class="heatmap-grid" id="heatmapNaive"></div>
+        </div>
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:0.65rem; letter-spacing:0.2em; color:var(--accent-gold); margin-bottom:0.8rem; text-transform:uppercase;">刻意练习者</div>
+          <div class="heatmap-grid" id="heatmapDeliberate"></div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center; gap:1rem; margin-top:1rem; align-items:center;">
+        <span style="font-family:'JetBrains Mono',monospace; font-size:0.6rem; color:var(--text-muted);">低</span>
+        <div style="width:16px;height:16px;background:var(--bg-elevated);border-radius:2px;"></div>
+        <div style="width:16px;height:16px;background:rgba(212,168,83,0.15);border-radius:2px;"></div>
+        <div style="width:16px;height:16px;background:rgba(212,168,83,0.3);border-radius:2px;"></div>
+        <div style="width:16px;height:16px;background:rgba(212,168,83,0.5);border-radius:2px;"></div>
+        <div style="width:16px;height:16px;background:rgba(212,168,83,0.75);border-radius:2px;"></div>
+        <div style="width:16px;height:16px;background:rgba(212,168,83,1);border-radius:2px;"></div>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:0.6rem; color:var(--text-muted);">高</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ SECTION 4 ═══════════════════════════════════════════════ -->
+<section class="section" id="cases">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">Section 04 — Case Studies</div>
+      <h2 class="section-title">案例<span class="accent">解剖</span></h2>
+      <p class="section-desc">
+        从不同领域的顶级 performers 中提取刻意练习的结构原型。
+      </p>
+    </div>
+
+    <div class="case-tabs reveal">
+      <div class="case-tab active" onclick="switchCase(0, this)">国际象棋</div>
+      <div class="case-tab" onclick="switchCase(1, this)">音乐演奏</div>
+      <div class="case-tab" onclick="switchCase(2, this)">编程工程</div>
+      <div class="case-tab" onclick="switchCase(3, this)">写作创作</div>
+    </div>
+
+    <div class="case-panel active reveal" id="casePanel0">
+      <div class="case-content">
+        <div class="case-visual">♟</div>
+        <div class="case-text">
+          <h4>国际象棋大师的认知架构</h4>
+          <p>
+            <strong>关键发现：</strong>大师并非计算更多步数，而是拥有约 <strong>50,000-100,000 个棋型组块</strong>（chunk）的心理表征库。他们"看到"棋盘的方式与新手根本不同。
+          </p>
+          <p>
+            <strong>刻意练习结构：</strong>① 大量研究大师棋局（建立模式库）→ ② 在有指导的情况下复盘自己的棋局（精准反馈）→ ③ 针对性解决开局/中局/残局的薄弱环节 → ④ 高压对局测试
+          </p>
+          <p>
+            <strong>第一性原理：</strong>棋力的本质 = 模式识别速度 × 计算深度 × 心理韧性。刻意练习针对的不是"下更多棋"，而是优化这三个基本维度。
+          </p>
+          <div class="case-stat">
+            <div class="case-stat-item">
+              <span class="stat-val">10,000+</span>
+              <span class="stat-label">小时中位数</span>
+            </div>
+            <div class="case-stat-item">
+              <span class="stat-val">50K+</span>
+              <span class="stat-label">棋型组块</span>
+            </div>
+            <div class="case-stat-item">
+              <span class="stat-val">~15年</span>
+              <span class="stat-label">达到大师级</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="case-panel" id="casePanel1">
+      <div class="case-content">
+        <div class="case-visual">🎻</div>
+        <div class="case-text">
+          <h4>柏林音乐学院小提琴研究</h4>
+          <p>
+            <strong>经典实验：</strong>Ericsson 在柏林音乐学院将学生分为三组。最佳组的刻意练习时间显著多于其他两组，而三组的"非结构化练习"时间差异不大。
+          </p>
+          <p>
+            <strong>刻意练习结构：</strong>① 单独练习（非合奏）→ ② 针对困难段落的慢速拆解 → ③ 使用节拍器精确控制速度梯度 → ④ 录音自评 + 教师反馈 → ⑤ 逐步提升至目标速度
+          </p>
+          <p>
+            <strong>第一性原理：</strong>音乐演奏 = 精细运动控制 × 音乐理解 × 情感表达。刻意练习将这三者解耦，分别优化后再整合。
+          </p>
+          <div class="case-stat">
+            <div class="case-stat-item">
+              <span class="stat-val">3.5h</span>
+              <span class="stat-label">日均刻意练习</span>
+            </div>
+            <div class="case-stat-item">
+              <span class="stat-val">7,410h</span>
+              <span class="stat-label">20岁累计量</span>
+            </div>
+            <div class="case-stat-item">
+              <span class="stat-val">Solo</span>
+              <span class="stat-label">独自练习为主</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="case-panel" id="casePanel2">
+      <div class="case-content">
+        <div class="case-visual">⌨️</div>
+        <div class="case-text">
+          <h4>软件工程师的刻意练习路径</h4>
+          <p>
+            <strong>关键洞察：</strong>很多程序员"写了 10 年代码"却只有"1 年经验重复了 10 次"。原因是日常工作中大量时间用于 CRUD 业务逻辑，而非在能力边缘挑战。
+          </p>
+          <p>
+            <strong>刻意练习结构：</strong>① LeetCode/HackerRank 算法题（限定时间 + 难度递增）→ ② 阅读顶级开源项目源码（构建心智模型）→ ③ Code Review 中获取精准反馈 → ④ 重构自己的旧代码（审视自己的错误）→ ⑤ 跨范式编程（强制跳出舒适区）
+          </p>
+          <p>
+            <strong>第一性原理：</strong>编程能力 = 抽象建模能力 × 问题分解能力 × 调试直觉 × 工具熟练度。刻意练习应分别对准这些基础维度。
+          </p>
+          <div class="case-stat">
+            <div class="case-stat-item">
+              <span class="stat-val">1-2h</span>
+              <span class="stat-label">日均专项练习</span>
+            </div>
+            <div class="case-stat-item">
+              <span class="stat-val">6个月</span>
+              <span class="stat-label">可见跃迁周期</span>
+            </div>
+            <div class="case-stat-item">
+              <span class="stat-val">Code Review</span>
+              <span class="stat-label">核心反馈源</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="case-panel" id="casePanel3">
+      <div class="case-content">
+        <div class="case-visual">✍️</div>
+        <div class="case-text">
+          <h4>写作能力的刻意进化</h4>
+          <p>
+            <strong>关键洞察：</strong>写作能力的提升不来自"写更多"，而来自"有策略地写+精准地改"。大量人写了百万字但水平停滞，因为缺少反馈回路和针对性训练。
+          </p>
+          <p>
+            <strong>刻意练习结构：</strong>① 大量拆解经典作品的结构（逆向工程）→ ② 针对薄弱环节的专项训练（如只练对话、只练开头）→ ③ 获取有质量的编辑/读者反馈 → ④ 同一素材的不同风格改写（强制跳出舒适区）→ ⑤ 限时写作（提升即时组织能力）
+          </p>
+          <p>
+            <strong>第一性原理：</strong>写作 = 信息组织 × 读者心理建模 × 语言精确度 × 风格控制力。刻意练习将这四个维度独立训练。
+          </p>
+          <div class="case-stat">
+            <div class="case-stat-item">
+              <span class="stat-val">500+</span>
+              <span class="stat-label">分析经典作品数</span>
+            </div>
+            <div class="case-stat-item">
+              <span class="stat-val">5-10稿</span>
+              <span class="stat-label">单篇迭代次数</span>
+            </div>
+            <div class="case-stat-item">
+              <span class="stat-val">专项突破</span>
+              <span class="stat-label">训练策略</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ SECTION 5 ═══════════════════════════════════════════════ -->
+<section class="section" id="misconceptions">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">Section 05 — Myth Busting</div>
+      <h2 class="section-title">常见<span class="accent">误区</span></h2>
+      <p class="section-desc">
+        关于刻意练习最流行的误解——点击翻转查看真相。
+      </p>
+    </div>
+
+    <div class="myth-grid reveal">
+      <div class="myth-card" onclick="this.classList.toggle('revealed')">
+        <div class="myth-front">
+          <div class="myth-label">误区 #1</div>
+          <h4>"一万小时定律"</h4>
+          <p>只要练够一万小时就能成为专家。</p>
+        </div>
+        <div class="myth-back">
+          <div class="truth-label">真相</div>
+          <p>Ericsson 的研究从未声称"一万小时"是普遍规律。这只是一个中位数估计，不同领域差异巨大。更关键的是——<strong>小时数毫无意义，练习质量才是一切</strong>。一万小时的天真练习只会让你成为"熟练的新手"。</p>
+        </div>
+      </div>
+
+      <div class="myth-card" onclick="this.classList.toggle('revealed')">
+        <div class="myth-front">
+          <div class="myth-label">误区 #2</div>
+          <h4>"天赋决定上限"</h4>
+          <p>没有天赋，再怎么刻意练习也没用。</p>
+        </div>
+        <div class="myth-back">
+          <div class="truth-label">真相</div>
+          <p>Ericsson 的核心结论之一是：<strong>在大多数领域，刻意练习可以大幅重塑能力</strong>。基因确实影响起点和某些极端上限（如身高对篮球），但在编程、写作、音乐、商业等领域，刻意练习的作用远超多数人的想象。"天赋论"往往是对低效练习的合理化。</p>
+        </div>
+      </div>
+
+      <div class="myth-card" onclick="this.classList.toggle('revealed')">
+        <div class="myth-front">
+          <div class="myth-label">误区 #3</div>
+          <h4>"刻意练习 = 痛苦地逼自己"</h4>
+          <p>刻意练习意味着一直做自己讨厌的事。</p>
+        </div>
+        <div class="myth-back">
+          <div class="truth-label">真相</div>
+          <p>刻意练习确实是"不舒服"的，但这里的"不舒服"是<strong>认知上的挑战感</strong>，不是精神折磨。好的刻意练习设计应该让你进入<strong>心流状态</strong>——挑战刚好超出能力，但不至于焦虑。如果练习让你持续痛苦，说明设计有问题。</p>
+        </div>
+      </div>
+
+      <div class="myth-card" onclick="this.classList.toggle('revealed')">
+        <div class="myth-front">
+          <div class="myth-label">误区 #4</div>
+          <h4>"经验丰富 = 专业水平"</h4>
+          <p>做了20年的人一定比做了5年的人强。</p>
+        </div>
+        <div class="myth-back">
+          <div class="truth-label">真相</div>
+          <p>研究反复证明：在很多领域（如医疗诊断、教学、编程），经验年限与专业表现的相关性出奇地低。原因在于大多数人在达到"够用"水平后就停止了刻意练习，转为<strong>自动化执行模式</strong>。20年经验 ≠ 20年成长。</p>
+        </div>
+      </div>
+
+      <div class="myth-card" onclick="this.classList.toggle('revealed')">
+        <div class="myth-front">
+          <div class="myth-label">误区 #5</div>
+          <h4>"刻意练习只适用于技能训练"</h4>
+          <p>创造力、领导力、人际能力无法刻意练习。</p>
+        </div>
+        <div class="myth-back">
+          <div class="truth-label">真相</div>
+          <p>创造力不是凭空出现的"灵感"——它是深厚领域知识 + 跨域联想能力 + 审美判断力的综合产物。<strong>这些子能力都可以通过刻意练习提升</strong>。领导力同理——它可拆解为沟通能力、决策框架、情绪管理等可训练的维度。</p>
+        </div>
+      </div>
+
+      <div class="myth-card" onclick="this.classList.toggle('revealed')">
+        <div class="myth-front">
+          <div class="myth-label">误区 #6</div>
+          <h4>"我需要先找到正确方法"</h4>
+          <p>在找到最佳练习方法之前，我不应该开始。</p>
+        </div>
+        <div class="myth-back">
+          <div class="truth-label">真相</div>
+          <p>这本身就是一种拖延策略。最好的方法往往在练习过程中浮现。先从该领域公认的成熟训练方案开始，<strong>在实践中迭代优化</strong>。等待"完美方案"的最大成本是——你一直停在起点。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ SECTION 6 ═══════════════════════════════════════════════ -->
+<section class="section" id="roadmap">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">Section 06 — Implementation</div>
+      <h2 class="section-title">实施<span class="accent">路线图</span></h2>
+      <p class="section-desc">
+        从建筑蓝图到施工完成——刻意练习的四阶段实施路径。
+      </p>
+    </div>
+
+    <div class="timeline reveal">
+      <div class="timeline-item active">
+        <div class="timeline-label">Phase 1 · Week 1-2</div>
+        <h3>勘测与地基 — 评估现状，定义目标</h3>
+        <p>
+          <strong>动作1：能力审计。</strong>诚实地评估自己在目标领域的当前水平。找到 2-3 个该领域的专家或导师，请他们给出评估。<br>
+          <strong>动作2：目标解构。</strong>将最终目标拆解为 5-8 个可独立训练的子技能，按"影响力 × 短板程度"排序。<br>
+          <strong>动作3：设计第一个"最小可行练习单元"。</strong>60分钟，包含明确目标、反馈机制、弱点聚焦。
+        </p>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-label">Phase 2 · Week 3-8</div>
+        <h3>框架搭建 — 建立练习系统</h3>
+        <p>
+          <strong>动作1：建立每日练习节奏。</strong>固定时间段、固定地点、消除干扰。初始目标：每天 60-90 分钟高质量刻意练习。<br>
+          <strong>动作2：构建反馈系统。</strong>选择至少两种反馈方式（如：录音/录像自评 + 导师/同伴反馈），每次练习后 15 分钟内完成反馈处理。<br>
+          <strong>动作3：建立追踪表。</strong>记录每次练习的目标、结果、反馈、下一轮调整。用数据驱动进步。
+        </p>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-label">Phase 3 · Month 3-6</div>
+        <h3>结构深化 — 攻克核心难点</h3>
+        <p>
+          <strong>动作1：瓶颈诊断。</strong>根据前 8 周的数据，识别最制约整体表现的 2-3 个核心瓶颈。将 70% 的练习时间分配给它们。<br>
+          <strong>动作2：心理表征优化。</strong>开始进行"专家思维模拟"——不只做练习，还分析专家为什么这样做。建立领域内的因果模型。<br>
+          <strong>动作3：提高难度梯度。</strong>系统性提升练习难度。如果某个练习的成功率持续 >80%，说明你已经离开了成长区。
+        </p>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-label">Phase 4 · Month 6+</div>
+        <h3>精装与维护 — 持续进化</h3>
+        <p>
+          <strong>动作1：周期化训练。</strong>像运动员一样设计"训练周期"——基础期、强化期、测试期、恢复期循环往复。<br>
+          <strong>动作2：跨域迁移。</strong>将刻意练习中培养的元能力（如：模式识别、快速反馈处理）迁移到相关领域，构建复合优势。<br>
+          <strong>动作3：教学相长。</strong>开始教别人——教学是最强的"心理表征压力测试"，能暴露出你以为理解但实际模糊的知识。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ SECTION 7 ═══════════════════════════════════════════════ -->
+<section class="section" id="exercise">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">Section 07 — Workshop</div>
+      <h2 class="section-title">实践<span class="accent">工坊</span></h2>
+      <p class="section-desc">
+        立即行动——为自己设计第一个刻意练习方案。填写以下步骤，生成你的个人化练习蓝图。
+      </p>
+    </div>
+
+    <div class="exercise-box reveal">
+      <h4>Interactive Workshop · 刻意练习方案设计器</h4>
+
+      <div class="exercise-step">
+        <label>1. 我想提升的核心能力是什么？</label>
+        <textarea placeholder="例：编程中的算法设计能力 / 英语口语流利度 / 数据分析能力..."></textarea>
+      </div>
+
+      <div class="exercise-step">
+        <label>2. 我目前的水平在哪？（诚实评估）</label>
+        <textarea placeholder="例：能解决 LeetCode Medium 题目，但 Hard 题目经常卡住。时间复杂度分析不熟练..."></textarea>
+      </div>
+
+      <div class="exercise-step">
+        <label>3. 可以将这个能力拆解为哪些子技能？</label>
+        <textarea placeholder="例：① 数据结构选择 ② 算法模式识别 ③ 时间/空间复杂度分析 ④ 边界条件处理 ⑤ 代码实现速度..."></textarea>
+      </div>
+
+      <div class="exercise-step">
+        <label>4. 我最薄弱的 1-2 个子技能是什么？</label>
+        <textarea placeholder="例：算法模式识别——看到题目后不知道该用什么算法..."></textarea>
+      </div>
+
+      <div class="exercise-step">
+        <label>5. 设计一个60分钟的刻意练习单元：</label>
+        <textarea placeholder="例：前10分钟：回顾昨天的错题和反馈。中间40分钟：限时做3道聚焦于'动态规划'的题目，难度设在正确率60%左右。后10分钟：对照解法分析自己的思路差距，记录到反馈表。"></textarea>
+      </div>
+
+      <div class="exercise-step">
+        <label>6. 我的反馈机制是什么？</label>
+        <textarea placeholder="例：① 程序在线判题的即时反馈 ② 每周一次与编程伙伴互评代码 ③ 每两周一次导师 Review..."></textarea>
+      </div>
+
+      <div class="exercise-actions">
+        <button class="btn btn-primary" onclick="generatePlan()">生成练习蓝图</button>
+        <button class="btn" onclick="resetPlan()">重置</button>
+      </div>
+
+      <div id="planOutput" style="display:none; margin-top:2rem; padding-top:2rem; border-top:1px solid var(--border);">
+        <div class="card-label" style="margin-bottom:1rem;">你的个人刻意练习蓝图</div>
+        <div id="planContent" style="color:var(--text-secondary); line-height:2;"></div>
+      </div>
+    </div>
+
+    <!-- Checklist -->
+    <div class="reveal" style="margin-top:4rem;">
+      <div class="card-label" style="margin-bottom:1rem;">刻意练习启动清单</div>
+      <ul class="checklist" id="checklist">
+        <li onclick="toggleCheck(this)">
+          <div class="check-box"></div>
+          <span>已完成目标领域的自我评估，明确当前水平</span>
+        </li>
+        <li onclick="toggleCheck(this)">
+          <div class="check-box"></div>
+          <span>将大目标拆解为 5-8 个可独立训练的子技能</span>
+        </li>
+        <li onclick="toggleCheck(this)">
+          <div class="check-box"></div>
+          <span>识别出最薄弱的 2-3 个子技能作为重点攻克对象</span>
+        </li>
+        <li onclick="toggleCheck(this)">
+          <div class="check-box"></div>
+          <span>设计了至少一个 60 分钟的刻意练习单元</span>
+        </li>
+        <li onclick="toggleCheck(this)">
+          <div class="check-box"></div>
+          <span>建立了反馈机制（至少一种即时反馈 + 一种定期反馈）</span>
+        </li>
+        <li onclick="toggleCheck(this)">
+          <div class="check-box"></div>
+          <span>在日程表中锁定了固定的练习时间段</span>
+        </li>
+        <li onclick="toggleCheck(this)">
+          <div class="check-box"></div>
+          <span>准备好了练习追踪工具（表格/App/笔记本）</span>
+        </li>
+        <li onclick="toggleCheck(this)">
+          <div class="check-box"></div>
+          <span>找到该领域的导师/学习社区/练习伙伴</span>
+        </li>
+        <li onclick="toggleCheck(this)">
+          <div class="check-box"></div>
+          <span>设定了第一个月的里程碑检查点</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ FOOTER ═══════════════════════════════════════════════ -->
+<footer class="footer">
+  <div class="container">
+    <p style="margin-bottom:0.5rem;">DELIBERATE PRACTICE · FIRST-PRINCIPLES RESEARCH REPORT</p>
+    <p>Built with Architectural Precision · Interactive Learning Experience</p>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════════════ SCRIPT ═══════════════════════════════════════════════ -->
+<script>
+// ── Principle Accordion ──
+function togglePrinciple(header) {
+  const item = header.parentElement;
+  const wasOpen = item.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.principle-item').forEach(i => i.classList.remove('open'));
+  if (!wasOpen) item.classList.add('open');
+}
+
+// ── Case Study Tabs ──
+function switchCase(index, tab) {
+  document.querySelectorAll('.case-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.case-panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById('casePanel' + index).classList.add('active');
+}
+
+// ── Checklist ──
+function toggleCheck(li) {
+  li.classList.toggle('checked');
+}
+
+// ── Progress Bar ──
+window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = (scrollTop / docHeight) * 100;
+  document.getElementById('progressBar').style.width = progress + '%';
+});
+
+// ── Reveal on Scroll ──
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal, .timeline-item').forEach(el => observer.observe(el));
+
+// ── Navigation Dots ──
+const sections = ['hero', 'principles', 'framework', 'comparison', 'cases', 'misconceptions', 'roadmap', 'exercise'];
+const dots = document.querySelectorAll('.nav-dot');
+
+dots.forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    document.getElementById(sections[i]).scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+const sectionObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const idx = sections.indexOf(entry.target.id);
+      dots.forEach(d => d.classList.remove('active'));
+      if (idx >= 0) dots[idx].classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+
+sections.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) sectionObserver.observe(el);
+});
+
+// ── Radar Chart ──
+const radarLabels = ['目标清晰度', '反馈质量', '舒适区边缘', '专注深度', '心理表征'];
+const radarPresets = {
+  beginner: [0.3, 0.2, 0.4, 0.3, 0.15],
+  intermediate: [0.7, 0.6, 0.65, 0.6, 0.5],
+  expert: [0.95, 0.9, 0.85, 0.85, 0.9]
+};
+
+let currentPreset = 'beginner';
+
+function drawRadar(values) {
+  const cx = 200, cy = 200, maxR = 150;
+  const n = values.length;
+
+  // Background
+  const bgGroup = document.getElementById('radarBg');
+  bgGroup.innerHTML = '';
+  for (let level = 1; level <= 5; level++) {
+    const r = maxR * level / 5;
+    let points = '';
+    for (let i = 0; i < n; i++) {
+      const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      points += `${x},${y} `;
+    }
+    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    polygon.setAttribute('points', points.trim());
+    polygon.setAttribute('fill', 'none');
+    polygon.setAttribute('stroke', level === 5 ? 'rgba(212,168,83,0.2)' : 'rgba(212,168,83,0.07)');
+    polygon.setAttribute('stroke-width', '1');
+    bgGroup.appendChild(polygon);
+  }
+
+  // Axes
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    const x = cx + maxR * Math.cos(angle);
+    const y = cy + maxR * Math.sin(angle);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', cx);
+    line.setAttribute('y1', cy);
+    line.setAttribute('x2', x);
+    line.setAttribute('y2', y);
+    line.setAttribute('stroke', 'rgba(212,168,83,0.1)');
+    line.setAttribute('stroke-width', '1');
+    bgGroup.appendChild(line);
+  }
+
+  // Data
+  const dataGroup = document.getElementById('radarData');
+  dataGroup.innerHTML = '';
+  let points = '';
+  const pointCoords = [];
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    const r = maxR * values[i];
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    points += `${x},${y} `;
+    pointCoords.push({ x, y });
+  }
+
+  const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  polygon.setAttribute('points', points.trim());
+  polygon.setAttribute('fill', 'rgba(212,168,83,0.12)');
+  polygon.setAttribute('stroke', 'rgba(212,168,83,0.8)');
+  polygon.setAttribute('stroke-width', '2');
+  polygon.style.transition = 'all 0.6s ease';
+  dataGroup.appendChild(polygon);
+
+  pointCoords.forEach((pt, i) => {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', pt.x);
+    circle.setAttribute('cy', pt.y);
+    circle.setAttribute('r', '4');
+    circle.setAttribute('fill', '#d4a853');
+    circle.style.transition = 'all 0.6s ease';
+    dataGroup.appendChild(circle);
+  });
+
+  // Labels
+  const labelGroup = document.getElementById('radarLabels');
+  labelGroup.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    const x = cx + (maxR + 28) * Math.cos(angle);
+    const y = cy + (maxR + 28) * Math.sin(angle);
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', x);
+    text.setAttribute('y', y);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('fill', '#9ca3af');
+    text.setAttribute('font-size', '11');
+    text.setAttribute('font-family', "'Noto Serif SC', serif");
+    text.textContent = radarLabels[i];
+    labelGroup.appendChild(text);
+
+    // Value
+    const valText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    valText.setAttribute('x', x);
+    valText.setAttribute('y', y + 16);
+    valText.setAttribute('text-anchor', 'middle');
+    valText.setAttribute('dominant-baseline', 'middle');
+    valText.setAttribute('fill', '#d4a853');
+    valText.setAttribute('font-size', '10');
+    valText.setAttribute('font-family', "'JetBrains Mono', monospace");
+    valText.textContent = Math.round(values[i] * 100) + '%';
+    labelGroup.appendChild(valText);
+  }
+}
+
+function setRadarPreset(preset) {
+  currentPreset = preset;
+  drawRadar(radarPresets[preset]);
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// Initial draw
+drawRadar(radarPresets.beginner);
+
+// ── Heatmaps ──
+function generateHeatmap(containerId, pattern) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  for (let i = 0; i < 70; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'heat-cell heat-' + pattern[i % pattern.length];
+    container.appendChild(cell);
+  }
+}
+
+generateHeatmap('heatmapNaive', [2,2,1,2,1,0,0, 2,2,2,1,1,0,0, 1,2,2,2,1,0,0, 2,1,2,2,1,0,0, 2,2,1,2,2,0,0, 1,2,2,1,1,0,0, 2,2,2,2,1,0,0, 2,1,2,2,2,0,0, 1,2,1,2,1,0,0, 2,2,2,1,1,0,0]);
+generateHeatmap('heatmapDeliberate', [4,3,4,3,4,1,0, 3,4,4,3,4,1,0, 4,4,3,4,3,1,0, 3,4,4,4,4,1,0, 4,3,4,5,4,1,0, 4,4,3,4,5,1,0, 3,5,4,4,4,1,0, 4,4,5,4,5,1,0, 5,4,4,5,4,1,0, 4,5,5,4,5,1,0]);
+
+// ── Plan Generator ──
+function generatePlan() {
+  const textareas = document.querySelectorAll('.exercise-box textarea');
+  const values = Array.from(textareas).map(t => t.value.trim());
+  const filled = values.filter(v => v.length > 0).length;
+
+  const output = document.getElementById('planOutput');
+  const content = document.getElementById('planContent');
+  output.style.display = 'block';
+
+  let html = `<div style="background:var(--bg-elevated); padding:1.5rem; border-radius:2px; margin-bottom:1rem;">`;
+  html += `<div style="font-size:0.9rem; margin-bottom:0.8rem;">完成度：<strong style="color:var(--accent-gold);">${filled}/6</strong> 个步骤已填写</div>`;
+
+  if (filled >= 4) {
+    html += `<div style="color:#22c55e; font-size:0.85rem; margin-bottom:1rem;">✓ 你已经完成了足够的信息，以下是你的练习蓝图摘要：</div>`;
+    if (values[0]) html += `<p><strong>目标能力：</strong>${values[0]}</p>`;
+    if (values[3]) html += `<p><strong>聚焦弱点：</strong>${values[3]}</p>`;
+    if (values[4]) html += `<p><strong>练习单元：</strong>${values[4]}</p>`;
+    if (values[5]) html += `<p><strong>反馈机制：</strong>${values[5]}</p>`;
+    html += `<p style="margin-top:1rem; color:var(--accent-gold);"><strong>下一步行动：</strong>今天就执行第一个练习单元，然后记录结果。</p>`;
+  } else {
+    html += `<div style="color:var(--accent-warm); font-size:0.85rem;">建议至少填写 4 个步骤以获得完整的练习蓝图。目前可以先回顾上方的框架设计原则。</div>`;
+  }
+
+  html += `</div>`;
+  content.innerHTML = html;
+  output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function resetPlan() {
+  document.querySelectorAll('.exercise-box textarea').forEach(t => t.value = '');
+  document.getElementById('planOutput').style.display = 'none';
+}
+</script>
+</body>
+</html>

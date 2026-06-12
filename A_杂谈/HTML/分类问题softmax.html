@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Softmax 分类函数 · 第一性原理研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080c14;--sf:#0f1524;--sf2:#161e30;--sf3:#1c2640;
+  --ac:#c9a84c;--ac2:#e8d08a;--ac-dim:rgba(201,168,76,.12);
+  --bl:#4a7fd4;--bl2:#6b9ff0;
+  --rd:#e05555;--gn:#4caf7c;--or:#e0944a;
+  --tx:#e4dfd6;--tm:#8a8d96;--td:#555b6a;
+  --bd:rgba(201,168,76,.1);--bd2:rgba(201,168,76,.25);
+  --code:#0a0f1a;
+  --font-h:'DM Serif Display','Noto Serif SC',Georgia,serif;
+  --font-b:'Source Serif 4','Noto Serif SC',Georgia,serif;
+  --font-m:'JetBrains Mono','Fira Code',monospace;
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{
+  background:var(--bg);color:var(--tx);
+  font-family:var(--font-b);line-height:1.8;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(var(--bd) 1px,transparent 1px),
+    linear-gradient(90deg,var(--bd) 1px,transparent 1px);
+  background-size:60px 60px;
+  pointer-events:none;z-index:0;opacity:.4;
+}
+::selection{background:var(--ac);color:var(--bg)}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--ac-dim);border-radius:3px}
+
+/* NAV */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(8,12,20,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--bd);
+  padding:0 2rem;height:56px;display:flex;align-items:center;
+  justify-content:space-between;
+}
+.nav-brand{font-family:var(--font-h);font-size:1.05rem;color:var(--ac);letter-spacing:.02em}
+.nav-links{display:flex;gap:1.5rem}
+.nav-links a{
+  font-family:var(--font-m);font-size:.72rem;color:var(--tm);
+  text-decoration:none;letter-spacing:.06em;text-transform:uppercase;
+  transition:color .3s;position:relative;
+}
+.nav-links a:hover,.nav-links a.active{color:var(--ac)}
+.nav-links a::after{
+  content:'';position:absolute;bottom:-4px;left:0;right:0;
+  height:1px;background:var(--ac);transform:scaleX(0);
+  transition:transform .3s;transform-origin:left;
+}
+.nav-links a:hover::after,.nav-links a.active::after{transform:scaleX(1)}
+
+/* LAYOUT */
+.container{max-width:1100px;margin:0 auto;padding:0 2rem;position:relative;z-index:1}
+section{padding:5rem 0}
+
+/* HERO */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;
+  justify-content:center;position:relative;padding-top:56px;
+}
+.hero-tag{
+  font-family:var(--font-m);font-size:.72rem;color:var(--ac);
+  letter-spacing:.2em;text-transform:uppercase;
+  margin-bottom:1.5rem;opacity:.8;
+}
+.hero h1{
+  font-family:var(--font-h);font-size:clamp(2.8rem,6vw,4.5rem);
+  line-height:1.15;color:var(--tx);margin-bottom:1rem;
+}
+.hero h1 em{font-style:normal;color:var(--ac)}
+.hero-sub{
+  font-size:1.15rem;color:var(--tm);max-width:640px;
+  line-height:1.9;margin-bottom:2.5rem;
+}
+.hero-meta{
+  display:flex;gap:2rem;font-family:var(--font-m);font-size:.72rem;
+  color:var(--td);letter-spacing:.05em;text-transform:uppercase;
+}
+.hero-line{
+  width:60px;height:1px;background:var(--ac);
+  margin-bottom:2rem;opacity:.6;
+}
+.hero-diagram{
+  position:absolute;right:-5%;top:50%;transform:translateY(-50%);
+  width:420px;height:420px;opacity:.08;pointer-events:none;
+}
+
+/* SECTION HEADERS */
+.sec-num{
+  font-family:var(--font-h);font-size:5rem;color:var(--ac);
+  opacity:.12;line-height:1;margin-bottom:-1rem;
+  font-style:italic;user-select:none;
+}
+.sec-title{
+  font-family:var(--font-h);font-size:clamp(1.6rem,3.2vw,2.2rem);
+  color:var(--tx);margin-bottom:.5rem;
+}
+.sec-desc{
+  font-size:.95rem;color:var(--tm);margin-bottom:2.5rem;max-width:600px;
+}
+.sec-divider{
+  width:40px;height:2px;background:var(--ac);margin-bottom:1rem;opacity:.5;
+}
+
+/* CARDS */
+.card{
+  background:var(--sf);border:1px solid var(--bd);
+  border-radius:8px;padding:2rem;position:relative;
+  transition:border-color .3s,box-shadow .3s;
+}
+.card:hover{border-color:var(--bd2);box-shadow:0 0 40px rgba(201,168,76,.04)}
+.card-label{
+  font-family:var(--font-m);font-size:.68rem;color:var(--ac);
+  letter-spacing:.15em;text-transform:uppercase;margin-bottom:.75rem;
+}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5rem}
+.grid-23{display:grid;grid-template-columns:2fr 3fr;gap:1.5rem}
+.grid-32{display:grid;grid-template-columns:3fr 2fr;gap:1.5rem}
+
+/* FORMULA */
+.formula-block{
+  background:var(--code);border:1px solid var(--bd);
+  border-radius:6px;padding:1.5rem 2rem;margin:1.5rem 0;
+  font-family:var(--font-m);font-size:1.1rem;color:var(--ac2);
+  text-align:center;letter-spacing:.02em;overflow-x:auto;
+}
+.formula-block .big{font-size:1.6rem;font-weight:500}
+.formula-note{
+  font-family:var(--font-m);font-size:.72rem;color:var(--td);
+  text-align:center;margin-top:.5rem;letter-spacing:.03em;
+}
+
+/* CODE */
+.code-block{
+  background:var(--code);border:1px solid var(--bd);
+  border-radius:6px;padding:1.25rem 1.5rem;
+  font-family:var(--font-m);font-size:.78rem;
+  color:var(--tx);line-height:1.8;overflow-x:auto;
+  white-space:pre;position:relative;
+}
+.code-block .kw{color:#c792ea}
+.code-block .fn{color:#82aaff}
+.code-block .str{color:#c3e88d}
+.code-block .cm{color:#546e7a;font-style:italic}
+.code-block .num{color:#f78c6c}
+.code-block .op{color:#89ddff}
+
+/* INTERACTIVE */
+.interactive-panel{
+  background:linear-gradient(135deg,var(--sf) 0%,var(--sf2) 100%);
+  border:1px solid var(--bd2);border-radius:10px;
+  padding:2rem;position:relative;overflow:hidden;
+}
+.interactive-panel::before{
+  content:'INTERACTIVE';position:absolute;top:12px;right:16px;
+  font-family:var(--font-m);font-size:.6rem;color:var(--ac);
+  letter-spacing:.2em;opacity:.5;
+}
+.slider-group{margin-bottom:1rem}
+.slider-label{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:.4rem;
+}
+.slider-label span:first-child{
+  font-family:var(--font-m);font-size:.78rem;color:var(--tx);
+}
+.slider-label span:last-child{
+  font-family:var(--font-m);font-size:.82rem;color:var(--ac);
+  font-weight:500;min-width:50px;text-align:right;
+}
+input[type=range]{
+  -webkit-appearance:none;width:100%;height:4px;
+  background:var(--sf3);border-radius:2px;outline:none;
+  cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;
+  border-radius:50%;background:var(--ac);cursor:pointer;
+  border:2px solid var(--bg);transition:transform .2s;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+canvas{
+  display:block;width:100%;border-radius:6px;
+}
+
+/* INSIGHT BOXES */
+.insight{
+  border-left:3px solid var(--ac);padding:1rem 1.25rem;
+  background:var(--ac-dim);border-radius:0 6px 6px 0;
+  margin:1.5rem 0;
+}
+.insight-title{
+  font-family:var(--font-m);font-size:.72rem;color:var(--ac);
+  letter-spacing:.15em;text-transform:uppercase;margin-bottom:.4rem;
+}
+.insight p{font-size:.9rem;color:var(--tx);line-height:1.7}
+
+.insight-blue{
+  border-left-color:var(--bl);background:rgba(74,127,212,.08);
+}
+.insight-blue .insight-title{color:var(--bl)}
+
+/* TABLE */
+.comp-table{
+  width:100%;border-collapse:collapse;margin:1.5rem 0;
+  font-size:.85rem;
+}
+.comp-table th{
+  font-family:var(--font-m);font-size:.7rem;color:var(--ac);
+  letter-spacing:.1em;text-transform:uppercase;
+  padding:.75rem 1rem;text-align:left;
+  border-bottom:2px solid var(--bd2);
+}
+.comp-table td{
+  padding:.75rem 1rem;border-bottom:1px solid var(--bd);
+  color:var(--tx);vertical-align:top;
+}
+.comp-table tr:hover td{background:rgba(201,168,76,.03)}
+.comp-table code{
+  font-family:var(--font-m);font-size:.78rem;
+  background:var(--code);padding:.15rem .4rem;border-radius:3px;
+}
+
+/* BADGE */
+.badge{
+  display:inline-block;font-family:var(--font-m);font-size:.65rem;
+  letter-spacing:.08em;padding:.2rem .6rem;border-radius:3px;
+  text-transform:uppercase;
+}
+.badge-gold{background:rgba(201,168,76,.15);color:var(--ac)}
+.badge-blue{background:rgba(74,127,212,.15);color:var(--bl)}
+.badge-green{background:rgba(76,175,124,.15);color:var(--gn)}
+.badge-red{background:rgba(224,85,85,.15);color:var(--rd)}
+
+/* STEP FLOW */
+.step-flow{display:flex;gap:0;margin:2rem 0;align-items:stretch}
+.step{
+  flex:1;padding:1.25rem;background:var(--sf);
+  border:1px solid var(--bd);position:relative;
+}
+.step:first-child{border-radius:8px 0 0 8px}
+.step:last-child{border-radius:0 8px 8px 0}
+.step:not(:last-child){border-right:none}
+.step-n{
+  font-family:var(--font-h);font-size:1.8rem;color:var(--ac);
+  opacity:.25;position:absolute;top:8px;right:12px;
+}
+.step h4{
+  font-family:var(--font-m);font-size:.78rem;color:var(--ac);
+  margin-bottom:.5rem;letter-spacing:.05em;
+}
+.step p{font-size:.82rem;color:var(--tm);line-height:1.6}
+
+/* TOGGLE */
+.tab-bar{display:flex;gap:0;margin-bottom:1.5rem;border-bottom:1px solid var(--bd)}
+.tab-btn{
+  font-family:var(--font-m);font-size:.75rem;color:var(--tm);
+  background:none;border:none;padding:.75rem 1.25rem;
+  cursor:pointer;letter-spacing:.05em;
+  border-bottom:2px solid transparent;
+  transition:all .3s;
+}
+.tab-btn:hover{color:var(--tx)}
+.tab-btn.active{color:var(--ac);border-bottom-color:var(--ac)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* PULSE ANIMATION */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fadeUp .6s ease forwards;opacity:0}
+.fade-up:nth-child(2){animation-delay:.1s}
+.fade-up:nth-child(3){animation-delay:.2s}
+.fade-up:nth-child(4){animation-delay:.3s}
+
+/* FOOTER */
+.footer{
+  border-top:1px solid var(--bd);padding:3rem 0;
+  text-align:center;font-family:var(--font-m);
+  font-size:.72rem;color:var(--td);letter-spacing:.05em;
+}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .grid-2,.grid-3,.grid-23,.grid-32{grid-template-columns:1fr}
+  .step-flow{flex-direction:column}
+  .step:first-child{border-radius:8px 8px 0 0}
+  .step:last-child{border-radius:0 0 8px 8px}
+  .step:not(:last-child){border-right:1px solid var(--bd);border-bottom:none}
+  .hero-diagram{display:none}
+  .nav-links{display:none}
+  section{padding:3rem 0}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">研究报告 · SR</div>
+  <div class="nav-links">
+    <a href="#foundation">地基</a>
+    <a href="#structure">结构</a>
+    <a href="#mechanics">力学</a>
+    <a href="#stability">稳定性</a>
+    <a href="#practice">建造</a>
+    <a href="#guidance">蓝图</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container">
+    <div class="hero-line"></div>
+    <div class="hero-tag">Classification · First Principles Study</div>
+    <h1>Softmax<em>分类函数</em><br>第一性原理研究报告</h1>
+    <p class="hero-sub">
+      从最根本的问题出发——"如何将一组任意实数映射为合法的概率分布"——逐层拆解 Softmax 函数的设计逻辑、数学本质、工程实践与设计范式。
+    </p>
+    <div class="hero-meta">
+      <span>方法论 · 第一性原理</span>
+      <span>深度 · 结构化分析</span>
+      <span>交互 · 实验驱动</span>
+    </div>
+  </div>
+  <svg class="hero-diagram" viewBox="0 0 400 400">
+    <circle cx="200" cy="200" r="150" fill="none" stroke="currentColor" stroke-width=".5" opacity=".3"/>
+    <circle cx="200" cy="200" r="100" fill="none" stroke="currentColor" stroke-width=".5" opacity=".2"/>
+    <circle cx="200" cy="200" r="50" fill="none" stroke="currentColor" stroke-width=".5" opacity=".15"/>
+    <line x1="50" y1="200" x2="350" y2="200" stroke="currentColor" stroke-width=".3" opacity=".15"/>
+    <line x1="200" y1="50" x2="200" y2="350" stroke="currentColor" stroke-width=".3" opacity=".15"/>
+    <circle cx="200" cy="120" r="4" fill="currentColor" opacity=".3"/>
+    <circle cx="280" cy="200" r="4" fill="currentColor" opacity=".3"/>
+    <circle cx="140" cy="260" r="4" fill="currentColor" opacity=".3"/>
+    <text x="200" y="370" text-anchor="middle" font-size="10" fill="currentColor" opacity=".2" font-family="monospace">PROBABILITY SIMPLEX</text>
+  </svg>
+</header>
+
+<!-- ============ SECTION 1: FOUNDATION ============ -->
+<section id="foundation">
+<div class="container">
+  <div class="sec-num">01</div>
+  <div class="sec-divider"></div>
+  <h2 class="sec-title">地基 · 为什么需要 Softmax？</h2>
+  <p class="sec-desc">从分类问题的本质需求出发，理解 Softmax 存在的根本原因。</p>
+
+  <div class="grid-23" style="margin-bottom:2rem">
+    <div>
+      <div class="card">
+        <div class="card-label">根源问题</div>
+        <p style="font-size:.95rem;line-height:1.9;margin-bottom:1rem">
+          神经网络的输出层产生一组<strong>任意实数</strong>（logits），但分类任务需要的是<strong>概率分布</strong>：
+        </p>
+        <div class="insight">
+          <div class="insight-title">核心约束</div>
+          <p>对于 K 个类别，输出必须满足：<br>
+          <span style="font-family:var(--font-m);color:var(--ac)">p<sub>i</sub> ≥ 0</span> 且 <span style="font-family:var(--font-m);color:var(--ac)">Σ p<sub>i</sub> = 1</span></p>
+        </div>
+        <p style="font-size:.9rem;color:var(--tm);margin-top:1rem">
+          从第一性原理看，我们需要一个<strong>变换函数</strong>，它必须同时完成两件事：<br>
+          <span class="badge badge-gold">非负性</span> 保证每个输出 ≥ 0<br>
+          <span class="badge badge-gold">归一化</span> 保证所有输出之和 = 1
+        </p>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="height:100%">
+        <div class="card-label">三种朴素思路的失败</div>
+        <table class="comp-table">
+          <tr><th>方法</th><th>问题</th></tr>
+          <tr>
+            <td><code>直接截断</code><br><span style="font-size:.75rem;color:var(--td)">max(0, z<sub>i</sub>)</span></td>
+            <td style="font-size:.85rem">不能保证归一化；零点不可导</td>
+          </tr>
+          <tr>
+            <td><code>绝对值归一</code><br><span style="font-size:.75rem;color:var(--td)">|z<sub>i</sub>| / Σ|z<sub>j</sub>|</span></td>
+            <td style="font-size:.85rem">丢失符号信息；负值语义被抹去</td>
+          </tr>
+          <tr>
+            <td><code>线性缩放</code><br><span style="font-size:.75rem;color:var(--td)">(z<sub>i</sub>-min)/(max-min)</span></td>
+            <td style="font-size:.85rem">不满足概率公理；对异常值脆弱</td>
+          </tr>
+        </table>
+        <div class="insight insight-blue" style="margin-top:1rem">
+          <div class="insight-title">建筑师洞察</div>
+          <p>需要一种<strong>单调保序</strong>的非线性映射，既能放大差异又能保证概率性质——这就是 <code>exp</code> 函数登场的根本原因。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============ SECTION 2: STRUCTURE ============ -->
+<section id="structure" style="background:var(--sf)">
+<div class="container">
+  <div class="sec-num">02</div>
+  <div class="sec-divider"></div>
+  <h2 class="sec-title">结构 · Softmax 的数学解剖</h2>
+  <p class="sec-desc">逐层剥离公式中的每一个组件，理解其设计意图。</p>
+
+  <div class="formula-block">
+    <span class="big">softmax(z<sub>i</sub>) = e<sup>z<sub>i</sub></sup> / Σ<sub>j=1</sub><sup>K</sup> e<sup>z<sub>j</sub></sup></span>
+  </div>
+  <div class="formula-note">z = [z₁, z₂, ..., zₖ] 为网络输出的 logits 向量</div>
+
+  <div class="step-flow" style="margin-top:2.5rem">
+    <div class="step fade-up">
+      <div class="step-n">01</div>
+      <h4>指数变换 e^z</h4>
+      <p>将实数域 (-∞,+∞) 映射到 (0,+∞)，天然满足<strong>非负性</strong>。同时指数函数是单调递增的，保持了 logits 之间的相对大小关系。</p>
+    </div>
+    <div class="step fade-up">
+      <div class="step-n">02</div>
+      <h4>求和归一 Σe^z</h4>
+      <p>将所有指数值求和作为分母，相当于<strong>自适应缩放因子</strong>，确保输出之和恒等于 1。</p>
+    </div>
+    <div class="step fade-up">
+      <div class="step-n">03</div>
+      <h4>比值 e^z<sub>i</sub>/Σ</h4>
+      <p>每个类别的概率等于"它的指数"占"所有指数之和"的<strong>相对份额</strong>——这与统计力学中玻尔兹曼分布的思想完全一致。</p>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:2.5rem">
+    <div class="card">
+      <div class="card-label">为什么是 e？</div>
+      <p style="font-size:.9rem;line-height:1.8">
+        指数函数的底数可以是任何大于 1 的常数，选 <strong>e</strong>（自然常数）的核心原因是：
+      </p>
+      <ul style="font-size:.88rem;color:var(--tm);line-height:2;margin-top:.75rem;padding-left:1.2rem">
+        <li><strong>求导简洁</strong>：(e^z)' = e^z，反向传播时梯度表达式极其干净</li>
+        <li><strong>信息论统一</strong>：与交叉熵损失配合时，log(e^z) = z，消除计算冗余</li>
+        <li><strong>物理直觉</strong>：直接对应玻尔兹曼分布 e<sup>-E/kT</sup>，有坚实的统计力学基础</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-label">与信息论的深层联结</div>
+      <p style="font-size:.9rem;line-height:1.8">
+        Softmax 不是一个孤立的工程技巧。它在数学上等价于：
+      </p>
+      <div class="formula-block" style="margin:1rem 0;font-size:.95rem">
+        argmin<sub>p</sub> D<sub>KL</sub>(p ‖ q) &nbsp;s.t.&nbsp; Σp<sub>i</sub> = 1
+      </div>
+      <p style="font-size:.85rem;color:var(--tm);line-height:1.7">
+        即：Softmax 是在约束 Σp=1 下，使得输出分布 p 尽可能接近"指数加权先验"的<strong>最大熵分布</strong>。这解释了为什么它在分类任务中如此自然。
+      </p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============ SECTION 3: MECHANICS (INTERACTIVE) ============ -->
+<section id="mechanics">
+<div class="container">
+  <div class="sec-num">03</div>
+  <div class="sec-divider"></div>
+  <h2 class="sec-title">力学 · 交互式实验</h2>
+  <p class="sec-desc">通过亲手调整参数，直觉化理解 Softmax 的行为规律。</p>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab(event,'tab-explore')">概率探索器</button>
+    <button class="tab-btn" onclick="switchTab(event,'tab-temp')">温度控制</button>
+    <button class="tab-btn" onclick="switchTab(event,'tab-gradient')">梯度可视化</button>
+  </div>
+
+  <!-- TAB 1: SOFTMAX EXPLORER -->
+  <div id="tab-explore" class="tab-content active">
+    <div class="interactive-panel">
+      <div class="grid-23">
+        <div>
+          <p style="font-size:.85rem;color:var(--tm);margin-bottom:1.5rem">
+            调整每个类别的 logit 值，观察 Softmax 输出概率的实时变化。
+          </p>
+          <div id="sliders-container"></div>
+          <div style="margin-top:1rem;padding:1rem;background:var(--code);border-radius:6px">
+            <div style="font-family:var(--font-m);font-size:.7rem;color:var(--tm);margin-bottom:.5rem">SUM CHECK</div>
+            <div id="sum-check" style="font-family:var(--font-m);font-size:1rem;color:var(--gn)">Σ = 1.0000</div>
+          </div>
+        </div>
+        <div>
+          <canvas id="canvas-explore" width="500" height="340"></canvas>
+          <div id="prob-values" style="font-family:var(--font-m);font-size:.75rem;color:var(--tm);margin-top:.75rem;display:flex;flex-wrap:wrap;gap:.5rem"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: TEMPERATURE -->
+  <div id="tab-temp" class="tab-content">
+    <div class="interactive-panel">
+      <div class="grid-23">
+        <div>
+          <p style="font-size:.85rem;color:var(--tm);margin-bottom:1rem">
+            温度参数 T 控制分布的"锐利程度"：
+          </p>
+          <div class="formula-block" style="font-size:.95rem">
+            softmax(z<sub>i</sub>/T)
+          </div>
+          <div class="slider-group" style="margin-top:1.5rem">
+            <div class="slider-label">
+              <span>温度 T</span>
+              <span id="temp-val">1.00</span>
+            </div>
+            <input type="range" id="temp-slider" min="0.1" max="5" step="0.01" value="1">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>T → 0 (贪婪)</span>
+              <span style="font-size:.7rem;color:var(--td)">one-hot</span>
+            </div>
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>T → ∞ (均匀)</span>
+              <span style="font-size:.7rem;color:var(--td)">1/K</span>
+            </div>
+          </div>
+          <div class="insight" style="margin-top:1rem">
+            <div class="insight-title">工程应用</div>
+            <p style="font-size:.82rem"><strong>T &lt; 1</strong>：模型更"自信"，用于需要确定性的场景<br>
+            <strong>T &gt; 1</strong>：模型更"犹豫"，用于知识蒸馏、探索性采样</p>
+          </div>
+        </div>
+        <div>
+          <canvas id="canvas-temp" width="500" height="380"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: GRADIENT -->
+  <div id="tab-gradient" class="tab-content">
+    <div class="interactive-panel">
+      <p style="font-size:.85rem;color:var(--tm);margin-bottom:1.5rem">
+        Softmax 的雅可比矩阵（Jacobian）揭示了梯度流动的本质：
+      </p>
+      <div class="formula-block">
+        ∂p<sub>i</sub>/∂z<sub>j</sub> = p<sub>i</sub>(δ<sub>ij</sub> − p<sub>j</sub>)
+      </div>
+      <div class="grid-2" style="margin-top:1.5rem">
+        <div>
+          <canvas id="canvas-jacobian" width="400" height="300"></canvas>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:1rem">
+            <div class="card-label">对角线元素 (i=j)</div>
+            <p style="font-size:.88rem;color:var(--tx)">p<sub>i</sub>(1 − p<sub>i</sub>) — 自身的"不确定性"。当 p<sub>i</sub> 接近 0 或 1 时趋近于 0，即<strong>饱和</strong>。</p>
+          </div>
+          <div class="card" style="margin-bottom:1rem">
+            <div class="card-label">非对角线元素 (i≠j)</div>
+            <p style="font-size:.88rem;color:var(--tx)">−p<sub>i</sub>·p<sub>j</sub> — 类别间的<strong>竞争关系</strong>。一个类别的概率上升必然压制其他类别。</p>
+          </div>
+          <div class="insight insight-blue">
+            <div class="insight-title">建筑师洞察</div>
+            <p style="font-size:.82rem">雅可比矩阵是<strong>半负定</strong>的，意味着 Softmax 的输出空间是一个凹函数——不存在多个局部最优，这对优化非常友好。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<!-- ============ SECTION 4: STABILITY ============ -->
+<section id="stability" style="background:var(--sf)">
+<div class="container">
+  <div class="sec-num">04</div>
+  <div class="sec-divider"></div>
+  <h2 class="sec-title">稳定性 · 数值工程的陷阱</h2>
+  <p class="sec-desc">从浮点数溢出到梯度消失，工程师必须面对的现实问题。</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-label" style="color:var(--rd)">朴素实现（危险）</div>
+      <div class="code-block"><span class="kw">def</span> <span class="fn">softmax_naive</span>(z):
+    <span class="cm"># 危险：e^1000 → overflow!</span>
+    exp_z = np.<span class="fn">exp</span>(z)
+    <span class="kw">return</span> exp_z / np.<span class="fn">sum</span>(exp_z)
+
+<span class="cm"># z = [1000, 1001, 1002]</span>
+<span class="cm"># e^1000 = inf → nan</span></div>
+      <div style="margin-top:1rem">
+        <span class="badge badge-red">溢出风险</span>
+        <span class="badge badge-red" style="margin-left:.5rem">NaN 传播</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label" style="color:var(--gn)">稳定实现（推荐）</div>
+      <div class="code-block"><span class="kw">def</span> <span class="fn">softmax_stable</span>(z):
+    <span class="cm"># 减去最大值：数值稳定的秘密</span>
+    z_shift = z - np.<span class="fn">max</span>(z)
+    exp_z = np.<span class="fn">exp</span>(z_shift)
+    <span class="kw">return</span> exp_z / np.<span class="fn">sum</span>(exp_z)
+
+<span class="cm"># z = [1000, 1001, 1002]</span>
+<span class="cm"># z_shift = [-2, -1, 0]  ✓</span></div>
+      <div style="margin-top:1rem">
+        <span class="badge badge-green">数值安全</span>
+        <span class="badge badge-green" style="margin-left:.5rem">结果等价</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight" style="margin-top:2rem">
+    <div class="insight-title">数学证明：减去最大值不影响结果</div>
+    <p style="font-size:.9rem;line-height:1.8">
+      设 c = max(z)，则：<br>
+      <span style="font-family:var(--font-m)">
+        e<sup>z<sub>i</sub> - c</sup> / Σ e<sup>z<sub>j</sub> - c</sup> = (e<sup>z<sub>i</sub></sup> · e<sup>-c</sup>) / (Σ e<sup>z<sub>j</sub></sup> · e<sup>-c</sup>) = e<sup>z<sub>i</sub></sup> / Σ e<sup>z<sub>j</sub></sup>
+      </span><br>
+      e<sup>-c</sup> 作为公因子被完全消去。<strong>数学等价，数值安全。</strong>
+    </p>
+  </div>
+
+  <div class="interactive-panel" style="margin-top:2rem">
+    <div style="font-family:var(--font-m);font-size:.72rem;color:var(--ac);letter-spacing:.1em;margin-bottom:1rem">数值溢出实时模拟</div>
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>Logit 偏移量 (全部加上的常数)</span>
+        <span id="offset-val">0</span>
+      </div>
+      <input type="range" id="offset-slider" min="0" max="800" step="10" value="0">
+    </div>
+    <div class="grid-2" style="margin-top:1rem">
+      <div style="padding:1rem;background:var(--code);border-radius:6px">
+        <div style="font-family:var(--font-m);font-size:.68rem;color:var(--rd);margin-bottom:.5rem">NAIVE SOFTMAX</div>
+        <div id="naive-output" style="font-family:var(--font-m);font-size:.85rem;color:var(--tx);line-height:1.8">[0.0900, 0.2447, 0.6652]</div>
+      </div>
+      <div style="padding:1rem;background:var(--code);border-radius:6px">
+        <div style="font-family:var(--font-m);font-size:.68rem;color:var(--gn);margin-bottom:.5rem">STABLE SOFTMAX</div>
+        <div id="stable-output" style="font-family:var(--font-m);font-size:.85rem;color:var(--tx);line-height:1.8">[0.0900, 0.2447, 0.6652]</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<!-- ============ SECTION 5: PRACTICE ============ -->
+<section id="practice">
+<div class="container">
+  <div class="sec-num">05</div>
+  <div class="sec-divider"></div>
+  <h2 class="sec-title">建造 · 实现与工程实践</h2>
+  <p class="sec-desc">从数学到代码，从单个样本到批量处理的完整实现路径。</p>
+
+  <div class="grid-2" style="margin-bottom:2rem">
+    <div class="card">
+      <div class="card-label">PyTorch 实现</div>
+      <div class="code-block"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="cm"># 方式1：直接使用（推荐）</span>
+<span class="cm"># CrossEntropyLoss 内部已包含 LogSoftmax</span>
+criterion = nn.<span class="fn">CrossEntropyLoss</span>()
+loss = <span class="fn">criterion</span>(logits, labels)
+
+<span class="cm"># 方式2：手动实现</span>
+<span class="kw">def</span> <span class="fn">my_softmax</span>(z, dim=-<span class="num">1</span>):
+    z_stable = z - z.<span class="fn">max</span>(dim=dim,
+                         keepdim=<span class="kw">True</span>).values
+    exp_z = torch.<span class="fn">exp</span>(z_stable)
+    <span class="kw">return</span> exp_z / exp_z.<span class="fn">sum</span>(
+        dim=dim, keepdim=<span class="kw">True</span>)</div>
+    </div>
+    <div class="card">
+      <div class="card-label">NumPy 实现</div>
+      <div class="code-block"><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">def</span> <span class="fn">softmax</span>(z, axis=-<span class="num">1</span>):
+    <span class="str">"""数值稳定的 Softmax"""</span>
+    z_max = np.<span class="fn">amax</span>(z, axis=axis,
+                    keepdims=<span class="kw">True</span>)
+    z_shift = z - z_max
+    exp_z = np.<span class="fn">exp</span>(z_shift)
+    <span class="kw">return</span> exp_z / np.<span class="fn">sum</span>(
+        exp_z, axis=axis, keepdims=<span class="kw">True</span>)
+
+<span class="cm"># 批量处理 [batch, classes]</span>
+logits = np.<span class="fn">array</span>([
+    [<span class="num">2.0</span>, <span class="num">1.0</span>, <span class="num">0.1</span>],
+    [<span class="num">1.0</span>, <span class="num">3.0</span>, <span class="num">0.2</span>],
+])
+probs = <span class="fn">softmax</span>(logits)
+<span class="cm"># [[0.659, 0.242, 0.099],</span>
+<span class="cm">#  [0.117, 0.866, 0.017]]</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:2rem">
+    <div class="card-label">Softmax + 交叉熵的融合优化</div>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:.9rem;line-height:1.8;color:var(--tm);margin-bottom:1rem">
+          分开计算 <code>log(softmax(z))</code> 在数值上是危险的——当 softmax 输出接近 0 时，<code>log(0) = -∞</code>。
+        </p>
+        <p style="font-size:.9rem;line-height:1.8">
+          <strong>融合实现</strong>利用 <code>log(e^z / Σe^z) = z - log(Σe^z)</code>，完全避免了中间步骤的数值下溢。
+        </p>
+      </div>
+      <div>
+        <div class="code-block"><span class="cm"># 融合的 Log-Softmax（数值稳定）</span>
+<span class="kw">def</span> <span class="fn">log_softmax</span>(z, dim=-<span class="num">1</span>):
+    z_max = z.<span class="fn">max</span>(dim=dim, keepdim=<span class="kw">True</span>).values
+    <span class="kw">return</span> z - z_max - torch.<span class="fn">log</span>(
+        torch.<span class="fn">exp</span>(z - z_max).<span class="fn">sum</span>(
+            dim=dim, keepdim=<span class="kw">True</span>))
+
+<span class="cm"># PyTorch: 优先使用这个！</span>
+loss_fn = nn.<span class="fn">CrossEntropyLoss</span>()
+<span class="cm"># 内部 = LogSoftmax + NLLLoss</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============ SECTION 6: GUIDANCE ============ -->
+<section id="guidance" style="background:var(--sf)">
+<div class="container">
+  <div class="sec-num">06</div>
+  <div class="sec-divider"></div>
+  <h2 class="sec-title">蓝图 · 设计范式与指导原则</h2>
+  <p class="sec-desc">从全局视角审视 Softmax 在系统设计中的位置与选择策略。</p>
+
+  <div class="card" style="margin-bottom:2rem">
+    <div class="card-label">Softmax vs 其他激活函数</div>
+    <table class="comp-table">
+      <tr>
+        <th>函数</th>
+        <th>适用场景</th>
+        <th>输出约束</th>
+        <th>关键区别</th>
+      </tr>
+      <tr>
+        <td><strong>Softmax</strong></td>
+        <td>多类别互斥分类</td>
+        <td>Σ = 1, 单纯形</td>
+        <td>类别间耦合——增一必减其余</td>
+      </tr>
+      <tr>
+        <td><strong>Sigmoid</strong></td>
+        <td>二分类 / 多标签分类</td>
+        <td>每个 ∈ (0,1) 独立</td>
+        <td>类别间解耦——可同时为高概率</td>
+      </tr>
+      <tr>
+        <td><strong>No activation</strong></td>
+        <td>回归任务</td>
+        <td>无约束，任意实数</td>
+        <td>线性输出配合 MSE 等损失</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:2rem">
+    <div class="card">
+      <div class="card-label">何时使用 Softmax</div>
+      <ul style="font-size:.85rem;color:var(--tm);line-height:2;padding-left:1rem">
+        <li>类别互斥（一张图只能是猫或狗）</li>
+        <li>需要概率解释（"80% 是猫"）</li>
+        <li>需要与交叉熵配合训练</li>
+        <li>模型校准（Calibration）分析</li>
+        <li>Top-K 选取策略</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-label">何时避免 Softmax</div>
+      <ul style="font-size:.85rem;color:var(--tm);line-height:2;padding-left:1rem">
+        <li>多标签分类（一张图可以同时有猫和狗）</li>
+        <li>极端类别数（>10K）→ 考虑分层 Softmax</li>
+        <li>需要精确排名而非概率 → 直接用 logits</li>
+        <li>对比学习 → L2 归一化更合适</li>
+        <li>生成模型中的离散采样 → Gumbel-Softmax</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-label">常见陷阱</div>
+      <ul style="font-size:.85rem;color:var(--tm);line-height:2;padding-left:1rem">
+        <li>忘记数值稳定化 → NaN 爆炸</li>
+        <li>精度问题 → float32 vs float16 需验证</li>
+        <li>温度设为 0 → 除零错误</li>
+        <li>标签平滑 + Softmax 的梯度交互</li>
+        <li>推理时的 batch 维度不一致</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="interactive-panel">
+    <div class="card-label">决策流程图</div>
+    <div id="flowchart" style="margin-top:1rem">
+      <div class="step-flow">
+        <div class="step" style="border-left:3px solid var(--ac)">
+          <h4>① 问题性质</h4>
+          <p>类别是否互斥？<br>需要概率解释？<br>→ 是 → Softmax</p>
+        </div>
+        <div class="step" style="border-left:3px solid var(--bl)">
+          <h4>② 类别规模</h4>
+          <p>K &lt; 1000 → 标准 Softmax<br>
+          K &gt; 10000 → 分层 Softmax / 采样 Softmax</p>
+        </div>
+        <div class="step" style="border-left:3px solid var(--gn)">
+          <h4>③ 训练策略</h4>
+          <p>配合交叉熵（融合实现）<br>
+          考虑标签平滑 + 温度调节</p>
+        </div>
+        <div class="step" style="border-left:3px solid var(--or)">
+          <h4>④ 推理部署</h4>
+          <p>温度校准 + Top-K 截断<br>
+          ONNX/TorchScript 导出优化</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============ CLOSING ============ -->
+<section style="padding:4rem 0">
+<div class="container">
+  <div class="insight" style="max-width:700px;margin:0 auto;text-align:center;border-left:none;border:1px solid var(--bd2);border-radius:8px;background:linear-gradient(135deg,var(--ac-dim),transparent)">
+    <div class="insight-title">建筑师寄语</div>
+    <p style="font-size:.95rem;line-height:1.9">
+      Softmax 不是一个孤立的数学技巧——它是连接<strong>原始计算</strong>与<strong>概率世界</strong>的桥梁。理解它，你理解的不只是一个函数，而是一整套"从混沌到秩序"的设计哲学。先建地基，再立框架，最后才考虑装饰。<strong>先理解约束，再理解优雅。</strong>
+    </p>
+  </div>
+</div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <p>Softmax 分类函数 · 第一性原理研究报告 · 建筑师方法论</p>
+    <p style="margin-top:.5rem;opacity:.5">基于深度结构化分析 · 交互式学习</p>
+  </div>
+</footer>
+
+<script>
+// ====== TAB SWITCHING ======
+function switchTab(e, tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+  if (tabId === 'tab-explore') drawExplore();
+  if (tabId === 'tab-temp') drawTemp();
+  if (tabId === 'tab-gradient') drawJacobian();
+}
+
+// ====== UTILS ======
+function softmax(arr) {
+  const max = Math.max(...arr);
+  const exps = arr.map(v => Math.exp(v - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(v => v / sum);
+}
+
+function softmaxNaive(arr) {
+  const exps = arr.map(v => Math.exp(v));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  if (!isFinite(sum)) return arr.map(() => NaN);
+  return exps.map(v => v / sum);
+}
+
+const COLORS = ['#c9a84c', '#4a7fd4', '#4caf7c', '#e0944a', '#c792ea'];
+const CLASS_NAMES = ['类别 A', '类别 B', '类别 C', '类别 D', '类别 E'];
+const INIT_LOGITS = [2.0, 1.0, 0.5, 0.3, 0.1];
+
+// ====== TAB 1: EXPLORER ======
+let logits = [...INIT_LOGITS];
+
+function initSliders() {
+  const container = document.getElementById('sliders-container');
+  container.innerHTML = '';
+  logits.forEach((val, i) => {
+    const group = document.createElement('div');
+    group.className = 'slider-group';
+    group.innerHTML = `
+      <div class="slider-label">
+        <span style="color:${COLORS[i]}">${CLASS_NAMES[i]}</span>
+        <span id="logit-val-${i}">${val.toFixed(2)}</span>
+      </div>
+      <input type="range" id="logit-${i}" min="-5" max="5" step="0.05" value="${val}"
+             style="accent-color:${COLORS[i]}">
+    `;
+    container.appendChild(group);
+    document.getElementById(`logit-${i}`).addEventListener('input', function() {
+      logits[i] = parseFloat(this.value);
+      document.getElementById(`logit-val-${i}`).textContent = logits[i].toFixed(2);
+      drawExplore();
+    });
+  });
+}
+
+function drawExplore() {
+  const canvas = document.getElementById('canvas-explore');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 500 * dpr;
+  canvas.height = 340 * dpr;
+  ctx.scale(dpr, dpr);
+  canvas.style.width = '500px';
+  canvas.style.height = '340px';
+
+  const W = 500, H = 340;
+  const probs = softmax(logits);
+  const pad = { top: 30, right: 30, bottom: 50, left: 55 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#080c14';
+  ctx.fillRect(0, 0, W, H);
+
+  // grid lines
+  ctx.strokeStyle = 'rgba(201,168,76,0.06)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = pad.top + (cH / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+    ctx.fillStyle = '#555b6a';
+    ctx.font = '11px "JetBrains Mono"';
+    ctx.textAlign = 'right';
+    ctx.fillText((1 - i / 5).toFixed(1), pad.left - 8, y + 4);
+  }
+
+  const barW = Math.min(60, (cW - 20) / logits.length - 10);
+  const gap = (cW - barW * logits.length) / (logits.length + 1);
+
+  probs.forEach((p, i) => {
+    const x = pad.left + gap * (i + 1) + barW * i;
+    const barH = p * cH;
+    const y = pad.top + cH - barH;
+
+    // bar shadow
+    ctx.fillStyle = COLORS[i] + '15';
+    ctx.fillRect(x - 4, pad.top, barW + 8, cH);
+
+    // bar
+    const grad = ctx.createLinearGradient(x, y, x, pad.top + cH);
+    grad.addColorStop(0, COLORS[i]);
+    grad.addColorStop(1, COLORS[i] + '40');
+    ctx.fillStyle = grad;
+
+    // rounded top
+    const r = Math.min(4, barH / 2);
+    ctx.beginPath();
+    ctx.moveTo(x, pad.top + cH);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.lineTo(x + barW - r, y);
+    ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+    ctx.lineTo(x + barW, pad.top + cH);
+    ctx.closePath();
+    ctx.fill();
+
+    // value label
+    ctx.fillStyle = COLORS[i];
+    ctx.font = 'bold 12px "JetBrains Mono"';
+    ctx.textAlign = 'center';
+    ctx.fillText((p * 100).toFixed(1) + '%', x + barW / 2, y - 8);
+
+    // class label
+    ctx.fillStyle = '#8a8d96';
+    ctx.font = '11px "Noto Serif SC"';
+    ctx.fillText(CLASS_NAMES[i], x + barW / 2, H - 18);
+    ctx.font = '10px "JetBrains Mono"';
+    ctx.fillStyle = '#555b6a';
+    ctx.fillText(`z=${logits[i].toFixed(1)}`, x + barW / 2, H - 5);
+  });
+
+  // sum check
+  const sum = probs.reduce((a, b) => a + b, 0);
+  document.getElementById('sum-check').textContent = `Σ = ${sum.toFixed(6)}`;
+
+  // prob values
+  const probDiv = document.getElementById('prob-values');
+  probDiv.innerHTML = probs.map((p, i) =>
+    `<span style="color:${COLORS[i]}">${CLASS_NAMES[i]}: ${p.toFixed(4)}</span>`
+  ).join('');
+}
+
+// ====== TAB 2: TEMPERATURE ======
+const TEMP_LOGITS = [2.0, 1.0, 0.5, 0.1];
+
+function drawTemp() {
+  const canvas = document.getElementById('canvas-temp');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 500 * dpr;
+  canvas.height = 380 * dpr;
+  ctx.scale(dpr, dpr);
+  canvas.style.width = '500px';
+  canvas.style.height = '380px';
+
+  const W = 500, H = 380;
+  const T = parseFloat(document.getElementById('temp-slider').value);
+  document.getElementById('temp-val').textContent = T.toFixed(2);
+
+  const scaledLogits = TEMP_LOGITS.map(z => z / T);
+  const probs = softmax(scaledLogits);
+
+  const pad = { top: 30, right: 30, bottom: 55, left: 55 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#080c14';
+  ctx.fillRect(0, 0, W, H);
+
+  // grid
+  ctx.strokeStyle = 'rgba(201,168,76,0.06)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = pad.top + (cH / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+    ctx.fillStyle = '#555b6a';
+    ctx.font = '11px "JetBrains Mono"';
+    ctx.textAlign = 'right';
+    ctx.fillText((1 - i / 5).toFixed(1), pad.left - 8, y + 4);
+  }
+
+  // bars
+  const barW = 55;
+  const gap = (cW - barW * probs.length) / (probs.length + 1);
+  const names = ['A', 'B', 'C', 'D'];
+
+  probs.forEach((p, i) => {
+    const x = pad.left + gap * (i + 1) + barW * i;
+    const barH = p * cH;
+    const y = pad.top + cH - barH;
+
+    const grad = ctx.createLinearGradient(x, y, x, pad.top + cH);
+    grad.addColorStop(0, COLORS[i]);
+    grad.addColorStop(1, COLORS[i] + '30');
+    ctx.fillStyle = grad;
+
+    const r = Math.min(4, barH / 2);
+    ctx.beginPath();
+    ctx.moveTo(x, pad.top + cH);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.lineTo(x + barW - r, y);
+    ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+    ctx.lineTo(x + barW, pad.top + cH);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = COLORS[i];
+    ctx.font = 'bold 13px "JetBrains Mono"';
+    ctx.textAlign = 'center';
+    ctx.fillText((p * 100).toFixed(1) + '%', x + barW / 2, y - 8);
+
+    ctx.fillStyle = '#8a8d96';
+    ctx.font = '12px "JetBrains Mono"';
+    ctx.fillText(names[i], x + barW / 2, H - 30);
+    ctx.font = '10px "JetBrains Mono"';
+    ctx.fillStyle = '#555b6a';
+    ctx.fillText(`z=${TEMP_LOGITS[i].toFixed(1)}`, x + barW / 2, H - 15);
+  });
+
+  // uniform line
+  const uniY = pad.top + cH * (1 - 1 / probs.length);
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, uniY);
+  ctx.lineTo(W - pad.right, uniY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#555b6a';
+  ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'left';
+  ctx.fillText(`均匀 ${(100/probs.length).toFixed(1)}%`, W - pad.right - 60, uniY - 4);
+
+  // entropy
+  const entropy = -probs.reduce((s, p) => s + (p > 0 ? p * Math.log2(p) : 0), 0);
+  const maxEnt = Math.log2(probs.length);
+  ctx.fillStyle = '#8a8d96';
+  ctx.font = '11px "JetBrains Mono"';
+  ctx.textAlign = 'left';
+  ctx.fillText(`熵: ${entropy.toFixed(3)} / ${maxEnt.toFixed(3)} bits`, pad.left, H - 3);
+}
+
+document.getElementById('temp-slider').addEventListener('input', drawTemp);
+
+// ====== TAB 3: JACOBIAN ======
+function drawJacobian() {
+  const canvas = document.getElementById('canvas-jacobian');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 400 * dpr;
+  canvas.height = 300 * dpr;
+  ctx.scale(dpr, dpr);
+  canvas.style.width = '400px';
+  canvas.style.height = '300px';
+
+  const W = 400, H = 300;
+  const probs = softmax([2.0, 1.0, 0.5, 0.1]);
+  const K = probs.length;
+
+  // compute Jacobian
+  const J = [];
+  for (let i = 0; i < K; i++) {
+    J[i] = [];
+    for (let j = 0; j < K; j++) {
+      J[i][j] = probs[i] * ((i === j ? 1 : 0) - probs[j]);
+    }
+  }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#080c14';
+  ctx.fillRect(0, 0, W, H);
+
+  const pad = 60;
+  const cellW = (W - 2 * pad) / K;
+  const cellH = (H - 2 * pad) / K;
+  const maxVal = Math.max(...J.flat().map(Math.abs));
+
+  // title
+  ctx.fillStyle = '#8a8d96';
+  ctx.font = '11px "JetBrains Mono"';
+  ctx.textAlign = 'center';
+  ctx.fillText('Jacobian 矩阵热力图  ∂pᵢ/∂zⱼ', W / 2, 20);
+
+  for (let i = 0; i < K; i++) {
+    for (let j = 0; j < K; j++) {
+      const val = J[i][j];
+      const norm = val / maxVal;
+      const x = pad + j * cellW;
+      const y = pad + i * cellH;
+
+      if (val >= 0) {
+        ctx.fillStyle = `rgba(76,175,124,${Math.abs(norm) * 0.8})`;
+      } else {
+        ctx.fillStyle = `rgba(224,85,85,${Math.abs(norm) * 0.8})`;
+      }
+
+      ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+
+      ctx.fillStyle = '#e4dfd6';
+      ctx.font = '10px "JetBrains Mono"';
+      ctx.textAlign = 'center';
+      ctx.fillText(val.toFixed(3), x + cellW / 2, y + cellH / 2 + 4);
+    }
+
+    // labels
+    ctx.fillStyle = COLORS[i];
+    ctx.font = '11px "JetBrains Mono"';
+    ctx.textAlign = 'right';
+    ctx.fillText(`p${i + 1}`, pad - 8, pad + i * cellH + cellH / 2 + 4);
+    ctx.textAlign = 'center';
+    ctx.fillText(`z${i + 1}`, pad + i * cellW + cellW / 2, pad - 8);
+  }
+
+  // legend
+  const legY = H - 20;
+  ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(76,175,124,0.7)';
+  ctx.fillRect(pad, legY, 12, 12);
+  ctx.fillStyle = '#8a8d96';
+  ctx.fillText('正（对角线：自增强）', pad + 18, legY + 10);
+
+  ctx.fillStyle = 'rgba(224,85,85,0.7)';
+  ctx.fillRect(pad + 180, legY, 12, 12);
+  ctx.fillStyle = '#8a8d96';
+  ctx.fillText('负（竞争抑制）', pad + 198, legY + 10);
+}
+
+// ====== NUMERICAL STABILITY DEMO ======
+const BASE_LOGITS = [1.0, 2.0, 3.0];
+
+document.getElementById('offset-slider').addEventListener('input', function() {
+  const offset = parseFloat(this.value);
+  document.getElementById('offset-val').textContent = offset;
+
+  const shifted = BASE_LOGITS.map(v => v + offset);
+  const naive = softmaxNaive(shifted);
+  const stable = softmax(shifted);
+
+  const naiveStr = naive.some(isNaN)
+    ? '<span style="color:#e05555">[NaN, NaN, NaN] — 溢出!</span>'
+    : `[${naive.map(v => isNaN(v) ? 'NaN' : v.toFixed(4)).join(', ')}]`;
+
+  document.getElementById('naive-output').innerHTML = naiveStr;
+  document.getElementById('stable-output').textContent =
+    `[${stable.map(v => v.toFixed(4)).join(', ')}]`;
+});
+
+// ====== SCROLL-BASED NAV HIGHLIGHT ======
+const sections = ['foundation', 'structure', 'mechanics', 'stability', 'practice', 'guidance'];
+const navLinks = document.querySelectorAll('.nav-links a');
+
+function updateNav() {
+  let current = '';
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top <= 200) current = id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}
+window.addEventListener('scroll', updateNav, { passive: true });
+
+// ====== FADE IN ON SCROLL ======
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.animationPlayState = 'running';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-up').forEach(el => {
+  el.style.animationPlayState = 'paused';
+  observer.observe(el);
+});
+
+// ====== INIT ======
+initSliders();
+drawExplore();
+updateNav();
+
+// Redraw on resize
+window.addEventListener('resize', () => {
+  drawExplore();
+  drawTemp();
+  drawJacobian();
+});
+</script>
+</body>
+</html>

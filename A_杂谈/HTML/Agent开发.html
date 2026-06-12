@@ -1,0 +1,2366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 开发研究报告 — 第一性原理视角</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0a0b0f;
+    --bg-secondary: #111219;
+    --bg-tertiary: #181a24;
+    --bg-card: #15161e;
+    --accent-gold: #d4a843;
+    --accent-gold-dim: #b8922f;
+    --accent-amber: #e8b84b;
+    --accent-blue: #4a7cc9;
+    --accent-green: #4caf7c;
+    --accent-red: #c95555;
+    --accent-purple: #8b6cc1;
+    --text-primary: #e8e4dc;
+    --text-secondary: #9a9590;
+    --text-muted: #5a5550;
+    --border: #2a2b35;
+    --border-hover: #3a3b48;
+    --radius: 6px;
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; font-size: 16px; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Noto Serif SC', 'DM Mono', serif;
+    line-height: 1.8;
+    overflow-x: hidden;
+  }
+
+  /* ===== Grain Overlay ===== */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ===== Scroll Progress ===== */
+  .scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-gold), var(--accent-amber));
+    z-index: 10000;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 10px var(--accent-gold);
+  }
+
+  /* ===== Navigation ===== */
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(20px);
+    background: rgba(10, 11, 15, 0.85);
+    border-bottom: 1px solid rgba(212, 168, 67, 0.1);
+    transition: var(--transition);
+  }
+
+  .nav.scrolled {
+    padding: 0.6rem 2rem;
+    background: rgba(10, 11, 15, 0.95);
+  }
+
+  .nav-brand {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+  }
+
+  .nav-toc {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+  }
+
+  .nav-toc a {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: var(--transition);
+    position: relative;
+  }
+
+  .nav-toc a:hover,
+  .nav-toc a.active {
+    color: var(--accent-gold);
+  }
+
+  .nav-toc a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent-gold);
+    transition: width 0.3s ease;
+  }
+
+  .nav-toc a:hover::after,
+  .nav-toc a.active::after {
+    width: 100%;
+  }
+
+  /* ===== Hero ===== */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8rem 4rem 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(212, 168, 67, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 200px;
+    background: linear-gradient(to top, var(--bg-primary), transparent);
+    pointer-events: none;
+  }
+
+  .hero-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 2rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.2s forwards;
+  }
+
+  .hero-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    max-width: 800px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.4s forwards;
+  }
+
+  .hero-title .highlight {
+    color: var(--accent-gold);
+    position: relative;
+  }
+
+  .hero-subtitle {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: var(--text-secondary);
+    max-width: 600px;
+    line-height: 2;
+    margin-bottom: 3rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.6s forwards;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 3rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.8s forwards;
+  }
+
+  .hero-meta-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+  }
+
+  .hero-meta-item span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+  }
+
+  .hero-scroll {
+    position: absolute;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 1s forwards;
+    cursor: pointer;
+  }
+
+  .hero-scroll span {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .hero-scroll .line {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--accent-gold), transparent);
+    animation: pulse 2s ease infinite;
+  }
+
+  /* ===== Sections ===== */
+  .section {
+    padding: 6rem 4rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .section-number {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .section-number::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    max-width: 100px;
+  }
+
+  .section-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+  }
+
+  .section-desc {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    max-width: 700px;
+    margin-bottom: 3rem;
+    font-weight: 300;
+  }
+
+  /* ===== Divider ===== */
+  .divider {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 4rem;
+  }
+
+  .divider-line {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border), transparent);
+  }
+
+  /* ===== First Principles Card ===== */
+  .principle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .principle-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    transition: var(--transition);
+  }
+
+  .principle-card:hover {
+    border-color: var(--accent-gold);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(212, 168, 67, 0.08);
+  }
+
+  .principle-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-gold), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .principle-card:hover::before {
+    opacity: 1;
+  }
+
+  .principle-icon {
+    font-family: 'DM Mono', monospace;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--accent-gold);
+  }
+
+  .principle-card h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+  }
+
+  .principle-card p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* ===== Architecture Diagram ===== */
+  .arch-container {
+    margin: 3rem 0;
+    padding: 2.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    position: relative;
+  }
+
+  .arch-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+  }
+
+  .arch-layer {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+    animation: fadeUp 0.6s ease forwards;
+    opacity: 0;
+  }
+
+  .arch-layer:nth-child(1) { animation-delay: 0.1s; }
+  .arch-layer:nth-child(2) { animation-delay: 0.3s; }
+  .arch-layer:nth-child(3) { animation-delay: 0.5s; }
+  .arch-layer:nth-child(4) { animation-delay: 0.7s; }
+  .arch-layer:nth-child(5) { animation-delay: 0.9s; }
+
+  .arch-node {
+    padding: 0.8rem 1.5rem;
+    border-radius: var(--radius);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+    transition: var(--transition);
+    cursor: default;
+    position: relative;
+  }
+
+  .arch-node:hover {
+    transform: scale(1.05);
+    z-index: 2;
+  }
+
+  .arch-node.core {
+    background: rgba(212, 168, 67, 0.15);
+    border: 1px solid rgba(212, 168, 67, 0.4);
+    color: var(--accent-gold);
+    min-width: 200px;
+  }
+
+  .arch-node.module {
+    background: rgba(74, 124, 201, 0.1);
+    border: 1px solid rgba(74, 124, 201, 0.3);
+    color: var(--accent-blue);
+    min-width: 130px;
+  }
+
+  .arch-node.infra {
+    background: rgba(76, 175, 124, 0.1);
+    border: 1px solid rgba(76, 175, 124, 0.3);
+    color: var(--accent-green);
+    min-width: 130px;
+  }
+
+  .arch-node.ext {
+    background: rgba(139, 108, 193, 0.1);
+    border: 1px solid rgba(139, 108, 193, 0.3);
+    color: var(--accent-purple);
+    min-width: 130px;
+  }
+
+  .arch-connector {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 auto;
+  }
+
+  .arch-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    width: 100%;
+    text-align: center;
+    padding: 0.3rem 0;
+  }
+
+  /* ===== Expandable Sections ===== */
+  .expand-group {
+    margin-top: 2rem;
+  }
+
+  .expand-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    transition: var(--transition);
+  }
+
+  .expand-item:hover {
+    border-color: var(--border-hover);
+  }
+
+  .expand-item.open {
+    border-color: var(--accent-gold);
+  }
+
+  .expand-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    background: var(--bg-card);
+    transition: var(--transition);
+    user-select: none;
+  }
+
+  .expand-header:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .expand-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .expand-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 2px;
+    background: rgba(212, 168, 67, 0.1);
+    color: var(--accent-gold);
+    border: 1px solid rgba(212, 168, 67, 0.2);
+  }
+
+  .expand-header h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .expand-arrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    transition: transform 0.3s ease;
+  }
+
+  .expand-item.open .expand-arrow {
+    transform: rotate(180deg);
+    color: var(--accent-gold);
+  }
+
+  .expand-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .expand-item.open .expand-content {
+    max-height: 2000px;
+  }
+
+  .expand-body {
+    padding: 1.5rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+  }
+
+  .expand-body p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 2;
+    margin-bottom: 1rem;
+  }
+
+  .expand-body p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* ===== Code Blocks ===== */
+  .code-block {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .code-block::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.3rem 0.8rem;
+    background: var(--bg-tertiary);
+    border-radius: 0 var(--radius) 0 var(--radius);
+  }
+
+  .code-block code {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+  }
+
+  .code-block .keyword { color: var(--accent-purple); }
+  .code-block .string { color: var(--accent-green); }
+  .code-block .comment { color: var(--text-muted); font-style: italic; }
+  .code-block .func { color: var(--accent-gold); }
+  .code-block .type { color: var(--accent-blue); }
+
+  /* ===== Comparison Table ===== */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+    font-size: 0.85rem;
+  }
+
+  .compare-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 2px solid var(--border);
+    background: var(--bg-secondary);
+  }
+
+  .compare-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: top;
+    line-height: 1.6;
+  }
+
+  .compare-table tr:hover td {
+    background: rgba(212, 168, 67, 0.02);
+  }
+
+  /* ===== Highlight Box ===== */
+  .highlight-box {
+    border-left: 3px solid var(--accent-gold);
+    background: rgba(212, 168, 67, 0.04);
+    padding: 1.5rem 2rem;
+    margin: 2rem 0;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .highlight-box p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+
+  .highlight-box strong {
+    color: var(--accent-gold);
+  }
+
+  /* ===== Steps ===== */
+  .steps {
+    margin: 2rem 0;
+    position: relative;
+    padding-left: 2rem;
+  }
+
+  .steps::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent-gold), var(--border));
+  }
+
+  .step {
+    position: relative;
+    padding: 1rem 0 1.5rem 1.5rem;
+  }
+
+  .step::before {
+    content: '';
+    position: absolute;
+    left: -2rem;
+    top: 1.3rem;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 2px solid var(--accent-gold);
+    background: var(--bg-primary);
+    transition: var(--transition);
+  }
+
+  .step:hover::before {
+    background: var(--accent-gold);
+    box-shadow: 0 0 12px rgba(212, 168, 67, 0.4);
+  }
+
+  .step h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+
+  .step p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* ===== Interactive Tabs ===== */
+  .tabs-container {
+    margin: 2rem 0;
+  }
+
+  .tabs-header {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.8rem 1.5rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover {
+    color: var(--text-secondary);
+  }
+
+  .tab-btn.active {
+    color: var(--accent-gold);
+  }
+
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-gold);
+  }
+
+  .tab-panel {
+    display: none;
+    padding: 2rem 0;
+    animation: fadeUp 0.4s ease;
+  }
+
+  .tab-panel.active {
+    display: block;
+  }
+
+  .tab-panel h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+  }
+
+  .tab-panel p,
+  .tab-panel li {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+
+  .tab-panel ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .tab-panel li {
+    padding: 0.4rem 0;
+    padding-left: 1.2rem;
+    position: relative;
+  }
+
+  .tab-panel li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--accent-gold);
+  }
+
+  /* ===== Stat Cards ===== */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+  }
+
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+    transition: var(--transition);
+    cursor: default;
+  }
+
+  .stat-card:hover {
+    border-color: var(--accent-gold);
+    transform: translateY(-2px);
+  }
+
+  .stat-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 2rem;
+    color: var(--accent-gold);
+    font-weight: 500;
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+  }
+
+  /* ===== Example Cards ===== */
+  .example-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+  }
+
+  .example-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: var(--transition);
+    cursor: default;
+  }
+
+  .example-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .example-header {
+    padding: 1.5rem 1.5rem 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .example-type {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+  }
+
+  .example-type.research {
+    background: rgba(74, 124, 201, 0.1);
+    color: var(--accent-blue);
+    border: 1px solid rgba(74, 124, 201, 0.2);
+  }
+
+  .example-type.automation {
+    background: rgba(76, 175, 124, 0.1);
+    color: var(--accent-green);
+    border: 1px solid rgba(76, 175, 124, 0.2);
+  }
+
+  .example-type.creative {
+    background: rgba(139, 108, 193, 0.1);
+    color: var(--accent-purple);
+    border: 1px solid rgba(139, 108, 193, 0.2);
+  }
+
+  .example-type.complex {
+    background: rgba(201, 85, 85, 0.1);
+    color: var(--accent-red);
+    border: 1px solid rgba(201, 85, 85, 0.2);
+  }
+
+  .example-body {
+    padding: 1rem 1.5rem 1.5rem;
+  }
+
+  .example-body h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.05rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+
+  .example-body p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    margin-bottom: 1rem;
+  }
+
+  .example-flow {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+  }
+
+  .example-flow span {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-muted);
+  }
+
+  .example-flow .arrow {
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    padding: 0;
+  }
+
+  /* ===== Principles List ===== */
+  .guidance-list {
+    margin: 2rem 0;
+    counter-reset: guidance;
+  }
+
+  .guidance-item {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--border);
+    transition: var(--transition);
+  }
+
+  .guidance-item:hover {
+    padding-left: 0.5rem;
+  }
+
+  .guidance-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.5rem;
+    color: var(--accent-gold);
+    opacity: 0.4;
+    min-width: 40px;
+    line-height: 1;
+    padding-top: 0.2rem;
+  }
+
+  .guidance-item:hover .guidance-num {
+    opacity: 1;
+  }
+
+  .guidance-content h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+  }
+
+  .guidance-content p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* ===== CTA / Conclusion ===== */
+  .conclusion {
+    background: linear-gradient(135deg, rgba(212, 168, 67, 0.05) 0%, rgba(74, 124, 201, 0.03) 100%);
+    border: 1px solid rgba(212, 168, 67, 0.15);
+    border-radius: var(--radius);
+    padding: 3rem;
+    margin: 3rem 0;
+    text-align: center;
+  }
+
+  .conclusion h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    color: var(--accent-gold);
+  }
+
+  .conclusion p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 2;
+    max-width: 650px;
+    margin: 0 auto;
+  }
+
+  /* ===== Footer ===== */
+  .footer {
+    padding: 4rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .footer-left {
+    max-width: 400px;
+  }
+
+  .footer-brand {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .footer-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  .footer-right {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-align: right;
+  }
+
+  /* ===== Back to Top ===== */
+  .back-top {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 40px;
+    height: 40px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: var(--transition);
+    z-index: 100;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+  }
+
+  .back-top.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .back-top:hover {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+  }
+
+  /* ===== Animations ===== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    .section { padding: 3rem 1.5rem; }
+    .hero { padding: 6rem 1.5rem 3rem; }
+    .nav-toc { display: none; }
+    .hero-meta { flex-direction: column; gap: 1rem; }
+    .principle-grid { grid-template-columns: 1fr; }
+    .example-grid { grid-template-columns: 1fr; }
+    .arch-container { padding: 1.5rem; overflow-x: auto; }
+    .footer { padding: 2rem 1.5rem; }
+    .divider { padding: 0 1.5rem; }
+    .scroll-progress { display: none; }
+  }
+
+  /* ===== Interactive Concept Map ===== */
+  .concept-map {
+    position: relative;
+    margin: 3rem auto;
+    max-width: 700px;
+    aspect-ratio: 16 / 10;
+  }
+
+  .concept-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212, 168, 67, 0.2), rgba(212, 168, 67, 0.05));
+    border: 1px solid rgba(212, 168, 67, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.9rem;
+    color: var(--accent-gold);
+    z-index: 2;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .concept-center:hover {
+    box-shadow: 0 0 30px rgba(212, 168, 67, 0.15);
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+
+  .concept-node {
+    position: absolute;
+    padding: 0.6rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    z-index: 2;
+    white-space: nowrap;
+  }
+
+  .concept-node:hover {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+    transform: scale(1.05);
+  }
+
+  .concept-node.active {
+    border-color: var(--accent-gold);
+    background: rgba(212, 168, 67, 0.08);
+    color: var(--accent-gold);
+  }
+
+  .concept-line {
+    position: absolute;
+    background: var(--border);
+    transform-origin: 0 0;
+    z-index: 1;
+    transition: background 0.3s ease;
+  }
+
+  .concept-line.highlight {
+    background: var(--accent-gold);
+    box-shadow: 0 0 6px rgba(212, 168, 67, 0.3);
+  }
+
+  .concept-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.8rem 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--accent-gold);
+    border-radius: var(--radius);
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    width: 220px;
+    text-align: left;
+    z-index: 10;
+    white-space: normal;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .concept-node:hover .concept-tooltip,
+  .concept-node.active .concept-tooltip {
+    display: block;
+  }
+
+  /* ===== Agent Demo ===== */
+  .demo-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 2rem 0;
+  }
+
+  .demo-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+    gap: 0.5rem;
+  }
+
+  .demo-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  .demo-dot:nth-child(1) { background: #c95555; }
+  .demo-dot:nth-child(2) { background: #d4a843; }
+  .demo-dot:nth-child(3) { background: #4caf7c; }
+
+  .demo-toolbar span {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-left: 0.5rem;
+  }
+
+  .demo-body {
+    padding: 1.5rem;
+    min-height: 300px;
+  }
+
+  .demo-input-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .demo-input {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.7rem 1rem;
+    color: var(--text-primary);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    outline: none;
+    transition: var(--transition);
+  }
+
+  .demo-input:focus {
+    border-color: var(--accent-gold);
+  }
+
+  .demo-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .demo-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.7rem 1.5rem;
+    background: var(--accent-gold);
+    color: var(--bg-primary);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+  }
+
+  .demo-btn:hover {
+    background: var(--accent-amber);
+    letter-spacing: 0.15em;
+  }
+
+  .demo-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    letter-spacing: 0.1em;
+  }
+
+  .demo-output {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 2;
+    color: var(--text-secondary);
+    min-height: 150px;
+  }
+
+  .demo-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    opacity: 0;
+    animation: fadeUp 0.4s ease forwards;
+  }
+
+  .demo-step-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .demo-step-icon.think {
+    background: rgba(139, 108, 193, 0.2);
+    color: var(--accent-purple);
+    border: 1px solid rgba(139, 108, 193, 0.3);
+  }
+
+  .demo-step-icon.action {
+    background: rgba(74, 124, 201, 0.2);
+    color: var(--accent-blue);
+    border: 1px solid rgba(74, 124, 201, 0.3);
+  }
+
+  .demo-step-icon.result {
+    background: rgba(76, 175, 124, 0.2);
+    color: var(--accent-green);
+    border: 1px solid rgba(76, 175, 124, 0.3);
+  }
+
+  .demo-step-icon.done {
+    background: rgba(212, 168, 67, 0.2);
+    color: var(--accent-gold);
+    border: 1px solid rgba(212, 168, 67, 0.3);
+  }
+
+  .demo-step-text {
+    font-size: 0.78rem;
+  }
+
+  .demo-step-text .label {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ===== Challenge Meter ===== */
+  .challenge-list {
+    margin: 2rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .challenge-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .challenge-item:hover {
+    border-color: var(--border-hover);
+  }
+
+  .challenge-item.open {
+    border-color: var(--accent-gold);
+  }
+
+  .challenge-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  .challenge-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .challenge-severity {
+    display: flex;
+    gap: 3px;
+  }
+
+  .challenge-severity .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: var(--transition);
+  }
+
+  .challenge-severity .dot.active {
+    background: var(--accent-red);
+    box-shadow: 0 0 6px rgba(201, 85, 85, 0.4);
+  }
+
+  .challenge-severity .dot.active.medium {
+    background: var(--accent-gold);
+    box-shadow: 0 0 6px rgba(212, 168, 67, 0.4);
+  }
+
+  .challenge-bar {
+    height: 3px;
+    background: var(--bg-primary);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+  }
+
+  .challenge-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-gold), var(--accent-red));
+    border-radius: 2px;
+    transition: width 1s ease;
+    width: 0;
+  }
+
+  .challenge-item.visible .challenge-bar-fill {
+    width: var(--bar-width);
+  }
+
+  .challenge-detail {
+    display: none;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    margin-top: 0.5rem;
+  }
+
+  .challenge-item.open .challenge-detail {
+    display: block;
+  }
+
+  /* ===== Mind Map ===== */
+  .mindmap {
+    margin: 2rem 0;
+    padding: 2rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow-x: auto;
+  }
+
+  .mindmap-center {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .mindmap-center h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.2rem;
+    color: var(--accent-gold);
+  }
+
+  .mindmap-branches {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .mindmap-branch {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    transition: var(--transition);
+  }
+
+  .mindmap-branch:hover {
+    border-color: var(--accent-gold);
+    transform: translateY(-2px);
+  }
+
+  .mindmap-branch h5 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent-gold);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+  }
+
+  .mindmap-branch ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .mindmap-branch li {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    padding: 0.2rem 0;
+    padding-left: 0.8rem;
+    position: relative;
+  }
+
+  .mindmap-branch li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--text-muted);
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<!-- Scroll Progress -->
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<!-- Navigation -->
+<nav class="nav" id="mainNav">
+  <div class="nav-brand">Agent Dev Report</div>
+  <ul class="nav-toc">
+    <li><a href="#essence" class="active" data-section="essence">本质</a></li>
+    <li><a href="#architecture" data-section="architecture">架构</a></li>
+    <li><a href="#challenges" data-section="challenges">挑战</a></li>
+    <li><a href="#paradigms" data-section="paradigms">范式</a></li>
+    <li><a href="#examples" data-section="examples">案例</a></li>
+    <li><a href="#guidance" data-section="guidance">指导</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-label">First Principles Research Report</div>
+  <h1 class="hero-title">
+    AI Agent 开发的<br><span class="highlight">第一性原理</span>研究报告
+  </h1>
+  <p class="hero-subtitle">
+    以建筑师的思维范式，从最基本的公理出发，逐层构建 Agent 开发的完整知识体系——<br>
+    拆解本质、厘清架构、直面挑战、给出方案。
+  </p>
+  <div class="hero-meta">
+    <div class="hero-meta-item">
+      APPROACH
+      <span>第一性原理 + 系统架构</span>
+    </div>
+    <div class="hero-meta-item">
+      DEPTH
+      <span>从本质到实践的全栈拆解</span>
+    </div>
+    <div class="hero-meta-item">
+      VERSION
+      <span>2025.06 · v2.0</span>
+    </div>
+  </div>
+  <div class="hero-scroll" onclick="document.getElementById('essence').scrollIntoView({behavior:'smooth'})">
+    <span>Scroll</span>
+    <div class="line"></div>
+  </div>
+</section>
+
+<!-- Section 1: Essence -->
+<div class="divider"><div class="divider-line"></div></div>
+
+<section class="section reveal" id="essence">
+  <div class="section-number">01 — ESSENCE</div>
+  <h2 class="section-title">什么是 Agent？回到最基本的问题</h2>
+  <p class="section-desc">
+    在讨论任何框架、工具和最佳实践之前，我们先回到第一性原理：<strong style="color:var(--accent-gold)">Agent 的本质是什么？</strong>剥离所有技术外衣后，它到底在解决什么问题？
+  </p>
+
+  <div class="highlight-box">
+    <p>
+      <strong>第一性原理推导：</strong>Agent 的本质 = <strong>自主决策循环</strong>（Autonomous Decision Loop）。<br>
+      一个 Agent 不是一个 API 调用，不是一个 Prompt 模板，也不是一个 RAG 管道。<br>
+      它是一个能够 <strong>感知环境 → 推理判断 → 采取行动 → 观察反馈 → 迭代优化</strong> 的闭环系统。
+    </p>
+  </div>
+
+  <div class="principle-grid">
+    <div class="principle-card">
+      <div class="principle-icon">01</div>
+      <h3>感知（Perception）</h3>
+      <p>Agent 需要从环境中获取信息。这不仅限于文本输入，还包括结构化数据、API 返回值、用户行为、多模态信号。感知是决策的原材料——没有高质量的输入，推理必然失效。</p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-icon">02</div>
+      <h3>推理（Reasoning）</h3>
+      <p>这是 Agent 的"大脑"。基于 LLM 的推理能力，Agent 能够理解任务意图、分解复杂目标、评估行动选项。推理的质量直接决定 Agent 的能力上限。</p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-icon">03</div>
+      <h3>行动（Action）</h3>
+      <p>推理不能停留在思考层面。Agent 必须通过工具调用（Tool Use）、代码执行、API 交互等方式对外部世界施加影响。行动是 Agent 区别于纯对话模型的关键分界线。</p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-icon">04</div>
+      <h3>记忆（Memory）</h3>
+      <p>没有记忆的 Agent 每次对话都是"失忆重来"。短期记忆维持上下文连贯性，长期记忆积累经验知识。记忆系统决定了 Agent 能否在持续交互中变得更好。</p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-icon">05</div>
+      <h3>反思（Reflection）</h3>
+      <p>高阶 Agent 能够评估自身行为的结果，从失败中学习、从成功中归纳。这个元认知能力是 Agent 从"工具"进化为"协作者"的核心驱动力。</p>
+    </div>
+    <div class="principle-card">
+      <div class="principle-icon">06</div>
+      <h3>协作（Collaboration）</h3>
+      <p>单 Agent 能力有限。多 Agent 协作系统通过角色分工、消息传递、任务委派来完成远超单体能力边界的复杂任务。这是 Agent 系统走向成熟的标志。</p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2: Architecture -->
+<div class="divider"><div class="divider-line"></div></div>
+
+<section class="section reveal" id="architecture">
+  <div class="section-number">02 — ARCHITECTURE</div>
+  <h2 class="section-title">架构拆解：从单体到分布式</h2>
+  <p class="section-desc">
+    好的架构不是堆砌组件，而是在约束条件下做出最优权衡。以下从第一性原理出发，展示 Agent 系统的分层架构。
+  </p>
+
+  <div class="arch-container">
+    <div class="arch-diagram">
+      <div class="arch-label">Application Layer — 用户交互层</div>
+      <div class="arch-layer">
+        <div class="arch-node ext">用户界面</div>
+        <div class="arch-node ext">API Gateway</div>
+        <div class="arch-node ext">WebSocket</div>
+        <div class="arch-node ext">CLI</div>
+      </div>
+
+      <div class="arch-connector"></div>
+      <div class="arch-label">Orchestration Layer — 编排调度层</div>
+      <div class="arch-layer">
+        <div class="arch-node core">Agent Runtime</div>
+        <div class="arch-node core">Task Planner</div>
+        <div class="arch-node core">Tool Router</div>
+      </div>
+
+      <div class="arch-connector"></div>
+      <div class="arch-label">Cognitive Layer — 认知推理层</div>
+      <div class="arch-layer">
+        <div class="arch-node module">LLM Provider</div>
+        <div class="arch-node module">Prompt Engine</div>
+        <div class="arch-node module">Reasoning Chain</div>
+        <div class="arch-node module">Output Parser</div>
+      </div>
+
+      <div class="arch-connector"></div>
+      <div class="arch-label">Memory & State — 记忆状态层</div>
+      <div class="arch-layer">
+        <div class="arch-node infra">Short-term Memory</div>
+        <div class="arch-node infra">Long-term Store</div>
+        <div class="arch-node infra">Vector DB</div>
+        <div class="arch-node infra">Session State</div>
+      </div>
+
+      <div class="arch-connector"></div>
+      <div class="arch-label">Tool & External — 工具外部层</div>
+      <div class="arch-layer">
+        <div class="arch-node ext">Code Executor</div>
+        <div class="arch-node ext">Web Browser</div>
+        <div class="arch-node ext">API Clients</div>
+        <div class="arch-node ext">File System</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    <p><strong>建筑师洞察：</strong>架构设计的核心矛盾是<strong>灵活性</strong>与<strong>可控性</strong>的平衡。过度自由的 Agent 行为不可预测，过度约束则丧失自主性。好的架构在这两者之间找到一个<strong>可调节的旋钮</strong>——而非固定的折中点。</p>
+  </div>
+
+  <!-- Interactive Tabs for Architecture -->
+  <div class="tabs-container">
+    <div class="tabs-header">
+      <button class="tab-btn active" onclick="switchTab(this, 'tab-single')">单 Agent 架构</button>
+      <button class="tab-btn" onclick="switchTab(this, 'tab-multi')">多 Agent 协作</button>
+      <button class="tab-btn" onclick="switchTab(this, 'tab-tool')">工具增强模式</button>
+      <button class="tab-btn" onclick="switchTab(this, 'tab-memory')">记忆系统设计</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-single">
+      <h4>单 Agent 架构：ReAct 范式</h4>
+      <p>单 Agent 架构是最基础的构建单元。ReAct（Reasoning + Acting）模式让 LLM 在"思考"和"行动"之间交替执行：</p>
+      <div class="code-block" data-lang="python">
+        <code><span class="comment"># ReAct 核心循环</span>
+<span class="keyword">while</span> <span class="keyword">not</span> task_complete:
+    <span class="comment"># 1. 观察当前状态</span>
+    observation = <span class="func">perceive</span>(environment)
+
+    <span class="comment"># 2. 推理下一步行动</span>
+    thought = llm.<span class="func">think</span>(
+        task=task,
+        history=history,
+        observation=observation
+    )
+
+    <span class="comment"># 3. 选择并执行工具</span>
+    action = llm.<span class="func">decide_action</span>(thought)
+    result = <span class="func">execute_tool</span>(action)
+
+    <span class="comment"># 4. 记录并评估</span>
+    history.<span class="func">append</span>(thought, action, result)
+    task_complete = <span class="func">evaluate</span>(result, task)</code>
+      </div>
+      <p>优点是简单清晰、易于调试；缺点是单点瓶颈明显，复杂任务容易陷入循环或产生幻觉。</p>
+    </div>
+
+    <div class="tab-panel" id="tab-multi">
+      <h4>多 Agent 协作：角色分工与消息传递</h4>
+      <p>多 Agent 系统的核心思想是"分工"——每个 Agent 专注一个领域，通过结构化的消息协议协作完成任务。</p>
+      <ul>
+        <li><strong>层级式</strong>（Hierarchical）：一个 Orchestrator Agent 负责任务分解和分发，多个 Worker Agent 执行具体子任务，结果汇总后返回</li>
+        <li><strong>辩论式</strong>（Debate）：多个 Agent 对同一问题给出不同视角的分析，通过"辩论"达成更优共识</li>
+        <li><strong>流水线式</strong>（Pipeline）：任务按顺序流经多个 Agent，每个 Agent 负责一个阶段的处理</li>
+        <li><strong>竞争式</strong>（Competitive）：多个 Agent 独立解决同一问题，由评判者选择最优方案</li>
+      </ul>
+      <p>关键设计要素：通信协议标准化、职责边界的明确定义、冲突解决机制、死锁检测与恢复策略。</p>
+    </div>
+
+    <div class="tab-panel" id="tab-tool">
+      <h4>工具增强模式：让 Agent "长出手脚"</h4>
+      <p>Agent 的智能如果不与外部工具连接，就只是一个"很会说话但什么都不会做"的模型。工具增强是 Agent 能力的放大器：</p>
+      <ul>
+        <li><strong>Function Calling</strong>：将工具定义为结构化的函数签名，让 LLM 通过 JSON Schema 理解参数和返回值</li>
+        <li><strong>Code Interpreter</strong>：让 Agent 生成并执行代码，实现任意计算和数据处理能力</li>
+        <li><strong>Browser Automation</strong>：通过 Playwright/Puppeteer 控制浏览器，实现网页操作和信息检索</li>
+        <li><strong>MCP 协议</strong>（Model Context Protocol）：标准化的工具接入协议，让 Agent 以统一方式调用异构工具</li>
+      </ul>
+      <p>工具设计原则：接口最小化、幂等性、超时控制、结果可解析、错误可恢复。</p>
+    </div>
+
+    <div class="tab-panel" id="tab-memory">
+      <h4>记忆系统设计：让 Agent "记住并进化"</h4>
+      <p>记忆是 Agent 从"无状态工具"进化为"持续学习协作者"的关键。</p>
+      <div class="code-block" data-lang="architecture">
+        <code><span class="comment">┌─────────────────────────────────────────────┐</span>
+<span class="comment">│</span>  <span class="func">Memory Architecture</span>                       <span class="comment">│</span>
+<span class="comment">├─────────────────────────────────────────────┤</span>
+<span class="comment">│</span>                                             <span class="comment">│</span>
+<span class="comment">│</span>  <span class="keyword">Working Memory</span> (当前对话上下文)            <span class="comment">│</span>
+<span class="comment">│</span>  ├─ Token window 内的即时记忆              <span class="comment">│</span>
+<span class="comment">│</span>  └─ Sliding window / Summary compression  <span class="comment">│</span>
+<span class="comment">│</span>                                             <span class="comment">│</span>
+<span class="comment">│</span>  <span class="keyword">Episodic Memory</span> (事件记忆)               <span class="comment">│</span>
+<span class="comment">│</span>  ├─ 过往对话摘要                          <span class="comment">│</span>
+<span class="comment">│</span>  ├─ 关键决策和结果                        <span class="comment">│</span>
+<span class="comment">│</span>  └─ Embedding → Vector DB                 <span class="comment">│</span>
+<span class="comment">│</span>                                             <span class="comment">│</span>
+<span class="comment">│</span>  <span class="keyword">Semantic Memory</span> (知识记忆)               <span class="comment">│</span>
+<span class="comment">│</span>  ├─ 用户偏好和习惯                        <span class="comment">│</span>
+<span class="comment">│</span>  ├─ 领域知识图谱                          <span class="comment">│</span>
+<span class="comment">│</span>  └─ RAG retrieval + Reranking             <span class="comment">│</span>
+<span class="comment">│</span>                                             <span class="comment">│</span>
+<span class="comment">│</span>  <span class="keyword">Procedural Memory</span> (程序记忆)             <span class="comment">│</span>
+<span class="comment">│</span>  ├─ 已验证的 Tool 使用模式                <span class="comment">│</span>
+<span class="comment">│</span>  ├─ 成功的任务分解模板                    <span class="comment">│</span>
+<span class="comment">│</span>  └─ 最佳实践规则库                        <span class="comment">│</span>
+<span class="comment">│                                             │</span>
+<span class="comment">└─────────────────────────────────────────────┘</span></code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 3: Challenges -->
+<div class="divider"><div class="divider-line"></div></div>
+
+<section class="section reveal" id="challenges">
+  <div class="section-number">03 — CHALLENGES</div>
+  <h2 class="section-title">关键挑战：五大核心难题</h2>
+  <p class="section-desc">
+    Agent 开发并非坦途。以下是从实践中提炼的五大核心挑战，以及基于第一性原理的解决思路。
+  </p>
+
+  <div class="challenge-list" id="challengeList">
+    <div class="challenge-item" onclick="toggleChallenge(this)" style="--bar-width: 92%">
+      <div class="challenge-top">
+        <span class="challenge-name">幻觉与事实可靠性</span>
+        <div class="challenge-severity">
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+        </div>
+      </div>
+      <div class="challenge-bar"><div class="challenge-bar-fill"></div></div>
+      <div class="challenge-detail">
+        <p>LLM 会产生看似合理但事实错误的输出。当 Agent 基于幻觉做出行动决策时，错误会被工具执行放大。</p>
+        <p><strong style="color:var(--accent-gold)">解决思路：</strong>① 引入"事实验证层"——Agent 每次行动前必须通过外部数据源校验关键事实；② 采用"双 Agent 制衡"——一个 Agent 负责执行，另一个负责审查和质疑；③ 低置信度时主动要求人类确认，而非自行决断。</p>
+      </div>
+    </div>
+
+    <div class="challenge-item" onclick="toggleChallenge(this)" style="--bar-width: 85%">
+      <div class="challenge-top">
+        <span class="challenge-name">长程任务规划与恢复</span>
+        <div class="challenge-severity">
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot"></div>
+        </div>
+      </div>
+      <div class="challenge-bar"><div class="challenge-bar-fill"></div></div>
+      <div class="challenge-detail">
+        <p>现实任务往往需要 10+ 步骤才能完成。每一步都可能出错，错误会级联放大。Agent 需要具备规划、检查点保存、错误回滚的能力。</p>
+        <p><strong style="color:var(--accent-gold)">解决思路：</strong>① 将大任务递归分解为可验证的子任务（DAG 结构）；② 每个子任务完成后进行"门控检查"；③ 维护 Checkpoint 机制，支持从中间状态恢复；④ 设定"最大步数"和"超时"硬约束。</p>
+      </div>
+    </div>
+
+    <div class="challenge-item" onclick="toggleChallenge(this)" style="--bar-width: 78%">
+      <div class="challenge-top">
+        <span class="challenge-name">成本控制与效率优化</span>
+        <div class="challenge-severity">
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot"></div>
+        </div>
+      </div>
+      <div class="challenge-bar"><div class="challenge-bar-fill"></div></div>
+      <div class="challenge-detail">
+        <p>每一轮 ReAct 循环都意味着一次 LLM 调用。复杂任务可能消耗数百万 Token，API 成本和延迟成为实际部署的瓶颈。</p>
+        <p><strong style="color:var(--accent-gold)">解决思路：</strong>① 任务路由——简单任务用小模型，复杂任务才调用大模型；② 结果缓存——相同或相似查询复用历史推理结果；③ 提前终止——检测到任务不可解时及时停止，而非无限循环；④ 批处理——将可并行的工具调用合并执行。</p>
+      </div>
+    </div>
+
+    <div class="challenge-item" onclick="toggleChallenge(this)" style="--bar-width: 70%">
+      <div class="challenge-top">
+        <span class="challenge-name">安全边界与权限管控</span>
+        <div class="challenge-severity">
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot active medium"></div>
+          <div class="dot active medium"></div>
+          <div class="dot"></div>
+        </div>
+      </div>
+      <div class="challenge-bar"><div class="challenge-bar-fill"></div></div>
+      <div class="challenge-detail">
+        <p>Agent 拥有执行代码、调用 API、操作文件系统的能力。一个失控的 Agent 可能删除数据、发送错误信息、甚至造成不可逆损害。</p>
+        <p><strong style="color:var(--accent-gold)">解决思路：</strong>① 最小权限原则——每个 Agent 只获得完成任务所需的最小工具集；② 沙箱执行——代码在隔离环境中运行；③ 操作白名单——敏感操作必须经过人工审批；④ 全链路审计日志——每次行动可追溯、可回滚。</p>
+      </div>
+    </div>
+
+    <div class="challenge-item" onclick="toggleChallenge(this)" style="--bar-width: 65%">
+      <div class="challenge-top">
+        <span class="challenge-name">评估体系与可观测性</span>
+        <div class="challenge-severity">
+          <div class="dot active medium"></div>
+          <div class="dot active medium"></div>
+          <div class="dot active medium"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+      </div>
+      <div class="challenge-bar"><div class="challenge-bar-fill"></div></div>
+      <div class="challenge-detail">
+        <p>如何衡量一个 Agent 是否"好用"？传统软件的测试方法不适用于非确定性系统。Agent 的每一步都可能因 LLM 的随机性而不同。</p>
+        <p><strong style="color:var(--accent-gold)">解决思路：</strong>① 建立多维度评估体系——任务完成率、步骤效率、用户满意度、成本指标；② 端到端场景测试——预设真实场景的输入输出基准；③ 过程追踪——记录每一步的 Thought/Action/Observation，用于离线分析和调优；④ A/B 测试框架——系统性对比不同 Agent 配置的效果。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 4: Paradigms -->
+<div class="divider"><div class="divider-line"></div></div>
+
+<section class="section reveal" id="paradigms">
+  <div class="section-number">04 — PARADIGMS</div>
+  <h2 class="section-title">开发范式：四种 Agent 构建模式</h2>
+  <p class="section-desc">
+    没有银弹。不同的场景需要不同的 Agent 范式。理解每种范式的适用边界，比盲目选择"最强"方案更重要。
+  </p>
+
+  <!-- Comparison Table -->
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>范式</th>
+        <th>核心思想</th>
+        <th>适用场景</th>
+        <th>复杂度</th>
+        <th>可控性</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong style="color:var(--accent-gold)">ReAct Loop</strong></td>
+        <td>推理与行动交替执行</td>
+        <td>单步查询、简单任务</td>
+        <td style="color:var(--accent-green)">低</td>
+        <td style="color:var(--accent-green)">高</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--accent-gold)">Plan & Execute</strong></td>
+        <td>先规划完整方案，再逐步执行</td>
+        <td>多步骤复杂任务</td>
+        <td style="color:var(--accent-gold)">中</td>
+        <td style="color:var(--accent-gold)">中</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--accent-gold)">Multi-Agent</strong></td>
+        <td>多个专精 Agent 协作</td>
+        <td>跨领域复合任务</td>
+        <td style="color:var(--accent-red)">高</td>
+        <td style="color:var(--accent-red)">低</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--accent-gold)">Autonomous</strong></td>
+        <td>自我驱动的目标探索</td>
+        <td>开放性研究任务</td>
+        <td style="color:var(--accent-red)">极高</td>
+        <td style="color:var(--accent-red)">很低</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Interactive Demo -->
+  <div class="demo-container">
+    <div class="demo-toolbar">
+      <div class="demo-dot"></div>
+      <div class="demo-dot"></div>
+      <div class="demo-dot"></div>
+      <span>Agent Simulation — 交互式推理过程演示</span>
+    </div>
+    <div class="demo-body">
+      <div class="demo-input-row">
+        <input class="demo-input" id="demoInput" type="text" placeholder="输入一个任务，观察 Agent 的推理过程..." value="帮我分析最近三个月的销售数据并生成报告">
+        <button class="demo-btn" id="demoBtn" onclick="runDemo()">模拟运行</button>
+      </div>
+      <div class="demo-output" id="demoOutput">
+        <div style="color: var(--text-muted); font-size: 0.75rem;">← 输入任务并点击「模拟运行」，观察 Agent 的 ReAct 推理过程</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 5: Examples -->
+<div class="divider"><div class="divider-line"></div></div>
+
+<section class="section reveal" id="examples">
+  <div class="section-number">05 — CASE STUDIES</div>
+  <h2 class="section-title">实战案例：四种典型 Agent 应用</h2>
+  <p class="section-desc">
+    理论需要落地。以下四个案例覆盖了 Agent 开发的主要应用场景，并给出了具体的架构选择理由。
+  </p>
+
+  <div class="example-grid">
+    <div class="example-card">
+      <div class="example-header">
+        <div></div>
+        <span class="example-type research">RESEARCH</span>
+      </div>
+      <div class="example-body">
+        <h4>深度研究 Agent</h4>
+        <p>给定一个研究课题，Agent 自动进行多轮网络搜索、信息聚合、交叉验证，最终输出结构化的研究报告。</p>
+        <div class="example-flow">
+          <span>课题输入</span>
+          <span class="arrow">→</span>
+          <span>查询规划</span>
+          <span class="arrow">→</span>
+          <span>多源搜索</span>
+          <span class="arrow">→</span>
+          <span>信息提取</span>
+          <span class="arrow">→</span>
+          <span>交叉验证</span>
+          <span class="arrow">→</span>
+          <span>报告生成</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="example-card">
+      <div class="example-header">
+        <div></div>
+        <span class="example-type automation">AUTOMATION</span>
+      </div>
+      <div class="example-body">
+        <h4>数据处理 Agent</h4>
+        <p>连接企业数据源，自动执行 SQL 查询、数据清洗、统计分析，并生成可视化图表和文字洞察。</p>
+        <div class="example-flow">
+          <span>自然语言提问</span>
+          <span class="arrow">→</span>
+          <span>SQL 生成</span>
+          <span class="arrow">→</span>
+          <span>查询执行</span>
+          <span class="arrow">→</span>
+          <span>数据分析</span>
+          <span class="arrow">→</span>
+          <span>图表生成</span>
+          <span class="arrow">→</span>
+          <span>洞察输出</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="example-card">
+      <div class="example-header">
+        <div></div>
+        <span class="example-type creative">CREATIVE</span>
+      </div>
+      <div class="example-body">
+        <h4>内容创作 Agent</h4>
+        <p>基于品牌调性和目标受众，Agent 自主规划内容日历、撰写多平台分发文案、生成配图并发布。</p>
+        <div class="example-flow">
+          <span>品牌策略</span>
+          <span class="arrow">→</span>
+          <span>选题规划</span>
+          <span class="arrow">→</span>
+          <span>文案撰写</span>
+          <span class="arrow">→</span>
+          <span>风格校准</span>
+          <span class="arrow">→</span>
+          <span>多平台适配</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="example-card">
+      <div class="example-header">
+        <div></div>
+        <span class="example-type complex">COMPLEX</span>
+      </div>
+      <div class="example-body">
+        <h4>软件开发 Agent</h4>
+        <p>接收需求描述，Agent 自动进行架构设计、代码编写、测试生成、Bug 修复的完整开发流程。</p>
+        <div class="example-flow">
+          <span>需求理解</span>
+          <span class="arrow">→</span>
+          <span>技术设计</span>
+          <span class="arrow">→</span>
+          <span>代码生成</span>
+          <span class="arrow">→</span>
+          <span>测试编写</span>
+          <span class="arrow">→</span>
+          <span>执行验证</span>
+          <span class="arrow">→</span>
+          <span>迭代修复</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 6: Guidance -->
+<div class="divider"><div class="divider-line"></div></div>
+
+<section class="section reveal" id="guidance">
+  <div class="section-number">06 — GUIDANCE</div>
+  <h2 class="section-title">指导性意见：建筑师的十条原则</h2>
+  <p class="section-desc">
+    基于以上分析，以下是 Agent 开发过程中应当遵循的核心原则。不是教条，而是方向。
+  </p>
+
+  <div class="guidance-list">
+    <div class="guidance-item">
+      <div class="guidance-num">01</div>
+      <div class="guidance-content">
+        <h4>先定义"成功"，再设计 Agent</h4>
+        <p>在写第一行代码之前，明确：这个 Agent 要解决什么问题？用户如何判断它"做好了"？没有明确的评估标准，你无法知道迭代方向。</p>
+      </div>
+    </div>
+    <div class="guidance-item">
+      <div class="guidance-num">02</div>
+      <div class="guidance-content">
+        <h4>从最简循环开始，逐步增加复杂度</h4>
+        <p>不要一上来就构建多 Agent 系统。先用一个 Prompt + 一个工具完成核心循环，验证可行性后再叠加记忆、规划、多 Agent。架构的每层都应该有独立的价值。</p>
+      </div>
+    </div>
+    <div class="guidance-item">
+      <div class="guidance-num">03</div>
+      <div class="guidance-content">
+        <h4>Prompt 是 Agent 的灵魂，不是装饰</h4>
+        <p>System Prompt 的质量直接决定 Agent 的行为边界。投入时间打磨 Prompt 中的角色定义、行为规则、输出格式、错误处理指令。一个差的 Prompt 会让最好的架构形同虚设。</p>
+      </div>
+    </div>
+    <div class="guidance-item">
+      <div class="guidance-num">04</div>
+      <div class="guidance-content">
+        <h4>工具设计遵循"最小接口"原则</h4>
+        <p>给 Agent 的工具越少越好——每个工具都要有明确的职责、清晰的参数说明和可预测的返回格式。工具过多会导致选择困难和误用。</p>
+      </div>
+    </div>
+    <div class="guidance-item">
+      <div class="guidance-num">05</div>
+      <div class="guidance-content">
+        <h4>永远给 Agent 设置"刹车"</h4>
+        <p>最大步骤数、总 Token 上限、超时时间、操作白名单——这些不是对 Agent 能力的限制，而是系统的安全底线。失控的 Agent 比没有 Agent 更危险。</p>
+      </div>
+    </div>
+    <div class="guidance-item">
+      <div class="guidance-num">06</div>
+      <div class="guidance-content">
+        <h4>日志和可观测性是第一优先级</h4>
+        <p>Agent 的行为具有非确定性。完善的日志（每一步的 Thought/Action/Observation）是调试和优化的唯一途径。不要等到出问题才想到加日志。</p>
+      </div>
+    </div>
+    <div class="guidance-item">
+      <div class="guidance-num">07</div>
+      <div class="guidance-content">
+        <h4>Human-in-the-Loop 不是倒退，是成熟</h4>
+        <p>在关键决策节点引入人工审批，不是对 Agent 自主性的否定，而是负责任的工程实践。完全自主是终极目标，但人机协作是当前最务实的路径。</p>
+      </div>
+    </div>
+    <div class="guidance-item">
+      <div class="guidance-num">08</div>
+      <div class="guidance-content">
+        <h4>模型是可替换的组件，不是架构的基石</h4>
+        <p>不要将 Agent 架构深度绑定到某个特定的 LLM。通过抽象层隔离模型调用，使得底层模型可以随时切换。今天最好的模型，明天可能被超越。</p>
+      </div>
+    </div>
+    <div class="guidance-item">
+      <div class="guidance-num">09</div>
+      <div class="guidance-content">
+        <h4>真实场景测试胜过一切单元测试</h4>
+        <p>为 Agent 准备 20-50 个真实的端到端测试场景，覆盖正常流程、边界情况和错误恢复。每次 Prompt 或架构变更后，用这些场景做回归测试。</p>
+      </div>
+    </div>
+    <div class="guidance-item">
+      <div class="guidance-num">10</div>
+      <div class="guidance-content">
+        <h4>关注用户体验，而非技术炫技</h4>
+        <p>用户不关心你用了几个 Agent、什么框架、什么模型。他们关心的是：任务是否完成？过程是否透明？结果是否可信？从用户价值倒推技术方案，而非相反。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conclusion -->
+  <div class="conclusion">
+    <h3>第一性原理的终极启示</h3>
+    <p>
+      Agent 开发的本质不是追逐最新模型、不是堆砌最复杂架构，而是回到一个最基本的问题：<strong style="color:var(--accent-gold)">人类需要什么样的智能助手？</strong><br><br>
+      答案是：一个<strong>可靠、透明、可控</strong>的协作者。它不需要完美，但需要在每一次迭代中变得更好。<br>
+      建筑师的职责不是堆砌砖石，而是在约束条件下创造最优解。Agent 开发亦然。
+    </p>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-left">
+    <div class="footer-brand">Agent Development Report</div>
+    <p class="footer-desc">
+      基于第一性原理的 Agent 开发研究报告。以建筑师视角，从本质出发，构建从认知到实践的完整方法论。
+    </p>
+  </div>
+  <div class="footer-right">
+    FIRST PRINCIPLES<br>
+    SYSTEM ARCHITECTURE<br>
+    RESEARCH REPORT<br><br>
+    2025.06
+  </div>
+</footer>
+
+<!-- Back to Top -->
+<div class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
+
+<script>
+  // ===== Scroll Progress =====
+  const scrollProgress = document.getElementById('scrollProgress');
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = (scrollTop / docHeight) * 100;
+    scrollProgress.style.width = progress + '%';
+  });
+
+  // ===== Nav Scroll =====
+  const nav = document.getElementById('mainNav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 50);
+  });
+
+  // ===== Active Nav Link =====
+  const sections = document.querySelectorAll('.section[id]');
+  const navLinks = document.querySelectorAll('.nav-toc a');
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(section => {
+      const sectionTop = section.offsetTop - 200;
+      if (window.scrollY >= sectionTop) {
+        current = section.getAttribute('id');
+      }
+    });
+    navLinks.forEach(link => {
+      link.classList.remove('active');
+      if (link.getAttribute('data-section') === current) {
+        link.classList.add('active');
+      }
+    });
+  });
+
+  // ===== Back to Top =====
+  const backTop = document.getElementById('backTop');
+  window.addEventListener('scroll', () => {
+    backTop.classList.toggle('visible', window.scrollY > 500);
+  });
+
+  // ===== Reveal on Scroll =====
+  const reveals = document.querySelectorAll('.reveal');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  reveals.forEach(el => revealObserver.observe(el));
+
+  // ===== Challenge Bar Animation =====
+  const challengeItems = document.querySelectorAll('.challenge-item');
+  const challengeObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.3 });
+
+  challengeItems.forEach(el => challengeObserver.observe(el));
+
+  // ===== Expandable =====
+  function toggleChallenge(el) {
+    el.classList.toggle('open');
+  }
+
+  // ===== Tabs =====
+  function switchTab(btn, panelId) {
+    const container = btn.closest('.tabs-container');
+    container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    container.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(panelId).classList.add('active');
+  }
+
+  // ===== Demo Simulation =====
+  function runDemo() {
+    const btn = document.getElementById('demoBtn');
+    const output = document.getElementById('demoOutput');
+    const input = document.getElementById('demoInput').value || '帮我分析最近三个月的销售数据并生成报告';
+
+    btn.disabled = true;
+    btn.textContent = '运行中...';
+    output.innerHTML = '';
+
+    const steps = [
+      {
+        icon: 'think',
+        label: 'THOUGHT',
+        text: `理解用户意图：用户需要对"${input.slice(0, 20)}..."进行分析。这是一个多步骤任务，需要：获取数据 → 清洗分析 → 可视化 → 报告撰写。`,
+        delay: 600
+      },
+      {
+        icon: 'action',
+        label: 'PLAN',
+        text: '制定执行计划：① 连接数据库获取 Q1 销售数据 ② 数据清洗和聚合 ③ 趋势分析和异常检测 ④ 生成可视化图表 ⑤ 输出结构化报告',
+        delay: 1200
+      },
+      {
+        icon: 'action',
+        label: 'ACTION',
+        text: '执行工具调用 → execute_sql("SELECT * FROM sales WHERE date BETWEEN \'2025-01-01\' AND \'2025-03-31\'") → 获取 12,847 条记录',
+        delay: 2000
+      },
+      {
+        icon: 'think',
+        label: 'OBSERVATION',
+        text: '数据获取成功。发现数据中存在 23 条空值记录和 5 条异常值（金额为负数）。需要进行数据清洗后再分析。',
+        delay: 2800
+      },
+      {
+        icon: 'action',
+        label: 'ACTION',
+        text: '执行工具调用 → clean_data(records, drop_nulls=True, outlier_method="iqr") → 清洗后剩余 12,819 条有效记录',
+        delay: 3600
+      },
+      {
+        icon: 'result',
+        label: 'ANALYSIS',
+        text: '完成分析：Q1 总销售额 ¥4,287,350 | 环比增长 12.3% | 月均 ¥1,429,117 | TOP3 品类：电子产品(38%)、家居(22%)、服饰(18%) | 检测到2月春节期间的显著下降',
+        delay: 4400
+      },
+      {
+        icon: 'action',
+        label: 'ACTION',
+        text: '生成可视化 → create_chart(type="bar", data=monthly_sales) + create_chart(type="pie", data=category_share) → 已生成 2 张图表',
+        delay: 5200
+      },
+      {
+        icon: 'done',
+        label: 'COMPLETE',
+        text: '任务完成。已生成完整的 Q1 销售分析报告，包含数据概览、趋势分析、品类占比、异常标注和建议。总耗时：4.7s | Token 消耗：3,241 | 工具调用：4 次',
+        delay: 6000
+      }
+    ];
+
+    steps.forEach((step, i) => {
+      setTimeout(() => {
+        const div = document.createElement('div');
+        div.className = 'demo-step';
+        div.style.animationDelay = '0s';
+        div.innerHTML = `
+          <div class="demo-step-icon ${step.icon}">${step.icon === 'think' ? '?' : step.icon === 'action' ? '→' : step.icon === 'result' ? '◈' : '✓'}</div>
+          <div class="demo-step-text">
+            <span class="label">${step.label}</span><br>
+            ${step.text}
+          </div>
+        `;
+        output.appendChild(div);
+        output.scrollTop = output.scrollHeight;
+
+        if (i === steps.length - 1) {
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = '模拟运行';
+          }, 500);
+        }
+      }, step.delay);
+    });
+  }
+
+  // Run demo on Enter
+  document.getElementById('demoInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') runDemo();
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器学习 · 第一性原理研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg:#06090f;--surface:#0d1117;--surface-2:#151b24;
+    --border:rgba(245,158,11,.1);--border-s:rgba(245,158,11,.25);
+    --accent:#f59e0b;--accent-l:#fbbf24;--accent-d:rgba(245,158,11,.08);
+    --accent-g:rgba(245,158,11,.3);--red:rgba(248,81,73,.7);
+    --green:#56d364;
+    --t1:#d4d8de;--t2:#f0f2f5;--t3:#6e7681;--t4:#484f58;
+    --f-display:'Playfair Display','Noto Serif SC',serif;
+    --f-mono:'DM Mono','Menlo',monospace;
+    --f-body:'Noto Serif SC','STSong',serif;
+    --f-sans:-apple-system,'Segoe UI',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--t1);font-family:var(--f-sans);line-height:1.8;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(245,158,11,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,.022) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;opacity:.013;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
+
+.container{max-width:900px;margin:0 auto;padding:0 2rem;position:relative;z-index:1}
+section{padding:5rem 0}
+h1,h2,h3,h4{color:var(--t2);line-height:1.3}
+h1{font-family:var(--f-display);font-size:clamp(2.2rem,5vw,3.5rem);font-weight:900;letter-spacing:-.02em}
+h2{font-family:var(--f-display);font-size:clamp(1.5rem,3vw,2.1rem);font-weight:700;margin-bottom:1rem}
+h3{font-family:var(--f-display);font-size:1.25rem;font-weight:700}
+p{margin-bottom:1rem}
+strong{color:var(--t2)}
+
+.section-label{font-family:var(--f-mono);font-size:.68rem;font-weight:500;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.75rem;margin-bottom:1.5rem}
+.section-label::before{content:'';width:24px;height:1px;background:var(--accent)}
+.section-desc{font-size:1.02rem;color:var(--t3);max-width:640px;margin-bottom:2.5rem;font-family:var(--f-body)}
+.mono{font-family:var(--f-mono);font-size:.85em}
+.accent{color:var(--accent)}
+.bright{color:var(--t2)}
+
+/* HERO */
+.hero{min-height:85vh;display:flex;align-items:center;position:relative}
+.hero-inner{max-width:900px;margin:0 auto;padding:0 2rem}
+.hero-badge{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);border:1px solid var(--border-s);padding:.4rem 1rem;display:inline-block;margin-bottom:2rem;opacity:0;animation:fadeUp .6s ease forwards .2s}
+.hero h1{margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .4s}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero-sub{font-family:var(--f-body);font-size:1.08rem;color:var(--t3);max-width:560px;margin-bottom:3rem;opacity:0;animation:fadeUp .8s ease forwards .6s}
+.hero-meta{font-family:var(--f-mono);font-size:.7rem;color:var(--t4);display:flex;gap:2rem;opacity:0;animation:fadeUp .8s ease forwards .8s}
+.hero-meta span{display:flex;align-items:center;gap:.5rem}
+.hero-meta .dot{width:4px;height:4px;border-radius:50%;background:var(--accent)}
+.hero-line{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:1px;height:80px;background:linear-gradient(to bottom,transparent,var(--accent));opacity:0;animation:fadeUp 1s ease forwards 1s}
+
+/* DIVIDER */
+.divider{display:flex;align-items:center;gap:1.5rem;padding:1rem 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.divider span{font-family:var(--f-mono);font-size:.6rem;letter-spacing:.3em;color:var(--t4);text-transform:uppercase}
+
+/* PERSPECTIVES */
+.persp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin:2rem 0}
+.persp-card{background:var(--surface);padding:2rem;transition:background .3s}
+.persp-card:hover{background:var(--surface-2)}
+.persp-card .num{font-family:var(--f-mono);font-size:.62rem;color:var(--accent);letter-spacing:.15em;margin-bottom:.75rem;display:block}
+.persp-card h3{font-size:1.05rem;margin-bottom:.75rem}
+.persp-card p{font-size:.85rem;color:var(--t3);line-height:1.7;margin:0}
+.persp-card .formula{font-family:var(--f-mono);font-size:.78rem;color:var(--accent);background:var(--accent-d);padding:.5rem .75rem;margin-top:1rem;border-left:2px solid var(--accent)}
+
+/* AXIOMS */
+.axiom{border:1px solid var(--border);margin-bottom:.6rem;transition:border-color .3s}
+.axiom:hover{border-color:var(--border-s)}
+.axiom.open{border-color:var(--accent)}
+.axiom-h{display:flex;align-items:center;gap:1.25rem;padding:1.2rem 1.5rem;cursor:pointer;user-select:none;background:var(--surface);transition:background .3s}
+.axiom-h:hover{background:var(--surface-2)}
+.axiom-n{font-family:var(--f-mono);font-size:.68rem;color:var(--accent);background:var(--accent-d);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:2px;flex-shrink:0}
+.axiom-h h3{flex:1;font-size:.95rem;font-family:var(--f-body);font-weight:600}
+.axiom-t{font-family:var(--f-mono);font-size:1.2rem;color:var(--accent);width:24px;text-align:center;transition:transform .3s}
+.axiom.open .axiom-t{transform:rotate(45deg)}
+.axiom-b{max-height:0;overflow:hidden;transition:max-height .5s cubic-bezier(.4,0,.2,1)}
+.axiom.open .axiom-b{max-height:700px}
+.axiom-c{padding:1.5rem;border-top:1px solid var(--border);background:var(--bg)}
+.axiom-c p{font-size:.88rem;color:var(--t3)}
+.insight{background:var(--accent-d);border-left:3px solid var(--accent);padding:1rem 1.25rem;margin-top:1rem;font-size:.85rem}
+.insight strong{color:var(--accent);font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;display:block;margin-bottom:.4rem}
+
+/* GD DEMO */
+.gd-demo{background:var(--surface);border:1px solid var(--border);padding:2rem;margin:2.5rem 0}
+.gd-demo h3{margin-bottom:.5rem}
+.gd-sub{font-family:var(--f-mono);font-size:.72rem;color:var(--t4);margin-bottom:1.5rem}
+.canvas-wrap{position:relative;width:100%;margin-bottom:1.5rem}
+#gd-canvas{width:100%;height:340px;display:block;background:rgba(6,9,15,.5);border:1px solid var(--border);cursor:crosshair}
+.gd-controls{display:flex;flex-wrap:wrap;gap:1.5rem;align-items:center}
+.gd-cg{display:flex;align-items:center;gap:.75rem}
+.gd-cg label{font-family:var(--f-mono);font-size:.7rem;color:var(--t3);letter-spacing:.05em}
+.gd-cg input[type="range"]{width:120px;accent-color:var(--accent);cursor:pointer}
+.gd-cg .val{font-family:var(--f-mono);font-size:.72rem;color:var(--accent);min-width:36px}
+.gd-btn{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;padding:.5rem 1.25rem;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;transition:all .2s}
+.gd-btn:hover{background:var(--accent);color:var(--bg)}
+.gd-info{display:flex;gap:2rem;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border);flex-wrap:wrap}
+.gd-ii{font-family:var(--f-mono);font-size:.7rem}
+.gd-ii .lbl{color:var(--t4);display:block;margin-bottom:.2rem;letter-spacing:.05em}
+.gd-ii .vlu{color:var(--accent);font-size:.82rem}
+.gd-hint{font-family:var(--f-mono);font-size:.65rem;color:var(--t4);margin-top:1rem;text-align:center}
+
+/* PIPELINE */
+.pipeline{display:flex;gap:0;margin:2.5rem 0;overflow-x:auto}
+.pipe-step{flex:1;min-width:140px;position:relative;background:var(--surface);border:1px solid var(--border);padding:1.5rem;transition:all .3s}
+.pipe-step:hover{background:var(--surface-2);border-color:var(--accent);z-index:1}
+.pipe-step::after{content:'→';position:absolute;right:-10px;top:50%;transform:translateY(-50%);color:var(--accent);font-family:var(--f-mono);font-size:.8rem;z-index:2}
+.pipe-step:last-child::after{display:none}
+.pipe-step .sn{font-family:var(--f-mono);font-size:.58rem;color:var(--accent);letter-spacing:.2em;margin-bottom:.5rem}
+.pipe-step h4{font-family:var(--f-body);font-size:.9rem;margin-bottom:.5rem}
+.pipe-step p{font-size:.75rem;color:var(--t3);line-height:1.6;margin:0}
+
+/* RECS */
+.rec-list{counter-reset:rec;list-style:none}
+.rec-list li{counter-increment:rec;padding:1.5rem 0;border-bottom:1px solid var(--border);display:flex;gap:1.5rem;align-items:flex-start}
+.rec-list li::before{content:counter(rec,decimal-leading-zero);font-family:var(--f-mono);font-size:.72rem;color:var(--accent);background:var(--accent-d);width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:2px}
+.rec-list li h4{font-family:var(--f-body);font-size:.95rem;margin-bottom:.35rem}
+.rec-list li p{font-size:.85rem;color:var(--t3);margin:0}
+
+/* CASE CARDS */
+.case-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:2rem 0}
+.case-card{background:var(--surface);border:1px solid var(--border);padding:1.75rem;transition:all .3s}
+.case-card:hover{border-color:var(--accent);background:var(--surface-2)}
+.case-card h4{font-family:var(--f-body);margin-bottom:.75rem}
+.case-card p{font-size:.85rem;color:var(--t3)}
+.case-card .tag{font-family:var(--f-mono);font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);background:var(--accent-d);padding:.2rem .5rem;display:inline-block;margin-bottom:.75rem}
+
+/* BV SECTION */
+.bv-visual{display:flex;gap:2px;background:var(--border);border:1px solid var(--border);margin:2rem 0}
+.bv-col{flex:1;background:var(--surface);padding:1.75rem;text-align:center}
+.bv-col h4{font-size:.9rem;margin-bottom:.5rem}
+.bv-col p{font-size:.8rem;color:var(--t3);margin:0}
+.bv-spectrum{display:flex;align-items:center;gap:0;margin:1.5rem 0;height:8px;border-radius:4px;overflow:hidden}
+.bv-spectrum .seg{height:100%;transition:all .5s}
+.bv-labels{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:.62rem;color:var(--t4)}
+
+/* FOOTER */
+footer{padding:4rem 0 3rem;text-align:center;border-top:1px solid var(--border)}
+footer p{font-family:var(--f-mono);font-size:.7rem;color:var(--t4);letter-spacing:.05em}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:768px){
+    .persp-grid{grid-template-columns:1fr}
+    .pipeline{flex-direction:column}
+    .pipe-step::after{content:'↓';right:50%;top:auto;bottom:-14px;transform:translateX(50%)}
+    .gd-info{flex-wrap:wrap;gap:1rem}
+    .hero-meta{flex-direction:column;gap:.5rem}
+    section{padding:3rem 0}
+    .gd-controls{flex-direction:column;align-items:flex-start}
+    .rec-list li{flex-direction:column;gap:.75rem}
+    .case-grid{grid-template-columns:1fr}
+    .bv-visual{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<!-- ========== HERO ========== -->
+<header class="hero">
+    <div class="hero-inner">
+        <div class="hero-badge">First Principles Research Report</div>
+        <h1>机器学习<br><em>第一性原理</em>研究报告</h1>
+        <p class="hero-sub">从基本事实出发，拆解机器学习的核心结构。以建筑师的思维方式——先打地基，再建框架，最后审视每一个承重节点。</p>
+        <div class="hero-meta">
+            <span><i class="dot"></i>建筑师视角</span>
+            <span><i class="dot"></i>深度拆解</span>
+            <span><i class="dot"></i>交互体验</span>
+            <span><i class="dot"></i>可执行方案</span>
+        </div>
+    </div>
+    <div class="hero-line"></div>
+</header>
+
+<!-- ========== 引言 ========== -->
+<section id="intro">
+<div class="container">
+    <div class="divider"><span>引言</span></div>
+    <div class="reveal">
+        <div class="section-label">Foundation</div>
+        <h2>为什么用第一性原理理解机器学习？</h2>
+        <p class="section-desc">在建筑学中，每一座伟大的建筑都始于对地基承载力的精确计算——而非对流行风格的模仿。机器学习亦然。多数人在学习时陷入"类比思维"：因为某种网络架构在 A 任务上有效，就直接移植到 B 任务。</p>
+    </div>
+    <div class="reveal" data-delay="100">
+        <p><strong class="accent">第一性原理</strong>要求我们剥去所有先验假设，回到最基本的事实，然后从这些事实出发，一步步推导出解决方案。这意味着：</p>
+        <p style="padding-left:1.25rem;border-left:2px solid var(--border-s);color:var(--t3);font-size:.92rem;">
+            不问"别人怎么做的"，而问<strong class="bright">"这个问题的本质是什么"</strong><br>
+            不问"该用哪个模型"，而问<strong class="bright">"数据中的不变量是什么"</strong><br>
+            不问"准确率还能提高吗"，而问<strong class="bright">"我们在优化的到底是什么"</strong>
+        </p>
+    </div>
+</div>
+</section>
+
+<!-- ========== 学习的本质 ========== -->
+<section id="nature">
+<div class="container">
+    <div class="divider"><span>本质层</span></div>
+    <div class="reveal">
+        <div class="section-label">Nature of Learning</div>
+        <h2>学习的本质：三个视角</h2>
+        <p class="section-desc">在建造任何结构之前，建筑师必须理解力学的基本法则。同样，在构建任何模型之前，我们必须回答一个根本问题：<strong class="bright">什么是"学习"？</strong></p>
+    </div>
+    <div class="persp-grid reveal" data-delay="100">
+        <div class="persp-card">
+            <span class="num">VIEW 01</span>
+            <h3>函数逼近视角</h3>
+            <p>学习是在假设空间 H 中寻找一个最优函数 f*，使得它在未知数据上的预测误差（期望风险）最小化。</p>
+            <div class="formula">f* = arg min E[L(f(x), y)]</div>
+        </div>
+        <div class="persp-card">
+            <span class="num">VIEW 02</span>
+            <h3>信息论视角</h3>
+            <p>学习是对数据的最优压缩——用最小的描述长度（MDL）捕捉数据中最大的信息量，同时保留泛化能力。</p>
+            <div class="formula">min L(model) + L(data|model)</div>
+        </div>
+        <div class="persp-card">
+            <span class="num">VIEW 03</span>
+            <h3>贝叶斯视角</h3>
+            <p>学习是根据观测数据不断更新对世界的信念——先验假设在数据证据下被修正为后验分布。</p>
+            <div class="formula">P(θ|D) ∝ P(D|θ) · P(θ)</div>
+        </div>
+    </div>
+    <div class="reveal" data-delay="200" style="margin-top:1.5rem">
+        <div class="insight">
+            <strong>建筑师洞察</strong>
+            三个视角殊途同归——学习的本质是从有限观测中提取可迁移的结构。就像建筑师从地质数据推断地基设计：数据有限，但规律可循。
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- ========== 五个公理 ========== -->
+<section id="axioms">
+<div class="container">
+    <div class="divider"><span>公理层</span></div>
+    <div class="reveal">
+        <div class="section-label">Five Axioms</div>
+        <h2>机器学习的五个基本事实</h2>
+        <p class="section-desc">建筑师依赖物理定律（重力、材料强度、热力学）来设计结构。机器学习也有自己的"物理定律"——以下五个不可回避的基本事实构成了所有模型选择和工程决策的底层约束。</p>
+    </div>
+
+    <div class="reveal" data-delay="50">
+        <div class="axiom" onclick="toggleAxiom(this)">
+            <div class="axiom-h">
+                <span class="axiom-n">01</span>
+                <h3>数据是对世界的不完全采样</h3>
+                <span class="axiom-t">+</span>
+            </div>
+            <div class="axiom-b"><div class="axiom-c">
+                <p>我们永远无法获得世界的完整描述。训练集只是真实分布 D 的有限样本。这意味着：<strong class="bright">任何从数据中得出的结论都有统计不确定性</strong>。</p>
+                <p>样本量 n 的增长使得经验分布逼近真实分布，但收敛速度仅为 O(1/√n)。要将误差减半，数据量需翻四倍。</p>
+                <div class="insight">
+                    <strong>实践启示</strong>
+                    在数据收集阶段就应投入最大精力。数据质量 > 数据数量 > 模型复杂度。不要试图用精巧的模型弥补数据的根本缺陷——就像不能用更好的设计图纸弥补地基的裂缝。
+                </div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="reveal" data-delay="100">
+        <div class="axiom" onclick="toggleAxiom(this)">
+            <div class="axiom-h">
+                <span class="axiom-n">02</span>
+                <h3>模型是对现实的有损压缩</h3>
+                <span class="axiom-t">+</span>
+            </div>
+            <div class="axiom-b"><div class="axiom-c">
+                <p>所有模型都是错的，但有些是有用的。模型通过<strong class="bright">简化假设</strong>来换取可计算性和泛化能力。问题不在于模型是否完美，而在于它丢弃的信息是否恰好是噪声。</p>
+                <p>模型复杂度需要与数据的信息含量相匹配。过于简单的模型丢弃了信号（欠拟合），过于复杂的模型保留了噪声（过拟合）。</p>
+                <div class="insight">
+                    <strong>实践启示</strong>
+                    从最简单的模型开始。线性回归、决策树常常是最佳的起点——不仅因为计算效率，更因为它们提供了理解问题结构的基线。
+                </div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="reveal" data-delay="150">
+        <div class="axiom" onclick="toggleAxiom(this)">
+            <div class="axiom-h">
+                <span class="axiom-n">03</span>
+                <h3>优化是参数空间中的定向搜索</h3>
+                <span class="axiom-t">+</span>
+            </div>
+            <div class="axiom-b"><div class="axiom-c">
+                <p>给定损失函数 L(θ)，学习就是在高维参数空间中找到使 L 最小的点。梯度下降是最通用的搜索策略：沿损失函数的负梯度方向移动。</p>
+                <p><strong class="bright">但"找到最优解"几乎不可能</strong>。现代神经网络的损失景观充满鞍点、局部极小值和平台区域。实践中我们依赖的是：足够好的局部解 + 足够的泛化能力。</p>
+                <div class="insight">
+                    <strong>实践启示</strong>
+                    学习率是最关键的超参数。太大则发散，太小则困在局部极小值或鞍点。使用自适应学习率方法（Adam, AdaGrad）和学习率调度是工程标配。下方交互演示将直观展示这一过程。
+                </div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="reveal" data-delay="200">
+        <div class="axiom" onclick="toggleAxiom(this)">
+            <div class="axiom-h">
+                <span class="axiom-n">04</span>
+                <h3>泛化是学习的唯一真实检验</h3>
+                <span class="axiom-t">+</span>
+            </div>
+            <div class="axiom-b"><div class="axiom-c">
+                <p>训练集上的表现毫无意义——一只鹦鹉可以完美"复述"训练数据。真正的检验是：<strong class="bright">模型在从未见过的数据上表现如何？</strong></p>
+                <p>泛化误差 = 偏差² + 方差 + 不可约噪声。这是机器学习中最核心的分解——它告诉我们，误差有两个根本来源：系统性偏差和随机波动。</p>
+                <div class="insight">
+                    <strong>实践启示</strong>
+                    永远使用独立的验证集和测试集。交叉验证不是可选项。更重要的是，测试集的分布必须反映模型在真实世界中遇到的数据分布。
+                </div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="reveal" data-delay="250">
+        <div class="axiom" onclick="toggleAxiom(this)">
+            <div class="axiom-h">
+                <span class="axiom-n">05</span>
+                <h3>没有免费的午餐</h3>
+                <span class="axiom-t">+</span>
+            </div>
+            <div class="axiom-b"><div class="axiom-c">
+                <p>不存在一个模型在所有可能的问题上都是最优的。模型选择本质上是在<strong class="bright">对问题结构做出假设</strong>。选择线性模型，就是假设线性关系；选择 CNN，就是假设局部空间相关性。</p>
+                <p>这意味着：了解你的问题，比了解所有模型更重要。</p>
+                <div class="insight">
+                    <strong>实践启示</strong>
+                    在选择模型之前，先深度理解你的数据和问题域。领域知识是无法被算法替代的。最成功的 ML 工程师往往是对问题本身理解最深的人。
+                </div>
+            </div></div>
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- ========== 力学引擎 - GRADIENT DESCENT DEMO ========== -->
+<section id="mechanics">
+<div class="container">
+    <div class="divider"><span>力学层</span></div>
+    <div class="reveal">
+        <div class="section-label">Mechanics</div>
+        <h2>学习的引擎：梯度下降</h2>
+        <p class="section-desc">如果说公理是物理定律，那么梯度下降就是机器学习的"发动机"。理解它的行为——收敛、振荡、发散——是理解所有深度学习的起点。</p>
+    </div>
+    <div class="gd-demo reveal" data-delay="100">
+        <h3>交互式梯度下降可视化</h3>
+        <div class="gd-sub">L(x) = 0.5(x−2)² + sin(2x) + 3 &nbsp;|&nbsp; ∂L/∂x = (x−2) + 2·cos(2x)</div>
+        <div class="canvas-wrap">
+            <canvas id="gd-canvas"></canvas>
+        </div>
+        <div class="gd-controls">
+            <button class="gd-btn" id="gd-toggle">Start</button>
+            <button class="gd-btn" id="gd-reset">Reset</button>
+            <div class="gd-cg">
+                <label>Learning Rate</label>
+                <input type="range" id="gd-lr" min="0.01" max="0.50" step="0.01" value="0.10">
+                <span class="val" id="gd-lr-val">0.10</span>
+            </div>
+        </div>
+        <div class="gd-info">
+            <div class="gd-ii"><span class="lbl">STEP</span><span class="vlu" id="gd-step">0</span></div>
+            <div class="gd-ii"><span class="lbl">X</span><span class="vlu" id="gd-x">-3.0000</span></div>
+            <div class="gd-ii"><span class="lbl">LOSS</span><span class="vlu" id="gd-loss">15.7803</span></div>
+            <div class="gd-ii"><span class="lbl">GRADIENT</span><span class="vlu" id="gd-grad">-3.0806</span></div>
+        </div>
+        <div class="gd-hint">点击曲线任意位置设置新的起始点 · 红色箭头表示梯度方向（下降方向）</div>
+    </div>
+</div>
+</section>
+
+<!-- ========== 核心矛盾 ========== -->
+<section id="tension">
+<div class="container">
+    <div class="divider"><span>拆解层</span></div>
+    <div class="reveal">
+        <div class="section-label">Core Tension</div>
+        <h2>核心矛盾：偏差-方差权衡</h2>
+        <p class="section-desc">建筑师在结构设计中始终面对一对矛盾：刚度与柔度。过刚则脆（地震中碎裂），过柔则晃（无法使用）。机器学习的核心矛盾与此同构：<strong class="bright">偏差与方差</strong>。</p>
+    </div>
+    <div class="bv-visual reveal" data-delay="100">
+        <div class="bv-col" style="border-right:1px solid var(--border)">
+            <h4 class="accent">高偏差 · 低方差</h4>
+            <p>系统性偏离目标。<br>模型过于简单，无法捕捉数据中的真实模式。<br>训练集和测试集表现同样差。</p>
+            <div class="bv-spectrum">
+                <div class="seg" style="flex:8;background:var(--accent)"></div>
+                <div class="seg" style="flex:2;background:rgba(88,166,255,.5)"></div>
+            </div>
+            <div class="bv-labels"><span>偏差主导</span><span></span></div>
+        </div>
+        <div class="bv-col" style="border-right:1px solid var(--border)">
+            <h4 style="color:var(--green)">理想平衡点</h4>
+            <p>总误差最小化。<br>模型复杂度与数据信息量匹配。<br>泛化能力最优。</p>
+            <div class="bv-spectrum">
+                <div class="seg" style="flex:4;background:var(--accent)"></div>
+                <div class="seg" style="flex:4;background:rgba(88,166,255,.5)"></div>
+                <div class="seg" style="flex:2;background:rgba(86,211,100,.4)"></div>
+            </div>
+            <div class="bv-labels"><span>偏差</span><span>方差</span></div>
+        </div>
+        <div class="bv-col">
+            <h4 style="color:var(--red)">低偏差 · 高方差</h4>
+            <p>对训练数据过度拟合。<br>模型过于复杂，记住了噪声。<br>训练集表现极好，测试集崩塌。</p>
+            <div class="bv-spectrum">
+                <div class="seg" style="flex:2;background:var(--accent)"></div>
+                <div class="seg" style="flex:8;background:rgba(88,166,255,.5)"></div>
+            </div>
+            <div class="bv-labels"><span></span><span>方差主导</span></div>
+        </div>
+    </div>
+    <div class="reveal" data-delay="200">
+        <div class="insight">
+            <strong>建筑师洞察</strong>
+            正则化是你的抗震设计。L1/L2 正则化、Dropout、数据增强——它们的共同本质是：<strong style="color:var(--accent)">在模型复杂度上施加约束，用微小的偏差增加换取大幅的方差减少</strong>。这不是可选项，而是工程必需。
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- ========== 蓝图 ========== -->
+<section id="framework">
+<div class="container">
+    <div class="divider"><span>蓝图层</span></div>
+    <div class="reveal">
+        <div class="section-label">Blueprint</div>
+        <h2>第一性原理解决方案框架</h2>
+        <p class="section-desc">建筑师的工作流程是线性的：需求分析 → 场地勘察 → 概念设计 → 结构计算 → 施工图 → 验收。机器学习也有一个从第一性原理推导出的五步框架。</p>
+    </div>
+    <div class="pipeline reveal" data-delay="100">
+        <div class="pipe-step">
+            <div class="sn">STEP 01</div>
+            <h4>定义问题</h4>
+            <p>明确输入空间 X、输出空间 Y、评价指标。先问"解决什么问题"，再问"用什么模型"。</p>
+        </div>
+        <div class="pipe-step">
+            <div class="sn">STEP 02</div>
+            <h4>理解数据</h4>
+            <p>探索性分析、分布检查、异常值检测。数据中的模式比任何模型都重要。</p>
+        </div>
+        <div class="pipe-step">
+            <div class="sn">STEP 03</div>
+            <h4>选择模型</h4>
+            <p>从最简模型开始，建立基线。逐步增加复杂度，每次增量都要有数据支撑。</p>
+        </div>
+        <div class="pipe-step">
+            <div class="sn">STEP 04</div>
+            <h4>配置优化</h4>
+            <p>学习率、正则化、批次大小。系统化调参，而非随机试错。</p>
+        </div>
+        <div class="pipe-step">
+            <div class="sn">STEP 05</div>
+            <h4>评估验证</h4>
+            <p>交叉验证、A/B 测试、实际场景测试。泛化能力是唯一标准。</p>
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- ========== 案例 ========== -->
+<section id="cases">
+<div class="container">
+    <div class="divider"><span>实证层</span></div>
+    <div class="reveal">
+        <div class="section-label">Case Studies</div>
+        <h2>从原理到实践：两个案例</h2>
+        <p class="section-desc">理论必须落地。以下两个案例展示如何用第一性原理框架分析真实的机器学习问题。</p>
+    </div>
+    <div class="case-grid">
+        <div class="case-card reveal" data-delay="50">
+            <span class="tag">计算机视觉</span>
+            <h4>图像分类的第一性原理拆解</h4>
+            <p><strong class="bright">数据本质：</strong>图像是局部像素的空间排列，具有平移不变性和层级结构（边缘→纹理→部件→物体）。</p>
+            <p><strong class="bright">模型选择：</strong>CNN 不是凭空设计的——它的卷积核对应局部感受野，池化操作对应空间不变性。这是从数据结构推导出的架构。</p>
+            <p><strong class="bright">关键洞见：</strong>数据增强（旋转、翻转、裁剪）不是 trick，而是在告诉模型"这些变换不改变语义"——直接编码领域知识。</p>
+        </div>
+        <div class="case-card reveal" data-delay="150">
+            <span class="tag">自然语言处理</span>
+            <h4>文本理解的第一性原理拆解</h4>
+            <p><strong class="bright">数据本质：</strong>语言是离散符号的序列，具有长程依赖性和上下文歧义性。同一词在不同语境中含义不同。</p>
+            <p><strong class="bright">模型选择：</strong>Transformer 的自注意力机制直接对应语言的核心特性——上下文依赖。每个 token 都能看到所有其他 token，这解决了 RNN 的长程依赖瓶颈。</p>
+            <p><strong class="bright">关键洞见：</strong>预训练 + 微调的本质是：先用海量无标注数据学习通用的语言结构（先验），再用少量标注数据适配具体任务（后验更新）——这正是贝叶斯学习的范式。</p>
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- ========== 指导性意见 ========== -->
+<section id="guidance">
+<div class="container">
+    <div class="divider"><span>谏言层</span></div>
+    <div class="reveal">
+        <div class="section-label">Guidance</div>
+        <h2>给实践者的六条指导性意见</h2>
+        <p class="section-desc">建筑师的箴言刻在每份蓝图的扉页。以下是基于第一性原理分析得出的核心建议——不是技巧，而是原则。</p>
+    </div>
+    <ol class="rec-list reveal" data-delay="100">
+        <li>
+            <div>
+                <h4>始终从数据出发，而非从模型出发</h4>
+                <p>花 80% 的时间理解你的数据——分布、噪声模式、缺失机制、潜在偏差。数据中的结构决定了模型的天花板。</p>
+            </div>
+        </li>
+        <li>
+            <div>
+                <h4>简单模型是复杂模型的基准线，不是敌人</h4>
+                <p>在任何项目开始时，先训练一个线性模型或浅层决策树。它们的性能就是你的及格线——如果复杂模型提升不到 5%，问题可能不在模型。</p>
+            </div>
+        </li>
+        <li>
+            <div>
+                <h4>正则化是工程必需，不是可选项</h4>
+                <p>L2 正则化、Dropout、早停、数据增强——选择适合你问题的正则化策略。没有正则化的模型就像没有抗震设计的建筑：在测试集上好看，在真实地震中崩塌。</p>
+            </div>
+        </li>
+        <li>
+            <div>
+                <h4>理解偏差-方差权衡，就是理解调参的方向</h4>
+                <p>当模型欠拟合，增加复杂度；当过拟合，增加正则化。所有超参数调优都可以归结为在这条曲线上寻找最优点。</p>
+            </div>
+        </li>
+        <li>
+            <div>
+                <h4>可解释性与性能并非不可兼得</h4>
+                <p>SHAP 值、注意力可视化、特征重要性分析——可解释性不仅是合规要求，更是调试模型、发现数据问题的最强大工具。</p>
+            </div>
+        </li>
+        <li>
+            <div>
+                <h4>工程实践中的 80/20 法则</h4>
+                <p>80% 的性能提升来自：正确的数据清洗、合理的特征工程、适当的基线模型。最后 20% 才涉及高级架构和精细调优。先做对 80%。</p>
+            </div>
+        </li>
+    </ol>
+</div>
+</section>
+
+<!-- ========== 结语 ========== -->
+<section id="conclusion">
+<div class="container">
+    <div class="divider"><span>结语</span></div>
+    <div class="reveal">
+        <div class="section-label">Epilogue</div>
+        <h2>从地基到穹顶</h2>
+        <p class="section-desc" style="max-width:700px">机器学习不是魔法，而是工程。每一个成功的模型背后，都是对基本事实的尊重、对结构的精确把控、对材料（数据）的深刻理解。</p>
+        <p style="color:var(--t3);font-family:var(--f-body);font-size:.95rem;max-width:700px;">
+            建筑师的信条同样适用于机器学习：<strong class="accent">先理解重力，再设计穹顶</strong>。不要在地基不稳时追求高度，不要在结构不清时追求华丽。从第一性原理出发，每一步都有据可依——这不仅是方法论，更是一种对专业的尊重。
+        </p>
+    </div>
+</div>
+</section>
+
+<footer>
+    <div class="container">
+        <p>机器学习 · 第一性原理研究报告 &nbsp;|&nbsp; 建筑师视角 &nbsp;|&nbsp; 交互式研究文档</p>
+        <p style="margin-top:.5rem;opacity:.5">Built with first principles thinking</p>
+    </div>
+</footer>
+
+<script>
+// ====== SCROLL REVEAL ======
+const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            const d = e.target.dataset.delay || 0;
+            setTimeout(() => e.target.classList.add('visible'), +d);
+            obs.unobserve(e.target);
+        }
+    });
+}, { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+// ====== AXIOM TOGGLE ======
+function toggleAxiom(el) {
+    el.classList.toggle('open');
+}
+
+// ====== GRADIENT DESCENT DEMO ======
+(function() {
+    const canvas = document.getElementById('gd-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    function loss(x) { return 0.5 * Math.pow(x - 2, 2) + Math.sin(2 * x) + 3; }
+    function grad(x) { return (x - 2) + 2 * Math.cos(2 * x); }
+
+    const bounds = { xMin: -5, xMax: 8, yMin: 0, yMax: 16 };
+    let cw, ch, dpr, plotL, plotR, plotT, plotB;
+
+    const S = { x: -3, path: [{ x: -3, y: loss(-3) }], step: 0, lr: 0.10, running: false, tid: null };
+
+    function resize() {
+        dpr = window.devicePixelRatio || 1;
+        const r = canvas.parentElement.getBoundingClientRect();
+        cw = r.width; ch = 340;
+        canvas.width = cw * dpr; canvas.height = ch * dpr;
+        canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        plotL = 50; plotR = cw - 20; plotT = 20; plotB = ch - 40;
+    }
+
+    function tx(x) { return plotL + (x - bounds.xMin) / (bounds.xMax - bounds.xMin) * (plotR - plotL); }
+    function ty(y) { return plotB - (y - bounds.yMin) / (bounds.yMax - bounds.yMin) * (plotB - plotT); }
+
+    function draw() {
+        ctx.clearRect(0, 0, cw, ch);
+
+        // Grid
+        ctx.strokeStyle = 'rgba(245,158,11,.05)';
+        ctx.lineWidth = 0.5;
+        for (let y = 0; y <= bounds.yMax; y += 2) {
+            ctx.beginPath(); ctx.moveTo(plotL, ty(y)); ctx.lineTo(plotR, ty(y)); ctx.stroke();
+        }
+        for (let x = Math.ceil(bounds.xMin); x <= bounds.xMax; x += 2) {
+            ctx.beginPath(); ctx.moveTo(tx(x), plotT); ctx.lineTo(tx(x), plotB); ctx.stroke();
+        }
+
+        // Axes
+        ctx.strokeStyle = 'rgba(245,158,11,.12)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(plotL, plotT); ctx.lineTo(plotL, plotB); ctx.lineTo(plotR, plotB); ctx.stroke();
+
+        // Axis labels
+        ctx.fillStyle = 'rgba(245,158,11,.35)'; ctx.font = '10px "DM Mono",monospace'; ctx.textAlign = 'center';
+        for (let x = Math.ceil(bounds.xMin); x <= bounds.xMax; x += 2) ctx.fillText(x, tx(x), plotB + 16);
+        ctx.textAlign = 'right';
+        for (let y = 0; y <= bounds.yMax; y += 4) ctx.fillText(y, plotL - 8, ty(y) + 4);
+        ctx.save(); ctx.translate(14, (plotT + plotB) / 2); ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(245,158,11,.25)'; ctx.font = '10px "DM Mono",monospace';
+        ctx.fillText('Loss', 0, 0); ctx.restore();
+
+        // Loss curve
+        ctx.beginPath(); ctx.strokeStyle = 'rgba(245,158,11,.45)'; ctx.lineWidth = 2.5;
+        const step = (bounds.xMax - bounds.xMin) / 400;
+        for (let x = bounds.xMin; x <= bounds.xMax; x += step) {
+            const y = loss(x);
+            x === bounds.xMin ? ctx.moveTo(tx(x), ty(y)) : ctx.lineTo(tx(x), ty(y));
+        }
+        ctx.stroke();
+
+        // Minima markers
+        ctx.font = '9px "DM Mono",monospace'; ctx.textAlign = 'center';
+        // Local min at x=0
+        ctx.fillStyle = 'rgba(88,166,255,.5)';
+        ctx.fillText('局部最小', tx(0), ty(loss(0)) - 12);
+        ctx.beginPath(); ctx.arc(tx(0), ty(loss(0)), 3, 0, Math.PI * 2); ctx.fill();
+        // Global min at x~2.285
+        ctx.fillStyle = 'rgba(86,211,100,.5)';
+        ctx.fillText('全局最小', tx(2.285), ty(loss(2.285)) - 12);
+        ctx.beginPath(); ctx.arc(tx(2.285), ty(loss(2.285)), 3, 0, Math.PI * 2); ctx.fill();
+
+        // Path history
+        if (S.path.length > 1) {
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(251,191,36,.2)'; ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            for (let i = 0; i < S.path.length; i++) {
+                const p = S.path[i];
+                i === 0 ? ctx.moveTo(tx(p.x), ty(p.y)) : ctx.lineTo(tx(p.x), ty(p.y));
+            }
+            ctx.stroke(); ctx.setLineDash([]);
+            for (let i = 0; i < S.path.length - 1; i++) {
+                const p = S.path[i];
+                const a = .12 + .3 * (i / S.path.length);
+                ctx.beginPath(); ctx.fillStyle = `rgba(251,191,36,${a})`;
+                ctx.arc(tx(p.x), ty(p.y), 2.5, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        // Current position
+        if (S.path.length > 0) {
+            const cur = S.path[S.path.length - 1];
+            const cx = tx(cur.x), cy = ty(cur.y);
+
+            // Gradient arrow
+            const g = grad(S.x);
+            const aLen = Math.min(Math.abs(g) * 18, 70);
+            const dir = -Math.sign(g);
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(248,81,73,.6)'; ctx.lineWidth = 1.5;
+            ctx.moveTo(cx, cy); ctx.lineTo(cx + dir * aLen, cy); ctx.stroke();
+            ctx.beginPath(); ctx.fillStyle = 'rgba(248,81,73,.6)';
+            ctx.moveTo(cx + dir * aLen, cy);
+            ctx.lineTo(cx + dir * (aLen - 6), cy - 4);
+            ctx.lineTo(cx + dir * (aLen - 6), cy + 4);
+            ctx.fill();
+
+            // Glow
+            const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, 22);
+            gr.addColorStop(0, 'rgba(251,191,36,.25)'); gr.addColorStop(1, 'rgba(251,191,36,0)');
+            ctx.beginPath(); ctx.fillStyle = gr; ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+
+            // Dot
+            ctx.beginPath(); ctx.fillStyle = '#fbbf24'; ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.fillStyle = '#fff'; ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+
+    function updateInfo() {
+        document.getElementById('gd-step').textContent = S.step;
+        document.getElementById('gd-x').textContent = S.x.toFixed(4);
+        document.getElementById('gd-loss').textContent = loss(S.x).toFixed(4);
+        document.getElementById('gd-grad').textContent = grad(S.x).toFixed(4);
+    }
+
+    function takeStep() {
+        S.x = S.x - S.lr * grad(S.x);
+        S.path.push({ x: S.x, y: loss(S.x) });
+        S.step++;
+        updateInfo();
+    }
+
+    function animate() {
+        if (!S.running) return;
+        takeStep(); draw();
+        if (S.step > 300 || Math.abs(grad(S.x)) < 0.0005) {
+            S.running = false;
+            document.getElementById('gd-toggle').textContent = 'Start';
+            return;
+        }
+        S.tid = setTimeout(animate, 70);
+    }
+
+    document.getElementById('gd-toggle').addEventListener('click', function() {
+        S.running = !S.running;
+        this.textContent = S.running ? 'Pause' : 'Start';
+        if (S.running) animate();
+    });
+
+    document.getElementById('gd-reset').addEventListener('click', function() {
+        S.running = false; clearTimeout(S.tid);
+        S.x = -3; S.path = [{ x: -3, y: loss(-3) }]; S.step = 0;
+        document.getElementById('gd-toggle').textContent = 'Start';
+        updateInfo(); draw();
+    });
+
+    document.getElementById('gd-lr').addEventListener('input', function() {
+        S.lr = parseFloat(this.value);
+        document.getElementById('gd-lr-val').textContent = S.lr.toFixed(2);
+    });
+
+    // Click to set start position
+    canvas.addEventListener('click', function(e) {
+        if (S.running) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const dataX = bounds.xMin + (mx - plotL) / (plotR - plotL) * (bounds.xMax - bounds.xMin);
+        if (dataX >= bounds.xMin && dataX <= bounds.xMax) {
+            S.x = dataX; S.path = [{ x: dataX, y: loss(dataX) }]; S.step = 0;
+            updateInfo(); draw();
+        }
+    });
+
+    resize(); draw(); updateInfo();
+    window.addEventListener('resize', () => { resize(); draw(); });
+})();
+</script>
+</body>
+</html>

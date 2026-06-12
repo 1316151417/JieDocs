@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>思考快与慢 — 第一性原理深度研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #0b0e17;
+  --bg-panel: #111827;
+  --bg-card: #1a2235;
+  --bg-hover: #1f2b42;
+  --accent-primary: #e8a838;
+  --accent-secondary: #38bdf8;
+  --accent-danger: #f87171;
+  --accent-success: #4ade80;
+  --accent-purple: #a78bfa;
+  --accent-emerald: #34d399;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: #1e293b;
+  --border-accent: rgba(232, 168, 56, 0.3);
+  --glow-amber: 0 0 40px rgba(232, 168, 56, 0.15);
+  --glow-blue: 0 0 40px rgba(56, 189, 248, 0.15);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 20px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Noto Sans SC', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+/* ═══ Blueprint Grid Background ═══ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(232, 168, 56, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 168, 56, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at 30% 20%, rgba(232, 168, 56, 0.04) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 80%, rgba(56, 189, 248, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ═══ Scrollbar ═══ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--accent-primary); border-radius: 3px; }
+
+/* ═══ Navigation ═══ */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(11, 14, 23, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  transition: all 0.3s ease;
+}
+
+.nav.scrolled {
+  box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+}
+
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+.nav-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  color: var(--accent-primary);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.25rem;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.25s ease;
+  font-weight: 400;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--accent-primary);
+  background: rgba(232, 168, 56, 0.08);
+}
+
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* ═══ Hero ═══ */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6rem 2rem 4rem;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(232, 168, 56, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: floatOrb 12s ease-in-out infinite;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: 10%;
+  right: 15%;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.06) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: floatOrb 10s ease-in-out infinite reverse;
+}
+
+@keyframes floatOrb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.05); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+.hero-content {
+  text-align: center;
+  max-width: 800px;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 2rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.2s forwards;
+}
+
+.hero-tag::before,
+.hero-tag::after {
+  content: '';
+  width: 30px;
+  height: 1px;
+  background: var(--accent-primary);
+}
+
+.hero-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
+  line-height: 1.15;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.4s forwards;
+}
+
+.hero-title .highlight {
+  background: linear-gradient(135deg, var(--accent-primary), #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  max-width: 580px;
+  margin: 0 auto 2.5rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.6s forwards;
+}
+
+.hero-meta {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.8s forwards;
+}
+
+.hero-meta-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.hero-meta-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem;
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.hero-meta-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(25px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══ Section Base ═══ */
+.section {
+  position: relative;
+  z-index: 1;
+  padding: 5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.section-label::before {
+  content: '';
+  width: 20px;
+  height: 1px;
+  background: var(--accent-primary);
+}
+
+.section-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 700;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+
+.section-desc {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  max-width: 680px;
+  margin-bottom: 3rem;
+}
+
+/* ═══ First Principles Cards ═══ */
+.principle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.principle-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s ease;
+  cursor: default;
+}
+
+.principle-card:hover {
+  border-color: var(--border-accent);
+  transform: translateY(-4px);
+  box-shadow: var(--glow-amber);
+}
+
+.principle-card::before {
+  content: attr(data-number);
+  position: absolute;
+  top: -10px;
+  right: 15px;
+  font-family: 'Playfair Display', serif;
+  font-size: 6rem;
+  font-weight: 700;
+  color: rgba(232, 168, 56, 0.06);
+  line-height: 1;
+}
+
+.principle-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.principle-icon.amber { background: rgba(232, 168, 56, 0.12); }
+.principle-icon.blue { background: rgba(56, 189, 248, 0.12); }
+.principle-icon.purple { background: rgba(167, 139, 250, 0.12); }
+.principle-icon.green { background: rgba(74, 222, 128, 0.12); }
+
+.principle-card h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.2rem;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.principle-card p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+/* ═══ System Comparison ═══ */
+.system-comparison {
+  display: grid;
+  grid-template-columns: 1fr 80px 1fr;
+  gap: 0;
+  margin: 3rem 0;
+  align-items: stretch;
+}
+
+.system-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2.5rem;
+  transition: all 0.4s ease;
+}
+
+.system-card:hover {
+  transform: scale(1.02);
+}
+
+.system-card.system1 {
+  border-color: rgba(248, 113, 113, 0.2);
+}
+.system-card.system1:hover {
+  box-shadow: 0 0 40px rgba(248, 113, 113, 0.1);
+}
+
+.system-card.system2 {
+  border-color: rgba(56, 189, 248, 0.2);
+}
+.system-card.system2:hover {
+  box-shadow: 0 0 40px rgba(56, 189, 248, 0.1);
+}
+
+.system-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.system-divider::before {
+  content: '';
+  position: absolute;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, var(--text-muted), transparent);
+}
+
+.system-divider span {
+  background: var(--bg-deep);
+  padding: 0.5rem 0.75rem;
+  border-radius: 20px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  z-index: 2;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.system-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.system-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.system1 .system-badge { background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(248, 113, 113, 0.05)); }
+.system2 .system-badge { background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.05)); }
+
+.system-name {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.system1 .system-name { color: #f87171; }
+.system2 .system-name { color: #38bdf8; }
+
+.system-traits {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.system-traits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.system-traits li .trait-label {
+  min-width: 60px;
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding-top: 2px;
+}
+
+/* ═══ Bias Explorer ═══ */
+.bias-explorer {
+  margin: 3rem 0;
+}
+
+.bias-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scrollbar-width: none;
+}
+
+.bias-tabs::-webkit-scrollbar { display: none; }
+
+.bias-tab {
+  flex-shrink: 0;
+  padding: 0.6rem 1.2rem;
+  border-radius: 30px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Noto Sans SC', sans-serif;
+  white-space: nowrap;
+}
+
+.bias-tab:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.bias-tab.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--bg-deep);
+  font-weight: 500;
+}
+
+.bias-content {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.bias-detail {
+  display: none;
+  padding: 2.5rem;
+}
+
+.bias-detail.active {
+  display: block;
+  animation: fadeUp 0.4s ease;
+}
+
+.bias-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.bias-emoji {
+  font-size: 2.5rem;
+}
+
+.bias-detail h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.bias-detail h3 small {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 300;
+  margin-top: 0.25rem;
+  letter-spacing: 0.05em;
+}
+
+.bias-section {
+  margin-bottom: 1.5rem;
+}
+
+.bias-section-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--accent-primary);
+  margin-bottom: 0.75rem;
+}
+
+.bias-section p, .bias-section li {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.9;
+}
+
+.bias-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.bias-section ul li {
+  padding: 0.3rem 0;
+  padding-left: 1.2rem;
+  position: relative;
+}
+
+.bias-section ul li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--accent-primary);
+}
+
+.bias-example-box {
+  background: var(--bg-card);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 1.25rem 1.5rem;
+  margin: 1rem 0;
+}
+
+.bias-example-box .example-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--accent-primary);
+  margin-bottom: 0.5rem;
+}
+
+.bias-example-box p {
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-style: italic;
+}
+
+.bias-solution {
+  background: rgba(74, 222, 128, 0.05);
+  border: 1px solid rgba(74, 222, 128, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem 1.5rem;
+}
+
+.bias-solution .solution-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--accent-success);
+  margin-bottom: 0.5rem;
+}
+
+.bias-solution p {
+  color: var(--text-secondary);
+}
+
+/* ═══ Interactive Quiz ═══ */
+.quiz-container {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.quiz-header {
+  background: linear-gradient(135deg, rgba(232, 168, 56, 0.08), rgba(56, 189, 248, 0.05));
+  padding: 2rem 2.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.quiz-progress {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.quiz-dot {
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bg-card);
+  transition: all 0.4s ease;
+}
+
+.quiz-dot.done { background: var(--accent-primary); }
+.quiz-dot.current { background: var(--accent-secondary); }
+
+.quiz-body {
+  padding: 2.5rem;
+}
+
+.quiz-question {
+  display: none;
+}
+
+.quiz-question.active {
+  display: block;
+  animation: fadeUp 0.4s ease;
+}
+
+.quiz-q-number {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 1rem;
+}
+
+.quiz-q-text {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.quiz-q-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.quiz-option {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.quiz-option:hover {
+  border-color: var(--accent-primary);
+  background: rgba(232, 168, 56, 0.05);
+  color: var(--text-primary);
+}
+
+.quiz-option.selected {
+  border-color: var(--accent-primary);
+  background: rgba(232, 168, 56, 0.08);
+  color: var(--text-primary);
+}
+
+.quiz-option.correct {
+  border-color: var(--accent-success);
+  background: rgba(74, 222, 128, 0.08);
+  color: var(--accent-success);
+}
+
+.quiz-option.wrong {
+  border-color: var(--accent-danger);
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--accent-danger);
+}
+
+.quiz-option .opt-letter {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bg-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.quiz-option.selected .opt-letter {
+  background: var(--accent-primary);
+  color: var(--bg-deep);
+}
+
+.quiz-feedback {
+  display: none;
+  margin-top: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+.quiz-feedback.show { display: block; animation: fadeUp 0.3s ease; }
+.quiz-feedback.correct { background: rgba(74, 222, 128, 0.08); border: 1px solid rgba(74, 222, 128, 0.2); color: var(--accent-success); }
+.quiz-feedback.wrong { background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.2); color: var(--accent-danger); }
+
+.quiz-nav {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.btn {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background: var(--accent-primary);
+  color: var(--bg-deep);
+}
+
+.btn-primary:hover {
+  background: #f59e0b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(232, 168, 56, 0.3);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+/* ═══ Decision Matrix ═══ */
+.matrix-container {
+  margin: 3rem 0;
+}
+
+.matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.matrix-cell {
+  background: var(--bg-panel);
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.matrix-cell:hover {
+  background: var(--bg-hover);
+}
+
+.matrix-cell.header {
+  background: var(--bg-card);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--accent-primary);
+  text-align: center;
+}
+
+.matrix-cell.label {
+  background: var(--bg-card);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.matrix-cell.content {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* ═══ Framework Steps ═══ */
+.framework-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 3rem 0;
+}
+
+.framework-step {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 2rem;
+  align-items: start;
+  padding: 2rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.framework-step:hover {
+  border-color: var(--border-accent);
+  box-shadow: var(--glow-amber);
+}
+
+.step-number {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(232, 168, 56, 0.15), rgba(232, 168, 56, 0.05));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.step-content h4 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.step-content p {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  margin-bottom: 0.75rem;
+}
+
+.step-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--accent-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ═══ Interactive Simulator ═══ */
+.simulator {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.sim-header {
+  padding: 2rem 2.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sim-header h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.3rem;
+}
+
+.sim-header .sim-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  background: rgba(232, 168, 56, 0.1);
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.sim-body {
+  padding: 2.5rem;
+}
+
+.scenario-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.scenario-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary), var(--accent-purple));
+}
+
+.scenario-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.scenario-text {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.9;
+}
+
+.response-input-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.response-input {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  text-align: center;
+  outline: none;
+  font-family: 'DM Mono', monospace;
+  transition: border-color 0.3s ease;
+}
+
+.response-input:focus {
+  border-color: var(--accent-primary);
+}
+
+.response-input::placeholder {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.sim-btn {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent-primary);
+  color: var(--bg-deep);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sim-btn:hover {
+  background: #f59e0b;
+  transform: translateY(-1px);
+}
+
+.sim-result {
+  display: none;
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  animation: fadeUp 0.4s ease;
+}
+
+.sim-result.show {
+  display: block;
+}
+
+.sim-result h4 {
+  font-family: 'Noto Serif SC', serif;
+  margin-bottom: 0.75rem;
+  color: var(--accent-primary);
+}
+
+.sim-result p {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.8;
+}
+
+/* ═══ Progress Ring ═══ */
+.progress-ring-container {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.progress-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.progress-ring svg {
+  transform: rotate(-90deg);
+}
+
+.progress-ring circle {
+  fill: none;
+  stroke-width: 6;
+}
+
+.progress-ring .bg {
+  stroke: var(--border);
+}
+
+.progress-ring .progress {
+  stroke: var(--accent-primary);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s ease;
+}
+
+.progress-ring .label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.ring-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ring-info h4 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.ring-info p {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+/* ═══ Key Takeaway ═══ */
+.takeaway-card {
+  background: linear-gradient(135deg, rgba(232, 168, 56, 0.06), rgba(56, 189, 248, 0.04));
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+  padding: 3rem;
+  margin: 3rem 0;
+  text-align: center;
+}
+
+.takeaway-card h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.takeaway-card p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.9;
+}
+
+.takeaway-quote {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.2rem;
+  font-style: italic;
+  color: var(--accent-primary);
+  margin-top: 1.5rem;
+  position: relative;
+  display: inline-block;
+}
+
+.takeaway-quote::before {
+  content: '"';
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
+  position: absolute;
+  top: -1.5rem;
+  left: -1.5rem;
+  color: rgba(232, 168, 56, 0.3);
+}
+
+/* ═══ Heatmap ═══ */
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 4px;
+  margin: 2rem 0;
+}
+
+.heat-cell {
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  transition: all 0.3s ease;
+  cursor: default;
+  position: relative;
+}
+
+.heat-cell:hover {
+  transform: scale(1.08);
+  z-index: 2;
+}
+
+.heat-cell .heat-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.heat-cell:hover .heat-tooltip {
+  display: block;
+}
+
+/* ═══ Footer ═══ */
+.footer {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--border);
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.footer p {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.footer .footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.footer a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.75rem;
+  transition: color 0.3s ease;
+}
+
+.footer a:hover { color: var(--accent-primary); }
+
+/* ═══ Responsive ═══ */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-toggle { display: block; }
+  .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    background: rgba(11, 14, 23, 0.95);
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .system-comparison {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .system-divider {
+    flex-direction: row;
+    padding: 0;
+    height: auto;
+  }
+
+  .system-divider::before {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--text-muted), transparent);
+  }
+
+  .matrix-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .matrix-cell.label,
+  .matrix-cell.header:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .response-input-group {
+    grid-template-columns: 1fr;
+  }
+
+  .framework-step {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .hero-meta {
+    gap: 1.5rem;
+  }
+}
+
+/* ═══ Reveal Animation ═══ */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ Navigation ═══ -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">Thinking, Fast & Slow</div>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#foundation">第一性原理</a></li>
+      <li><a href="#systems">双系统</a></li>
+      <li><a href="#biases">认知偏差</a></li>
+      <li><a href="#quiz">自测实验</a></li>
+      <li><a href="#framework">决策框架</a></li>
+      <li><a href="#simulator">思维模拟器</a></li>
+    </ul>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">☰</button>
+  </div>
+</nav>
+
+<!-- ═══ Hero ═══ -->
+<section class="hero" id="top">
+  <div class="hero-content">
+    <div class="hero-tag">第一性原理研究报告</div>
+    <h1 class="hero-title">思考<span class="highlight">快</span>与<span class="highlight">慢</span></h1>
+    <p class="hero-subtitle">以建筑师人格的结构化思维，从认知科学的根基出发，深度拆解人类决策系统的底层架构，揭示思维偏差的根源，并构建可操作的决策升级框架。</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-value">2</span>
+        <span class="hero-meta-label">核心系统</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-value">20+</span>
+        <span class="hero-meta-label">认知偏差</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-value">5</span>
+        <span class="hero-meta-label">决策框架</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-value">∞</span>
+        <span class="hero-meta-label">实践价值</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Section 1: First Principles ═══ -->
+<section class="section" id="foundation">
+  <div class="reveal">
+    <div class="section-label">Chapter 01</div>
+    <h2 class="section-title">第一性原理：回到认知的根基</h2>
+    <p class="section-desc">在讨论"快思考"与"慢思考"之前，我们必须回到一个更根本的问题：人类大脑为什么会演化出两套截然不同的决策系统？</p>
+  </div>
+
+  <div class="principle-grid reveal">
+    <div class="principle-card" data-number="01">
+      <div class="principle-icon amber">🧬</div>
+      <h3>生存压力驱动</h3>
+      <p>人类祖先面对的首要问题不是"正确"，而是"存活"。在充满捕食者的草原上，快速判断"有危险 → 跑"比"仔细分析这是否真的是狮子"更有生存价值。<strong>速度优于准确性</strong>是自然选择的底层偏好。</p>
+    </div>
+    <div class="principle-card" data-number="02">
+      <div class="principle-icon blue">⚡</div>
+      <h3>能量经济原则</h3>
+      <p>大脑仅占体重的2%，却消耗约20%的能量。深度思考的成本极高——演化设计了一种"认知节能"模式：用模式匹配代替逐案分析，用经验法则代替逻辑推演。<strong>省力即正义</strong>是大脑的底层逻辑。</p>
+    </div>
+    <div class="principle-card" data-number="03">
+      <div class="principle-icon purple">🔄</div>
+      <h3>层级叠加架构</h3>
+      <p>大脑并非从零开始设计的系统，而是在数十亿年间不断"打补丁"。原始的快速反应系统（边缘系统）始终存在，而慢速理性系统（前额叶皮层）是后来才"叠加上去"的模块。<strong>新旧系统共存</strong>，冲突是必然。</p>
+    </div>
+    <div class="principle-card" data-number="04">
+      <div class="principle-icon green">🎯</div>
+      <h3>满意即可原则</h3>
+      <p>赫伯特·西蒙提出：人类并非追求最优解的"理性人"，而是寻求"足够好"的"满意者"。在信息爆炸的世界中，追求完美决策的代价远超其收益。<strong>快速满意优于缓慢最优</strong>——这是适应性智慧。</p>
+    </div>
+  </div>
+
+  <div class="takeaway-card reveal">
+    <h3>核心洞察</h3>
+    <p>人类的双系统思维不是"设计缺陷"，而是在资源有限的约束条件下，演化出的最优适应策略。问题不在于系统本身，而在于我们对系统运作方式的无知。</p>
+    <div class="takeaway-quote">认识到自己思维的局限，是突破局限的第一步。</div>
+  </div>
+</section>
+
+<!-- ═══ Section 2: System 1 vs System 2 ═══ -->
+<section class="section" id="systems">
+  <div class="reveal">
+    <div class="section-label">Chapter 02</div>
+    <h2 class="section-title">双系统架构：快与慢的深层解析</h2>
+    <p class="section-desc">卡尼曼将人类认知分为两个系统。它们不是两个独立的"大脑"，而是同一决策机器上两种不同的运作模式。理解它们的特性、交互与冲突，是掌握高效决策的基础。</p>
+  </div>
+
+  <div class="system-comparison reveal">
+    <div class="system-card system1">
+      <div class="system-header">
+        <div class="system-badge">⚡</div>
+        <div>
+          <div class="system-name">系统 1</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-family:'DM Mono',monospace;">FAST · AUTOMATIC</div>
+        </div>
+      </div>
+      <ul class="system-traits">
+        <li>
+          <span class="trait-label">速度</span>
+          <span>自动运行，无需意志力，毫秒级反应</span>
+        </li>
+        <li>
+          <span class="trait-label">模式</span>
+          <span>直觉式、联想式、并行处理</span>
+        </li>
+        <li>
+          <span class="trait-label">能耗</span>
+          <span>极低，几乎不消耗认知资源</span>
+        </li>
+        <li>
+          <span class="trait-label">容量</span>
+          <span>可同时处理多个信息流</span>
+        </li>
+        <li>
+          <span class="trait-label">情感</span>
+          <span>与情绪系统深度耦合，驱动快速判断</span>
+        </li>
+        <li>
+          <span class="trait-label">偏差</span>
+          <span>容易受锚定、框架、可得性偏差影响</span>
+        </li>
+        <li>
+          <span class="trait-label">例子</span>
+          <span>看到蛇立即缩手 / 读懂他人表情 / 2+2=?</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="system-divider">
+      <span>VS</span>
+    </div>
+
+    <div class="system-card system2">
+      <div class="system-header">
+        <div class="system-badge">🧠</div>
+        <div>
+          <div class="system-name">系统 2</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-family:'DM Mono',monospace;">SLOW · DELIBERATE</div>
+        </div>
+      </div>
+      <ul class="system-traits">
+        <li>
+          <span class="trait-label">速度</span>
+          <span>需要主动调用，消耗意志力，秒到分钟级</span>
+        </li>
+        <li>
+          <span class="trait-label">模式</span>
+          <span>逻辑式、规则式、串行处理</span>
+        </li>
+        <li>
+          <span class="trait-label">能耗</span>
+          <span>极高，长时间使用会导致认知疲劳</span>
+        </li>
+        <li>
+          <span class="trait-label">容量</span>
+          <span>一次只能专注处理一件事</span>
+        </li>
+        <li>
+          <span class="trait-label">情感</span>
+          <span>相对独立于情绪，可进行冷静分析</span>
+        </li>
+        <li>
+          <span class="trait-label">偏差</span>
+          <span>更准确，但也会受到认知吝啬的影响</span>
+        </li>
+        <li>
+          <span class="trait-label">例子</span>
+          <span>17×24=? / 复杂合同谈判 / 学习新技能</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Interaction Heatmap -->
+  <div class="reveal" style="margin-top: 3rem;">
+    <h3 style="font-family:'Noto Serif SC',serif;font-size:1.2rem;margin-bottom:0.5rem;">日常活动中的系统激活强度</h3>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">悬停查看 — 颜色越暖，系统1参与越多；越冷，系统2参与越多</p>
+    <div class="heatmap" id="heatmap"></div>
+  </div>
+</section>
+
+<!-- ═══ Section 3: Cognitive Biases ═══ -->
+<section class="section" id="biases">
+  <div class="reveal">
+    <div class="section-label">Chapter 03</div>
+    <h2 class="section-title">认知偏差：系统性错误的深层图谱</h2>
+    <p class="section-desc">认知偏差不是偶然失误，而是系统1的"特性"——它们是快速启发法的副作用。理解每种偏差的机制和触发条件，才能有效对冲。</p>
+  </div>
+
+  <div class="bias-explorer reveal">
+    <div class="bias-tabs" id="biasTabs">
+      <button class="bias-tab active" data-bias="anchoring">锚定效应</button>
+      <button class="bias-tab" data-bias="availability">可得性偏差</button>
+      <button class="bias-tab" data-bias="representative">代表性启发</button>
+      <button class="bias-tab" data-bias="framing">框架效应</button>
+      <button class="bias-tab" data-bias="loss">损失厌恶</button>
+      <button class="bias-tab" data-bias="overconfidence">过度自信</button>
+    </div>
+
+    <div class="bias-content">
+      <!-- Anchoring -->
+      <div class="bias-detail active" id="bias-anchoring">
+        <div class="bias-detail-header">
+          <div class="bias-emoji">⚓</div>
+          <h3>锚定效应 <small>Anchoring Effect</small></h3>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">机制拆解</div>
+          <p>大脑在做数值估计时，会不自觉地以最先接收到的信息（锚点）为基准进行调整。关键问题在于：调整往往<strong>严重不足</strong>——即使知道锚点是随机的，它依然会影响你的判断。</p>
+        </div>
+        <div class="bias-example-box">
+          <div class="example-label">经典实验</div>
+          <p>先让受试者转一个随机数字转盘（如10或65），然后问"联合国中非洲国家的百分比是多少？"。转到65的人平均回答45%，转到10的人平均回答25%——一个完全随机的数字竟影响了严肃判断。</p>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">现实影响</div>
+          <ul>
+            <li>商品定价：原价标签（锚点）让折扣价显得"超值"</li>
+            <li>薪资谈判：先出价者设定了整场谈判的锚点</li>
+            <li>司法判决：检察官的量刑建议直接影响法官判决</li>
+            <li>项目估算：初始估算锚定后续所有调整</li>
+          </ul>
+        </div>
+        <div class="bias-solution">
+          <div class="solution-label">对冲策略</div>
+          <p>① 在谈判中争取先发制人，设定有利锚点；② 从多个独立视角重新审视问题（"如果没有这个锚点，我会怎么想？"）；③ 用数据驱动替代直觉估计，建立自己的基准线。</p>
+        </div>
+      </div>
+
+      <!-- Availability -->
+      <div class="bias-detail" id="bias-availability">
+        <div class="bias-detail-header">
+          <div class="bias-emoji">📰</div>
+          <h3>可得性偏差 <small>Availability Heuristic</small></h3>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">机制拆解</div>
+          <p>系统1用"想到某个例子的容易程度"来估计该事件的频率或概率。越是生动、近期、情绪化的事件，越容易被提取——但提取容易≠概率高。</p>
+        </div>
+        <div class="bias-example-box">
+          <div class="example-label">现实场景</div>
+          <p>飞机失事后，许多人改乘汽车，但统计上驾车出行的死亡率是飞行的数十倍。媒体报道使空难画面极具可得性，系统1据此高估了飞行的风险。</p>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">现实影响</div>
+          <ul>
+            <li>风险管理：高估小概率轰动事件，低估高频日常风险</li>
+            <li>投资决策：近期暴涨的股票让人高估其未来收益</li>
+            <li>健康判断：被媒体报道的疾病引起过度恐慌</li>
+            <li>创业评估：成功案例被大量传播，失败案例无人知晓</li>
+          </ul>
+        </div>
+        <div class="bias-solution">
+          <div class="solution-label">对冲策略</div>
+          <p>① 做决策前主动检索基础概率（base rate）；② 警惕"最近看到/听到"的信息对判断的影响；③ 建立数据思维：用频率而非个案来理解世界。</p>
+        </div>
+      </div>
+
+      <!-- Representative -->
+      <div class="bias-detail" id="bias-representative">
+        <div class="bias-detail-header">
+          <div class="bias-emoji">🎭</div>
+          <h3>代表性启发 <small>Representativeness Heuristic</small></h3>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">机制拆解</div>
+          <p>系统1通过"这件事看起来像什么"来做概率判断，完全忽略基础概率和样本大小。"像"不等于"是"——这是代表性启发的核心陷阱。</p>
+        </div>
+        <div class="bias-example-box">
+          <div class="example-label">琳达问题</div>
+          <p>"琳达31岁，单身，直率聪明，主修哲学。学生时代关注歧视和社会正义，参加反核示威。"请问：A) 琳达是银行出纳 B) 琳达是银行出纳且是女权主义者。大多数人选B——但B是A的子集，概率必然≤A。</p>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">现实影响</div>
+          <ul>
+            <li>招聘决策：候选人"看起来"像高绩效者 ≠ 真的会高绩效</li>
+            <li>医疗诊断：症状的典型性导致忽视不典型但更可能的病因</li>
+            <li>投资判断：创始人"看起来"像乔布斯 ≠ 公司会成功</li>
+            <li>日常推理：忽视基础概率，被表面叙事迷惑</li>
+          </ul>
+        </div>
+        <div class="bias-solution">
+          <div class="solution-label">对冲策略</div>
+          <p>① 养成追问"基础概率是多少？"的习惯；② 注意"合取谬误"：更具体的描述总是概率更低；③ 用统计思维取代叙事思维做重要决策。</p>
+        </div>
+      </div>
+
+      <!-- Framing -->
+      <div class="bias-detail" id="bias-framing">
+        <div class="bias-detail-header">
+          <div class="bias-emoji">🖼️</div>
+          <h3>框架效应 <small>Framing Effect</small></h3>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">机制拆解</div>
+          <p>同一信息以不同方式呈现，会导致截然不同的决策。系统1对语言框架极其敏感——"存活率90%"和"死亡率10%"在逻辑上等价，但在情感上截然不同。</p>
+        </div>
+        <div class="bias-example-box">
+          <div class="example-label">亚洲疾病实验</div>
+          <p>"600人面临致命疾病。方案A：确定救活200人。方案B：1/3概率全部救活，2/3概率无人存活。"大多数人选A。但如果把框架改成"方案A：确定死亡400人"，更多人选B——描述的实质没变，选择却逆转了。</p>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">现实影响</div>
+          <ul>
+            <li>营销："95%无脂" vs "5%含脂"——同样的产品，不同的接受度</li>
+            <li>沟通汇报：强调成果还是强调损失，影响上级决策</li>
+            <li>政策制定：同一条政策用"收益"或"成本"框架呈现，公众反应不同</li>
+            <li>自我对话："我不得不做" vs "我选择去做"</li>
+          </ul>
+        </div>
+        <div class="bias-solution">
+          <div class="solution-label">对冲策略</div>
+          <p>① 重大决策前，主动将问题用正面和负面框架各重述一遍；② 在沟通中有意识地选择最有利的框架（同时识别他人使用的框架）；③ 追问"如果换个说法，我的选择会不同吗？"——如果会，说明你被框架驱动了。</p>
+        </div>
+      </div>
+
+      <!-- Loss Aversion -->
+      <div class="bias-detail" id="bias-loss">
+        <div class="bias-detail-header">
+          <div class="bias-emoji">😰</div>
+          <h3>损失厌恶 <small>Loss Aversion</small></h3>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">机制拆解</div>
+          <p>失去100元的痛苦大约是获得100元快乐的2倍。这种不对称的敏感度让人们系统性地高估损失、低估收益——是禀赋效应、沉没成本谬误和现状偏好的底层驱动力。</p>
+        </div>
+        <div class="bias-example-box">
+          <div class="example-label">经典实验</div>
+          <p>获得一个杯子后，你愿意出售它的价格（约7美元）远高于你愿意购买它的价格（约3美元）。仅仅因为"拥有"，事物的主观价值就大幅上升——这就是禀赋效应，由损失厌恶驱动。</p>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">现实影响</div>
+          <ul>
+            <li>投资行为：过早卖出盈利股，死拿亏损股（处置效应）</li>
+            <li>职业选择：因为害怕失去稳定而拒绝更高期望的机会</li>
+            <li>关系决策：留在不健康的关系中，因为"已经投入太多"</li>
+            <li>创新阻碍："如果新方案失败了怎么办？"比"如果成功了呢？"更有力</li>
+          </ul>
+        </div>
+        <div class="bias-solution">
+          <div class="solution-label">对冲策略</div>
+          <p>① 用"机会成本"视角重新定义选择——不做某事也是一种成本；② 定期做"归零思考"：如果今天从头来过，我还会做同样的选择吗？③ 区分"害怕损失"和"真正不适合"——前者是情绪，后者是信息。</p>
+        </div>
+      </div>
+
+      <!-- Overconfidence -->
+      <div class="bias-detail" id="bias-overconfidence">
+        <div class="bias-detail-header">
+          <div class="bias-emoji">🦚</div>
+          <h3>过度自信 <small>Overconfidence Bias</small></h3>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">机制拆解</div>
+          <p>系统1生成一个自洽的叙事后，系统2就倾向于接受它而非质疑它。越是信息丰富、叙事流畅的判断，人们越自信——但自信与准确性的相关性远低于想象。</p>
+        </div>
+        <div class="bias-example-box">
+          <div class="example-label">校准实验</div>
+          <p>当要求给出90%置信区间时，正确答案落在区间外的比率应为10%。但实验表明，实际错误率高达30-50%。专家的过度自信往往比外行更严重——因为他们更擅长构建自洽的叙事。</p>
+        </div>
+        <div class="bias-section">
+          <div class="bias-section-title">现实影响</div>
+          <ul>
+            <li>项目管理：几乎所有大型项目都超出预算和时间（规划谬误）</li>
+            <li>战略决策：CEO的过度自信导致灾难性并购</li>
+            <li>预测能力：专家预测的准确性往往不优于简单算法</li>
+            <li>学习障碍："我已经知道了"阻止了深度理解</li>
+          </ul>
+        </div>
+        <div class="bias-solution">
+          <div class="solution-label">对冲策略</div>
+          <p>① 采用"事前验尸"法：假设项目已经失败，列出可能原因；② 建立校准习惯：定期检查自己预测的准确性；③ 引入外部视角：问"类似项目的平均结果是什么？"；④ 区分"知道"和"以为自己知道"。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Section 4: Interactive Quiz ═══ -->
+<section class="section" id="quiz">
+  <div class="reveal">
+    <div class="section-label">Chapter 04</div>
+    <h2 class="section-title">思维陷阱自测</h2>
+    <p class="section-desc">以下4个问题模拟了典型的认知偏差场景。每个问题都会触发系统1的直觉反应——试着觉察你"第一反应"背后的思维过程。</p>
+  </div>
+
+  <div class="quiz-container reveal" id="quizContainer">
+    <div class="quiz-header">
+      <div class="quiz-progress">
+        <div class="quiz-dot current" id="dot0"></div>
+        <div class="quiz-dot" id="dot1"></div>
+        <div class="quiz-dot" id="dot2"></div>
+        <div class="quiz-dot" id="dot3"></div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text-muted);">
+        问题 <span id="quizCurrent">1</span> / 4
+      </div>
+    </div>
+    <div class="quiz-body">
+      <!-- Q1 -->
+      <div class="quiz-question active" id="q0">
+        <div class="quiz-q-number">Question 01 — 锚定效应</div>
+        <div class="quiz-q-text">一个球拍和一个球共花费1.10元。球拍比球贵1元。请问球多少钱？</div>
+        <div class="quiz-q-desc">你的第一个直觉答案是什么？仔细想想再作答。</div>
+        <div class="quiz-options">
+          <div class="quiz-option" data-answer="wrong" data-q="0">
+            <span class="opt-letter">A</span>
+            <span>0.10 元</span>
+          </div>
+          <div class="quiz-option" data-answer="correct" data-q="0">
+            <span class="opt-letter">B</span>
+            <span>0.05 元</span>
+          </div>
+          <div class="quiz-option" data-answer="wrong" data-q="0">
+            <span class="opt-letter">C</span>
+            <span>0.15 元</span>
+          </div>
+          <div class="quiz-option" data-answer="wrong" data-q="0">
+            <span class="opt-letter">D</span>
+            <span>1.00 元</span>
+          </div>
+        </div>
+        <div class="quiz-feedback" id="fb0"></div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="quiz-question" id="q1">
+        <div class="quiz-q-number">Question 02 — 代表性启发</div>
+        <div class="quiz-q-text">小明性格内向，喜欢独立工作，对人和抽象概念不太感兴趣。他更可能是什么职业？</div>
+        <div class="quiz-q-desc">注意：不要被描述的"典型性"迷惑，想想基础概率。</div>
+        <div class="quiz-options">
+          <div class="quiz-option" data-answer="wrong" data-q="1">
+            <span class="opt-letter">A</span>
+            <span>图书管理员</span>
+          </div>
+          <div class="quiz-option" data-answer="wrong" data-q="1">
+            <span class="opt-letter">B</span>
+            <span>程序员</span>
+          </div>
+          <div class="quiz-option" data-answer="correct" data-q="1">
+            <span class="opt-letter">C</span>
+            <span>无法从描述判断——需要看基础概率</span>
+          </div>
+          <div class="quiz-option" data-answer="wrong" data-q="1">
+            <span class="opt-letter">D</span>
+            <span>科研人员</span>
+          </div>
+        </div>
+        <div class="quiz-feedback" id="fb1"></div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="quiz-question" id="q2">
+        <div class="quiz-q-number">Question 03 — 框架效应</div>
+        <div class="quiz-q-text">一种致命疾病预计将导致600人死亡。有两个方案可供选择，你会选哪个？</div>
+        <div class="quiz-q-desc">方案A：确定救活200人。方案B：有1/3的概率救活全部600人，2/3的概率无人获救。</div>
+        <div class="quiz-options">
+          <div class="quiz-option" data-answer="a" data-q="2">
+            <span class="opt-letter">A</span>
+            <span>方案A — 确定救活200人</span>
+          </div>
+          <div class="quiz-option" data-answer="a" data-q="2">
+            <span class="opt-letter">B</span>
+            <span>方案B — 赌一把，可能全救活</span>
+          </div>
+        </div>
+        <div class="quiz-feedback" id="fb2"></div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="quiz-question" id="q3">
+        <div class="quiz-q-number">Question 04 — 忽视回归均值</div>
+        <div class="quiz-q-text">一个学生期中考试超常发挥，考了全班第一。你预测他期末考试会怎样？</div>
+        <div class="quiz-q-desc">大多数人的直觉预测是什么？它准确吗？</div>
+        <div class="quiz-options">
+          <div class="quiz-option" data-answer="wrong" data-q="3">
+            <span class="opt-letter">A</span>
+            <span>继续保持第一</span>
+          </div>
+          <div class="quiz-option" data-answer="wrong" data-q="3">
+            <span class="opt-letter">B</span>
+            <span>表现会下降，因为骄傲了</span>
+          </div>
+          <div class="quiz-option" data-answer="correct" data-q="3">
+            <span class="opt-letter">C</span>
+            <span>大概率会回归到他的正常水平——这是统计规律，非因果</span>
+          </div>
+          <div class="quiz-option" data-answer="wrong" data-q="3">
+            <span class="opt-letter">D</span>
+            <span>取决于他的学习态度</span>
+          </div>
+        </div>
+        <div class="quiz-feedback" id="fb3"></div>
+      </div>
+
+      <div class="quiz-nav">
+        <button class="btn btn-ghost" id="quizPrev" style="display:none;margin-right:0.5rem;">上一题</button>
+        <button class="btn btn-primary" id="quizNext" style="display:none;">下一题</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Section 5: Decision Framework ═══ -->
+<section class="section" id="framework">
+  <div class="reveal">
+    <div class="section-label">Chapter 05</div>
+    <h2 class="section-title">决策升级：从认知觉醒到系统优化</h2>
+    <p class="section-desc">了解偏差只是第一步。真正的改变来自于将认知科学转化为可操作的决策框架。以下5步框架，是从"知道"到"做到"的桥梁。</p>
+  </div>
+
+  <div class="framework-steps reveal">
+    <div class="framework-step">
+      <div class="step-number">01</div>
+      <div class="step-content">
+        <h4>觉察：识别当前激活的系统</h4>
+        <p>面对任何决策时，先问自己："我现在用的是系统1还是系统2？" 如果判断来得太快、太确定、太有感情——大概率是系统1在主导。高风险决策需要刻意切换到系统2。</p>
+        <span class="step-tag">⏱ 实践：设置"暂停触发器"——在高风险决策前强制等待24小时</span>
+      </div>
+    </div>
+
+    <div class="framework-step">
+      <div class="step-number">02</div>
+      <div class="step-content">
+        <h4>分解：将复杂问题拆解为可验证的子问题</h4>
+        <p>建筑师思维的核心：不接受整体印象，而是将问题拆解为独立的、可测量的维度。"这个投资好不好？"拆解为：行业趋势、团队能力、财务状况、估值合理性——每个维度独立评估。</p>
+        <span class="step-tag">🔧 实践：使用决策清单，强制结构化思考</span>
+      </div>
+    </div>
+
+    <div class="framework-step">
+      <div class="step-number">03</div>
+      <div class="step-content">
+        <h4>对冲：主动引入对抗性视角</h4>
+        <p>为你的初步判断指定一个"红队"——专门负责寻找反面证据。如果投资房产，列出它不应该买的10个理由。如果准备接受offer，列出它不如当前工作的10个地方。你的任务不是说服自己，而是发现自己遗漏的。</p>
+        <span class="step-tag">⚔️ 实践：事前验尸法——假设决策已失败，追溯原因</span>
+      </div>
+    </div>
+
+    <div class="framework-step">
+      <div class="step-number">04</div>
+      <div class="step-content">
+        <h4>量化：用数据取代感觉</h4>
+        <p>系统1擅长讲故事，系统2擅长算数字。任何重要决策都应至少有基础的数量分析：预期值计算、概率加权、敏感性分析。你的"感觉这个项目会成功"不应该是最终依据。</p>
+        <span class="step-tag">📊 实践：建立决策日志，追踪预测与结果的偏差</span>
+      </div>
+    </div>
+
+    <div class="framework-step">
+      <div class="step-number">05</div>
+      <div class="step-content">
+        <h4>反馈：构建持续校准的闭环</h4>
+        <p>最有效的偏差纠正来自可靠的反馈。定期回顾：你过去的决策质量如何？哪些偏差反复出现？你过度自信的领域在哪里？没有反馈的决策系统永远无法进化。</p>
+        <span class="step-tag">🔁 实践：季度决策回顾，追踪校准度</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Decision Matrix -->
+  <div class="reveal" style="margin-top:3rem;">
+    <h3 style="font-family:'Noto Serif SC',serif;font-size:1.2rem;margin-bottom:1rem;">决策情境与系统匹配矩阵</h3>
+    <div class="matrix-container">
+      <div class="matrix-grid">
+        <div class="matrix-cell header"></div>
+        <div class="matrix-cell header">高确定性</div>
+        <div class="matrix-cell header">中等不确定性</div>
+        <div class="matrix-cell header">高不确定性</div>
+
+        <div class="matrix-cell label">🏎️ 时间紧迫</div>
+        <div class="matrix-cell content">✅ 系统1即可<br><span style="color:var(--accent-success);font-size:0.75rem;">例：紧急疏散</span></div>
+        <div class="matrix-cell content">⚠️ 系统1+快速校验<br><span style="color:var(--accent-primary);font-size:0.75rem;">例：急诊诊断</span></div>
+        <div class="matrix-cell content">🔴 高风险<br><span style="color:var(--accent-danger);font-size:0.75rem;">例：战场决策</span></div>
+
+        <div class="matrix-cell label">⏳ 时间充裕</div>
+        <div class="matrix-cell content">✅ 系统2优化<br><span style="color:var(--accent-success);font-size:0.75rem;">例：日常规划</span></div>
+        <div class="matrix-cell content">📋 系统2+框架<br><span style="color:var(--accent-primary);font-size:0.75rem;">例：职业选择</span></div>
+        <div class="matrix-cell content">🏗️ 完整框架<br><span style="color:var(--accent-secondary);font-size:0.75rem;">例：创业决策</span></div>
+
+        <div class="matrix-cell label">♾️ 长期影响</div>
+        <div class="matrix-cell content">📋 系统2验证<br><span style="color:var(--accent-primary);font-size:0.75rem;">例：理财配置</span></div>
+        <div class="matrix-cell content">🏗️ 完整框架<br><span style="color:var(--accent-secondary);font-size:0.75rem;">例：婚姻决策</span></div>
+        <div class="matrix-cell content">🏗️+外部顾问<br><span style="color:var(--accent-purple);font-size:0.75rem;">例：公司战略</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Section 6: Simulator ═══ -->
+<section class="section" id="simulator">
+  <div class="reveal">
+    <div class="section-label">Chapter 06</div>
+    <h2 class="section-title">思维模拟器：亲历偏差</h2>
+    <p class="section-desc">体验不同认知偏差在真实场景中的运作方式。在每个情境中做出你的判断，然后发现系统1是如何引导你的。</p>
+  </div>
+
+  <div class="simulator reveal">
+    <div class="sim-header">
+      <h3>🎯 锚定效应模拟器</h3>
+      <span class="sim-badge">Interactive</span>
+    </div>
+    <div class="sim-body">
+      <div class="scenario-card">
+        <div class="scenario-title">场景设定</div>
+        <div class="scenario-text">
+          你正在考虑购买一台二手笔记本电脑。市场均价约4500元。现在请根据以下两组不同的初始报价，分别给出你愿意支付的最高价格（请诚实凭直觉回答）：
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+        <div style="background:var(--bg-card);border-radius:var(--radius);padding:1.5rem;">
+          <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent-danger);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">情境 A — 高锚点</div>
+          <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">卖家报价：<strong style="color:var(--accent-danger);font-size:1.2rem;">¥8,500</strong><br>你觉得最多值多少？</p>
+          <input type="number" class="response-input" id="anchorHigh" placeholder="你的出价 ¥">
+        </div>
+        <div style="background:var(--bg-card);border-radius:var(--radius);padding:1.5rem;">
+          <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent-secondary);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">情境 B — 低锚点</div>
+          <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">卖家报价：<strong style="color:var(--accent-secondary);font-size:1.2rem;">¥2,800</strong><br>你觉得最多值多少？</p>
+          <input type="number" class="response-input" id="anchorLow" placeholder="你的出价 ¥">
+        </div>
+      </div>
+
+      <button class="sim-btn" id="simSubmit">提交并查看分析</button>
+
+      <div class="sim-result" id="simResult">
+        <h4>📊 你的锚定敏感度分析</h4>
+        <p id="simAnalysis"></p>
+        <div class="progress-ring-container" id="ringContainer" style="display:none;">
+          <div class="progress-ring" id="anchorRing">
+            <svg width="120" height="120">
+              <circle class="bg" cx="60" cy="60" r="50"></circle>
+              <circle class="progress" cx="60" cy="60" r="50" stroke-dasharray="314" stroke-dashoffset="314" id="ringProgress"></circle>
+            </svg>
+            <div class="label" id="ringLabel">0%</div>
+          </div>
+          <div class="ring-info">
+            <h4>锚定偏差强度</h4>
+            <p>两个情境出价差越大，说明你受锚点影响越强。研究显示，即使是专家，两个出价的平均差也在25-40%之间。完全理性的决策者在两个情境中应该给出相同出价。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Final Takeaway ═══ -->
+<section class="section">
+  <div class="takeaway-card reveal">
+    <h3>建筑师的最终洞察</h3>
+    <p>卡尼曼在书中传递的最深层信息并非"人的思维有多不可靠"，而是一个充满希望的信息：<strong>通过了解自己思维的架构，你可以有意识地重新设计你的决策流程。</strong></p>
+    <p style="margin-top:1rem;">你无法消灭系统1——它是你思维的基础架构，也是你90%日常决策的高效引擎。但你可以学会在关键时刻识别它、暂停它、让系统2介入审查。这种元认知能力——<strong>对自己思维过程的思考能力</strong>——才是真正的智慧。</p>
+    <div class="takeaway-quote" style="margin-top:2rem;">
+      真正的智慧不是不犯错，而是知道自己可能在哪里犯错，并为此做好准备。
+    </div>
+    <p style="margin-top:1.5rem;color:var(--text-muted);font-size:0.8rem;">— 基于丹尼尔·卡尼曼《思考，快与慢》的建筑学解读</p>
+  </div>
+</section>
+
+<!-- ═══ Footer ═══ -->
+<footer class="footer">
+  <p>Thinking, Fast & Slow — 第一性原理深度研究报告</p>
+  <p style="margin-top:0.5rem;">建筑师人格 · 结构化分析 · 认知升级</p>
+  <div class="footer-links">
+    <a href="#top">回到顶部</a>
+    <a href="#foundation">第一性原理</a>
+    <a href="#systems">双系统</a>
+    <a href="#biases">认知偏差</a>
+    <a href="#framework">决策框架</a>
+  </div>
+</footer>
+
+<script>
+// ═══ Navigation ═══
+const nav = document.getElementById('nav');
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 50);
+});
+
+navToggle.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+});
+
+// Active nav link
+const sections = document.querySelectorAll('section[id]');
+const navItems = document.querySelectorAll('.nav-links a');
+
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(section => {
+    const top = section.offsetTop - 100;
+    if (window.scrollY >= top) current = section.getAttribute('id');
+  });
+  navItems.forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('href') === '#' + current) link.classList.add('active');
+  });
+});
+
+// ═══ Reveal on Scroll ═══
+const reveals = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+
+reveals.forEach(el => revealObserver.observe(el));
+
+// ═══ Bias Tabs ═══
+const biasTabs = document.querySelectorAll('.bias-tab');
+const biasDetails = document.querySelectorAll('.bias-detail');
+
+biasTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.bias;
+    biasTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    biasDetails.forEach(d => d.classList.remove('active'));
+    document.getElementById('bias-' + target).classList.add('active');
+  });
+});
+
+// ═══ Quiz ═══
+const quizState = { current: 0, answered: [false, false, false, false], scores: [0,0,0,0] };
+const quizQuestions = document.querySelectorAll('.quiz-question');
+const quizDots = document.querySelectorAll('.quiz-dot');
+const quizNext = document.getElementById('quizNext');
+const quizPrev = document.getElementById('quizPrev');
+const quizCurrent = document.getElementById('quizCurrent');
+
+const quizFeedbacks = {
+  0: {
+    correct: '✅ 正确！直觉回答0.10元的人占哈佛学生的一半以上。关键在于：1.10-1.00=0.10，但0.10+1.00≠1.10。正确解法：设球为x，x+(x+1)=1.10，x=0.05。这就是认知反射测试（CRT）的经典题目。',
+    wrong: '❌ 你的第一反应是0.10元吗？这正是系统1的直觉陷阱。正确答案是0.05元。验证：球0.05+球拍1.05=1.10 ✓。超过50%的哈佛学生也答错了——直觉太强，系统2来不及介入。'
+  },
+  1: {
+    correct: '✅ 卓越！大多数人会被描述的"典型性"引导选择图书管理员，但忽视了：图书管理员在总人口中的比例远低于其他职业。在缺乏基础概率信息时，最诚实的回答是"无法判断"——这正是代表性启发的反面教训。',
+    wrong: '❌ 这是经典的"琳达问题"变体。小明的描述"像"图书管理员（代表性启发），但我们完全不知道各职业的基础概率。在没有基础概率的情况下，仅凭特征描述做判断正是代表性启发的核心错误。'
+  },
+  2: {
+    correct: '✅ 你的选择是A还是B？两种选择在数学期望上完全相同（200人获救）。但有趣的是：如果把框架改成"方案A：确定死亡400人"，大多数人从选A转向选B。框架变了，实质没变——这就是框架效应的威力。',
+    wrong: '✅ 你的选择是A还是B？两种选择在数学期望上完全相同（200人获救）。但有趣的是：如果把框架改成"方案A：确定死亡400人"，大多数人从选A转向选B。框架变了，实质没变——这就是框架效应的威力。'
+  },
+  3: {
+    correct: '✅ 正确！"回归均值"是统计学的基本规律：极端表现后，下次大概率回归平均水平——这与能力变化、态度变化无关，纯粹是数学规律。但人类天生喜欢寻找因果解释（"他骄傲了""他努力了"），而忽视统计规律。',
+    wrong: '❌ 这里隐藏着"回归均值"现象：极端表现后，下次大概率回归平均水平——这是统计规律，不需要因果解释。大多数人选B（寻找因果），但其实C才是最准确的。这说明人类多热衷于构建叙事，而非尊重统计。'
+  }
+};
+
+function updateQuiz() {
+  quizQuestions.forEach((q, i) => q.classList.toggle('active', i === quizState.current));
+  quizDots.forEach((d, i) => {
+    d.className = 'quiz-dot';
+    if (i < quizState.current) d.classList.add('done');
+    if (i === quizState.current) d.classList.add('current');
+  });
+  quizCurrent.textContent = quizState.current + 1;
+  quizPrev.style.display = quizState.current > 0 ? 'inline-block' : 'none';
+  quizNext.style.display = quizState.current < 3 ? 'inline-block' : 'none';
+  if (quizState.current === 3 && quizState.answered[3]) quizNext.style.display = 'none';
+}
+
+document.querySelectorAll('.quiz-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    const q = parseInt(opt.dataset.q);
+    if (quizState.answered[q]) return;
+    quizState.answered[q] = true;
+
+    const isCorrect = opt.dataset.answer === 'correct' || opt.dataset.answer === 'a';
+    if (isCorrect) quizState.scores[q] = 1;
+
+    opt.classList.add('selected');
+
+    const options = opt.parentElement.querySelectorAll('.quiz-option');
+    options.forEach(o => {
+      o.style.pointerEvents = 'none';
+      if (o.dataset.answer === 'correct' || o.dataset.answer === 'a') {
+        o.classList.add('correct');
+      } else if (o === opt && !isCorrect) {
+        o.classList.add('wrong');
+      }
+    });
+
+    const fb = document.getElementById('fb' + q);
+    const fbText = isCorrect ? quizFeedbacks[q].correct : quizFeedbacks[q].wrong;
+    fb.className = 'quiz-feedback show ' + (isCorrect ? 'correct' : 'wrong');
+    fb.innerHTML = fbText;
+  });
+});
+
+quizNext.addEventListener('click', () => {
+  if (quizState.current < 3) {
+    quizState.current++;
+    updateQuiz();
+  }
+});
+
+quizPrev.addEventListener('click', () => {
+  if (quizState.current > 0) {
+    quizState.current--;
+    updateQuiz();
+  }
+});
+
+// ═══ Heatmap ═══
+const heatData = [
+  { name: '开车回家', sys1: 85, sys2: 15 },
+  { name: '2+2=?', sys1: 98, sys2: 2 },
+  { name: '17×24', sys1: 5, sys2: 95 },
+  { name: '读懂表情', sys1: 95, sys2: 5 },
+  { name: '下棋', sys1: 15, sys2: 85 },
+  { name: '选午餐', sys1: 80, sys2: 20 },
+  { name: '签合同', sys1: 10, sys2: 90 },
+  { name: '写邮件', sys1: 55, sys2: 45 },
+  { name: '闻到烟味', sys1: 95, sys2: 5 },
+  { name: '做投资', sys1: 30, sys2: 70 },
+  { name: '骑自行车', sys1: 90, sys2: 10 },
+  { name: '谈判', sys1: 25, sys2: 75 },
+  { name: '系鞋带', sys1: 95, sys2: 5 },
+  { name: '学新技能', sys1: 15, sys2: 85 },
+  { name: '听音乐', sys1: 85, sys2: 15 },
+  { name: '规划旅行', sys1: 35, sys2: 65 },
+  { name: '识别面孔', sys1: 98, sys2: 2 },
+  { name: '解方程', sys1: 5, sys2: 95 },
+  { name: '讲故事', sys1: 70, sys2: 30 },
+  { name: '做预算', sys1: 10, sys2: 90 },
+];
+
+function getHeatColor(sys1) {
+  if (sys1 > 80) return { bg: 'rgba(248, 113, 113, 0.6)', text: '#fff' };
+  if (sys1 > 60) return { bg: 'rgba(232, 168, 56, 0.5)', text: '#fff' };
+  if (sys1 > 40) return { bg: 'rgba(167, 139, 250, 0.4)', text: '#fff' };
+  if (sys1 > 20) return { bg: 'rgba(56, 189, 248, 0.5)', text: '#fff' };
+  return { bg: 'rgba(56, 189, 248, 0.7)', text: '#fff' };
+}
+
+const heatmapEl = document.getElementById('heatmap');
+heatData.forEach(item => {
+  const c = getHeatColor(item.sys1);
+  const cell = document.createElement('div');
+  cell.className = 'heat-cell';
+  cell.style.background = c.bg;
+  cell.style.color = c.text;
+  cell.innerHTML = `${item.name}<div class="heat-tooltip">系统1: ${item.sys1}% | 系统2: ${item.sys2}%</div>`;
+  heatmapEl.appendChild(cell);
+});
+
+// ═══ Simulator ═══
+const simSubmit = document.getElementById('simSubmit');
+const simResult = document.getElementById('simResult');
+const simAnalysis = document.getElementById('simAnalysis');
+const ringContainer = document.getElementById('ringContainer');
+const ringProgress = document.getElementById('ringProgress');
+const ringLabel = document.getElementById('ringLabel');
+
+simSubmit.addEventListener('click', () => {
+  const high = parseFloat(document.getElementById('anchorHigh').value);
+  const low = parseFloat(document.getElementById('anchorLow').value);
+
+  if (isNaN(high) || isNaN(low)) {
+    simAnalysis.textContent = '请在两个情境中都输入你的出价，然后再提交。';
+    simResult.classList.add('show');
+    ringContainer.style.display = 'none';
+    return;
+  }
+
+  const avg = (high + low) / 2;
+  const diff = Math.abs(high - low);
+  const diffPercent = avg > 0 ? Math.round((diff / avg) * 100) : 0;
+
+  let bias = '';
+  if (diffPercent < 10) {
+    bias = '极低';
+  } else if (diffPercent < 30) {
+    bias = '低';
+  } else if (diffPercent < 60) {
+    bias = '中等';
+  } else if (diffPercent < 100) {
+    bias = '较高';
+  } else {
+    bias = '极高';
+  }
+
+  simAnalysis.innerHTML = `
+    <strong>你的出价：</strong>高锚点情境 ¥${high.toLocaleString()} | 低锚点情境 ¥${low.toLocaleString()}<br>
+    <strong>两个出价差异：</strong>¥${diff.toLocaleString()}（${diffPercent}%）<br><br>
+    两台电脑完全相同（市场均价约¥4,500），唯一的区别是卖家的初始报价。你出价的差异（${diffPercent}%）反映了<strong>锚定效应</strong>对你判断的影响程度——偏差强度：<strong style="color:var(--accent-primary)">${bias}</strong>。<br><br>
+    如果你是完全理性的决策者，两个出价应该相同。研究表明，即使是经验丰富的估价师，差异也在20-40%之间。完全消除锚定效应几乎不可能，但觉察它的存在是减弱其影响的第一步。
+  `;
+
+  ringContainer.style.display = 'flex';
+
+  const circumference = 2 * Math.PI * 50;
+  const normalizedDiff = Math.min(diffPercent, 150);
+  const offset = circumference - (normalizedDiff / 150) * circumference;
+
+  setTimeout(() => {
+    ringProgress.style.strokeDashoffset = offset;
+    ringLabel.textContent = diffPercent + '%';
+  }, 100);
+});
+</script>
+
+</body>
+</html>

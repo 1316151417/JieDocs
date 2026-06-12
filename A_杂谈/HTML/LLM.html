@@ -1,0 +1,2240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM 第一性原理研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0a0c;
+    --bg-surface: #111115;
+    --bg-elevated: #1a1a20;
+    --bg-card: #15151a;
+    --accent-gold: #d4a843;
+    --accent-gold-dim: #b8922e;
+    --accent-amber: #f0c050;
+    --accent-cyan: #4ecdc4;
+    --accent-rose: #e85d75;
+    --accent-violet: #9b72cf;
+    --text-primary: #eae6dc;
+    --text-secondary: #a09a8e;
+    --text-muted: #5a5650;
+    --border: #2a2a30;
+    --border-accent: #3a3520;
+    --grid-line: rgba(212, 168, 67, 0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-gold-dim) var(--bg-deep);
+  }
+
+  body {
+    font-family: 'Noto Serif SC', 'Georgia', serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    line-height: 1.8;
+    overflow-x: hidden;
+  }
+
+  /* === GRID BACKGROUND === */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -20%;
+    width: 140%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(212, 168, 67, 0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(78, 205, 196, 0.02) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* === TYPOGRAPHY === */
+  .font-display { font-family: 'Syne', sans-serif; }
+  .font-mono { font-family: 'DM Mono', monospace; }
+
+  /* === LAYOUT === */
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  section {
+    padding: 100px 0;
+    position: relative;
+  }
+
+  /* === NAVIGATION === */
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(10, 10, 12, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    transition: transform 0.3s ease;
+  }
+
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+  }
+
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.3s;
+    position: relative;
+  }
+
+  .nav-links a:hover,
+  .nav-links a.active {
+    color: var(--accent-gold);
+  }
+
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent-gold);
+    transition: width 0.3s ease;
+  }
+
+  .nav-links a:hover::after { width: 100%; }
+
+  /* === HERO === */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+  }
+
+  .hero-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeInUp 0.8s ease forwards 0.2s;
+  }
+
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(42px, 6vw, 80px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeInUp 0.8s ease forwards 0.4s;
+  }
+
+  .hero-title .highlight {
+    background: linear-gradient(135deg, var(--accent-gold), var(--accent-amber));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-subtitle {
+    font-size: 18px;
+    color: var(--text-secondary);
+    max-width: 580px;
+    line-height: 1.9;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeInUp 0.8s ease forwards 0.6s;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 40px;
+    opacity: 0;
+    animation: fadeInUp 0.8s ease forwards 0.8s;
+  }
+
+  .hero-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .hero-meta-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .hero-meta-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .hero-deco {
+    position: absolute;
+    right: -60px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 500px;
+    height: 500px;
+    opacity: 0.08;
+    z-index: 1;
+  }
+
+  .hero-deco-ring {
+    position: absolute;
+    border: 1px solid var(--accent-gold);
+    border-radius: 50%;
+    animation: spin-slow 60s linear infinite;
+  }
+
+  .hero-deco-ring:nth-child(1) { inset: 0; }
+  .hero-deco-ring:nth-child(2) { inset: 60px; animation-duration: 45s; animation-direction: reverse; }
+  .hero-deco-ring:nth-child(3) { inset: 120px; animation-duration: 30s; }
+  .hero-deco-ring:nth-child(4) { inset: 180px; animation-duration: 20s; animation-direction: reverse; }
+
+  @keyframes spin-slow { to { transform: rotate(360deg); } }
+
+  /* === SECTION HEADERS === */
+  .section-header {
+    margin-bottom: 64px;
+    position: relative;
+  }
+
+  .section-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 72px;
+    font-weight: 800;
+    color: rgba(212, 168, 67, 0.06);
+    position: absolute;
+    top: -30px;
+    left: -10px;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .section-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 3.5vw, 44px);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .section-line {
+    width: 60px;
+    height: 2px;
+    background: var(--accent-gold);
+    margin-top: 24px;
+  }
+
+  /* === PRINCIPLE CARDS (First Principles) === */
+  .principles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 48px;
+  }
+
+  .principle-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 40px 32px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .principle-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-gold), transparent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+  }
+
+  .principle-card:hover::before { transform: scaleX(1); }
+
+  .principle-card:hover {
+    border-color: var(--accent-gold-dim);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+
+  .principle-icon {
+    font-family: 'Syne', sans-serif;
+    font-size: 48px;
+    font-weight: 800;
+    color: rgba(212, 168, 67, 0.15);
+    margin-bottom: 20px;
+    transition: color 0.4s;
+  }
+
+  .principle-card:hover .principle-icon { color: rgba(212, 168, 67, 0.35); }
+
+  .principle-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+  }
+
+  .principle-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* === ARCHITECTURE DIAGRAM === */
+  .arch-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 48px;
+    margin-top: 48px;
+    position: relative;
+  }
+
+  .arch-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 32px;
+    text-align: center;
+  }
+
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .arch-block {
+    padding: 20px 28px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    text-align: center;
+    min-width: 130px;
+    transition: all 0.4s ease;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .arch-block:hover {
+    border-color: var(--accent-gold-dim);
+    background: var(--bg-elevated);
+    transform: translateY(-2px);
+  }
+
+  .arch-block-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .arch-block-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .arch-arrow {
+    font-family: 'DM Mono', monospace;
+    color: var(--accent-gold);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .arch-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-elevated);
+    border: 1px solid var(--accent-gold-dim);
+    padding: 16px 20px;
+    width: 260px;
+    z-index: 20;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .arch-block:hover .arch-tooltip { display: block; }
+
+  /* === TABS === */
+  .tabs-container {
+    margin-top: 48px;
+  }
+
+  .tabs-header {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    gap: 0;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 16px 28px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover { color: var(--text-secondary); }
+
+  .tab-btn.active {
+    color: var(--accent-gold);
+    border-bottom-color: var(--accent-gold);
+  }
+
+  .tab-panel {
+    display: none;
+    padding: 40px 0;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .tab-panel.active { display: block; }
+
+  .tab-panel h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+  }
+
+  .tab-panel p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.9;
+    margin-bottom: 16px;
+  }
+
+  .tab-panel .code-block {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin: 20px 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent-cyan);
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+
+  /* === TIMELINE === */
+  .timeline {
+    position: relative;
+    padding-left: 40px;
+    margin-top: 48px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent-gold), var(--accent-gold-dim), transparent);
+  }
+
+  .timeline-item {
+    position: relative;
+    padding-bottom: 48px;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .timeline-item.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -46px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--accent-gold);
+    background: var(--bg-deep);
+    border-radius: 50%;
+  }
+
+  .timeline-year {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-gold);
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+
+  .timeline-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .timeline-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* === SCALING LAW VIS === */
+  .scaling-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 40px;
+    margin-top: 48px;
+    position: relative;
+  }
+
+  .scaling-chart {
+    position: relative;
+    height: 300px;
+    margin: 32px 0;
+    border-left: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .scaling-curve {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .scaling-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    position: absolute;
+  }
+
+  .scaling-label-x { bottom: -24px; right: 0; }
+  .scaling-label-y { top: -8px; left: -8px; }
+
+  .scaling-factor {
+    display: flex;
+    gap: 24px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+  }
+
+  .scaling-item {
+    flex: 1;
+    min-width: 180px;
+    padding: 24px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+
+  .scaling-item:hover {
+    border-color: var(--accent-gold-dim);
+    transform: translateY(-2px);
+  }
+
+  .scaling-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--accent-gold);
+    margin-bottom: 4px;
+  }
+
+  .scaling-label-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* === COMPARISON TABLE === */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 32px;
+    font-size: 14px;
+  }
+
+  .comparison-table thead {
+    background: var(--bg-elevated);
+  }
+
+  .comparison-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    padding: 16px 20px;
+    text-align: left;
+    border-bottom: 2px solid var(--accent-gold-dim);
+  }
+
+  .comparison-table td {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+
+  .comparison-table tr:hover td {
+    background: rgba(212, 168, 67, 0.02);
+  }
+
+  .model-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* === SOLUTION CARDS === */
+  .solutions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 24px;
+    margin-top: 48px;
+  }
+
+  .solution-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 40px 32px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s ease;
+  }
+
+  .solution-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(212, 168, 67, 0.05) 0%, transparent 70%);
+    transition: opacity 0.4s;
+    opacity: 0;
+  }
+
+  .solution-card:hover::after { opacity: 1; }
+
+  .solution-card:hover {
+    border-color: var(--accent-gold-dim);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
+
+  .solution-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-gold);
+    margin-bottom: 16px;
+    letter-spacing: 0.1em;
+  }
+
+  .solution-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+  }
+
+  .solution-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    margin-bottom: 16px;
+  }
+
+  .solution-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .solution-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* === INTERACTIVE DEMO === */
+  .demo-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 40px;
+    margin-top: 48px;
+  }
+
+  .demo-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .demo-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .demo-dot.red { background: #ff5f57; }
+  .demo-dot.yellow { background: #febc2e; }
+  .demo-dot.green { background: #28c840; }
+
+  .demo-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-left: 12px;
+    letter-spacing: 0.05em;
+  }
+
+  .token-visualizer {
+    min-height: 200px;
+    padding: 32px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .token-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 24px;
+    min-height: 48px;
+  }
+
+  .token {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 6px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .token:hover {
+    border-color: var(--accent-gold);
+    background: rgba(212, 168, 67, 0.1);
+  }
+
+  .token.active {
+    border-color: var(--accent-amber);
+    background: rgba(240, 192, 80, 0.15);
+    color: var(--accent-amber);
+  }
+
+  .token-highlight-0 { border-color: var(--accent-gold); background: rgba(212, 168, 67, 0.08); }
+  .token-highlight-1 { border-color: var(--accent-cyan); background: rgba(78, 205, 196, 0.08); }
+  .token-highlight-2 { border-color: var(--accent-rose); background: rgba(232, 93, 117, 0.08); }
+  .token-highlight-3 { border-color: var(--accent-violet); background: rgba(155, 114, 207, 0.08); }
+
+  .demo-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .demo-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    padding: 10px 24px;
+    border: 1px solid var(--accent-gold-dim);
+    background: transparent;
+    color: var(--accent-gold);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .demo-btn:hover {
+    background: var(--accent-gold);
+    color: var(--bg-deep);
+  }
+
+  .demo-btn.primary {
+    background: var(--accent-gold);
+    color: var(--bg-deep);
+    font-weight: 500;
+  }
+
+  .demo-btn.primary:hover {
+    background: var(--accent-amber);
+    border-color: var(--accent-amber);
+  }
+
+  .demo-info {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+
+  /* === ATTENTION VISUALIZER === */
+  .attention-grid {
+    display: grid;
+    gap: 2px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+
+  .attention-cell {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    transition: all 0.3s;
+    cursor: crosshair;
+    border: 1px solid transparent;
+  }
+
+  .attention-cell:hover {
+    border-color: var(--accent-gold);
+    transform: scale(1.2);
+    z-index: 2;
+  }
+
+  /* === EMERGENT ABILITIES === */
+  .emergent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .emergent-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 24px;
+    transition: all 0.4s ease;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .emergent-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(212, 168, 67, 0.03) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .emergent-item:hover::before { opacity: 1; }
+
+  .emergent-item:hover {
+    border-color: var(--accent-gold-dim);
+    transform: translateY(-3px);
+  }
+
+  .emergent-threshold {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-cyan);
+    margin-bottom: 8px;
+  }
+
+  .emergent-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .emergent-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* === RISKS SECTION === */
+  .risk-item {
+    display: flex;
+    gap: 24px;
+    padding: 32px 0;
+    border-bottom: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+
+  .risk-item:hover {
+    padding-left: 16px;
+  }
+
+  .risk-severity {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    border: 2px solid;
+  }
+
+  .risk-severity.high { border-color: var(--accent-rose); color: var(--accent-rose); }
+  .risk-severity.medium { border-color: var(--accent-gold); color: var(--accent-gold); }
+  .risk-severity.low { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+  .risk-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+  }
+
+  .risk-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* === RECOMMENDATIONS === */
+  .rec-container {
+    margin-top: 48px;
+  }
+
+  .rec-item {
+    display: flex;
+    gap: 24px;
+    padding: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    transition: all 0.4s ease;
+    cursor: pointer;
+  }
+
+  .rec-item:hover {
+    border-color: var(--accent-gold-dim);
+    transform: translateX(8px);
+  }
+
+  .rec-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    color: rgba(212, 168, 67, 0.2);
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  .rec-content h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .rec-content p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* === FOOTER === */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 48px 0;
+    text-align: center;
+  }
+
+  .footer-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* === PROGRESS BAR === */
+  .progress-bar {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-gold), var(--accent-amber));
+    z-index: 101;
+    transition: width 0.1s;
+    width: 0%;
+  }
+
+  /* === QUOTE === */
+  .quote-block {
+    border-left: 3px solid var(--accent-gold);
+    padding: 24px 32px;
+    margin: 32px 0;
+    background: rgba(212, 168, 67, 0.03);
+  }
+
+  .quote-text {
+    font-size: 18px;
+    font-style: italic;
+    color: var(--text-primary);
+    line-height: 1.8;
+    margin-bottom: 12px;
+  }
+
+  .quote-author {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .container { padding: 0 20px; }
+    .nav-inner { padding: 0 20px; }
+    .nav-links { display: none; }
+    section { padding: 60px 0; }
+    .arch-container { padding: 24px; }
+    .arch-flow { flex-direction: column; }
+    .arch-arrow { transform: rotate(90deg); }
+    .hero-meta { flex-direction: column; gap: 16px; }
+    .hero-deco { display: none; }
+    .solutions-grid { grid-template-columns: 1fr; }
+    .principles-grid { grid-template-columns: 1fr; }
+    .comparison-table { font-size: 12px; }
+    .comparison-table th, .comparison-table td { padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">LLM RESEARCH</div>
+    <ul class="nav-links">
+      <li><a href="#principles" class="active">第一性原理</a></li>
+      <li><a href="#architecture">架构解构</a></li>
+      <li><a href="#training">训练范式</a></li>
+      <li><a href="#scaling">规模法则</a></li>
+      <li><a href="#solutions">解决思路</a></li>
+      <li><a href="#demo">交互实验</a></li>
+      <li><a href="#guidance">指导建议</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-tag">FIRST PRINCIPLES ANALYSIS</div>
+      <h1 class="hero-title">
+        大语言模型<br><span class="highlight">第一性原理</span>研究报告
+      </h1>
+      <p class="hero-subtitle">
+        以建筑师的系统思维，从最基本的真理出发，逐层拆解大语言模型的本质规律。
+        不做类比推理，不依赖经验直觉——回到原点，重新构建理解。
+      </p>
+      <div class="hero-meta">
+        <div class="hero-meta-item">
+          <span class="hero-meta-label">方法论</span>
+          <span class="hero-meta-value">First Principles Thinking</span>
+        </div>
+        <div class="hero-meta-item">
+          <span class="hero-meta-label">分析维度</span>
+          <span class="hero-meta-value">架构 · 训练 · 涌现 · 应用</span>
+        </div>
+        <div class="hero-meta-item">
+          <span class="hero-meta-label">目标</span>
+          <span class="hero-meta-value">建立系统性认知框架</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-deco">
+      <div class="hero-deco-ring"></div>
+      <div class="hero-deco-ring"></div>
+      <div class="hero-deco-ring"></div>
+      <div class="hero-deco-ring"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 1: First Principles -->
+<section id="principles">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">01</div>
+      <div class="section-tag">Foundation · 基础</div>
+      <h2 class="section-title">什么是大语言模型的第一性原理？</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="reveal">
+      <div class="quote-block">
+        <p class="quote-text">
+          "把事物归结为最基本的真理，然后从那里开始推理。"<br>
+          不是类比说'它像人脑'，而是追问：它到底在做什么数学运算？
+        </p>
+        <p class="quote-author">— 埃隆·马斯克 / 亚里士多德 第一性原理思维</p>
+      </div>
+    </div>
+
+    <div class="principles-grid">
+      <div class="principle-card reveal">
+        <div class="principle-icon">01</div>
+        <h3 class="principle-title">语言即概率分布</h3>
+        <p class="principle-desc">
+          最根本的认知：语言不是符号系统，而是概率分布。每一个词的出现，都是在给定上文条件下对所有可能词汇的概率预测。LLM的本质是一个极其复杂的条件概率模型 P(xₜ | x₁, x₂, ..., xₜ₋₁)。
+        </p>
+      </div>
+      <div class="principle-card reveal">
+        <div class="principle-icon">02</div>
+        <h3 class="principle-title">规模即能力涌现</h3>
+        <p class="principle-desc">
+          能力不是被"编程"进去的，而是从规模中涌现的。当参数量、数据量、计算量跨过临界阈值时，模型突然获得推理、翻译、编程等能力——这是统计力学中的相变，不是渐进改善。
+        </p>
+      </div>
+      <div class="principle-card reveal">
+        <div class="principle-icon">03</div>
+        <h3 class="principle-title">注意力即信息路由</h3>
+        <p class="principle-desc">
+          Transformer的注意力机制本质是一种可微分的信息路由系统。它让每个token动态决定"该关注哪些其他token"——这不是固定的连接模式，而是根据内容实时计算的软寻址。
+        </p>
+      </div>
+      <div class="principle-card reveal">
+        <div class="principle-icon">04</div>
+        <h3 class="principle-title">对齐即约束优化</h3>
+        <p class="principle-desc">
+          预训练学到的是世界模型的压缩表示，对齐(Alignment)是在这个巨大能力空间上添加约束——让它从"什么都能说"收敛到"应该说什么"。RLHF/DPO本质上是带偏好的约束优化问题。
+        </p>
+      </div>
+      <div class="principle-card reveal">
+        <div class="principle-icon">05</div>
+        <h3 class="principle-title">上下文即工作记忆</h3>
+        <p class="principle-desc">
+          Context Window不是简单的"记忆长度"，而是模型的实时工作空间。In-context learning证明了：LLM的前向传播本身就包含了一个隐式的梯度下降过程。上下文是无参数的学习。
+        </p>
+      </div>
+      <div class="principle-card reveal">
+        <div class="principle-icon">06</div>
+        <h3 class="principle-title">压缩即理解</h3>
+        <p class="principle-desc">
+          训练LLM的本质是对人类知识的有损压缩。当模型能以极低的困惑度预测下一个token时，它必然建立了对世界结构的内部表征。预测能力 ≈ 压缩能力 ≈ 理解深度。这是信息论的直接推论。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2: Architecture -->
+<section id="architecture">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">02</div>
+      <div class="section-tag">Architecture · 架构</div>
+      <h2 class="section-title">从零拆解 Transformer 架构</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <p class="reveal" style="font-size:15px; color:var(--text-secondary); line-height:1.9; margin-bottom:32px; max-width:720px;">
+      Transformer不是凭空设计的魔法结构——它是"如何让离散token之间高效传递信息"这个问题的最优解之一。让我们从问题出发，一步步推导出这个架构。
+    </p>
+
+    <div class="arch-container reveal">
+      <div class="arch-title">信息流动路径 — Decoder-Only Transformer</div>
+      <div class="arch-flow">
+        <div class="arch-block">
+          <div class="arch-block-title">输入文本</div>
+          <div class="arch-block-sub">Raw Text</div>
+          <div class="arch-tooltip">自然语言文本经过BPE/SentencePiece分词，转换为离散的token ID序列。词汇表大小通常为32K-128K。</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-block">
+          <div class="arch-block-title">Token Embedding</div>
+          <div class="arch-block-sub">d_model 维向量</div>
+          <div class="arch-tooltip">每个token ID查表得到d_model维向量（如768或4096维），这是模型的"原子表示单元"。本质上是将离散符号映射到连续语义空间。</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-block">
+          <div class="arch-block-title">位置编码</div>
+          <div class="arch-block-sub">RoPE / ALiBi</div>
+          <div class="arch-tooltip">Transformer本身不含序列信息（置换不变性），需要注入位置信号。RoPE通过旋转矩阵编码相对位置，支持长度外推。</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-block" style="border-color: var(--accent-gold-dim);">
+          <div class="arch-block-title" style="color:var(--accent-gold);">N × Transformer Block</div>
+          <div class="arch-block-sub">核心计算单元</div>
+          <div class="arch-tooltip" style="width:320px;">每个Block包含：<br>① Multi-Head Attention（多头注意力：让每个token看到所有前面token的信息）<br>② FFN/MLP（前馈网络：对每个token的位置独立地做非线性变换）<br>③ LayerNorm + 残差连接（稳定训练梯度）<br>重复80-128层。</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-block">
+          <div class="arch-block-title">LM Head</div>
+          <div class="arch-block-sub">→ Vocabulary logits</div>
+          <div class="arch-tooltip">将最终隐藏状态投影到词汇表维度，得到每个可能token的分数，经softmax得到概率分布。采样策略（temperature、top-p、top-k）决定输出多样性。</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-block">
+          <div class="arch-block-title">下一个Token</div>
+          <div class="arch-block-sub">Auto-regressive</div>
+          <div class="arch-tooltip">自回归生成：每次采样一个token，拼回输入序列，重复上述过程。这就是"大模型生成文字"的全部秘密——逐token概率采样。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detailed Architecture Tabs -->
+    <div class="tabs-container reveal">
+      <div class="tabs-header">
+        <button class="tab-btn active" onclick="switchTab(event, 'tab-attention')">注意力机制</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-ffn')">前馈网络</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-norm')">归一化策略</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-moe')">MoE 架构</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-attention">
+        <h3>Multi-Head Self-Attention — 注意力不是"看"，是"加权聚合"</h3>
+        <p>
+          第一性原理拆解：注意力机制解决的核心问题是——在处理序列时，每个位置如何动态获取最相关的信息？
+          传统RNN只能通过隐状态传递，长距离信息会被稀释。注意力的方案是：让每个位置直接"查询"所有其他位置。
+        </p>
+        <div class="code-block">
+Attention(Q, K, V) = softmax(QKᵀ / √dₖ) · V
+
+// Q = Query: "我需要什么信息？"
+// K = Key:   "我能提供什么信息？"
+// V = Value: "具体的信息内容"
+// √dₖ = 缩放因子，防止点积过大导致softmax饱和
+
+// Multi-Head: 并行运行h个注意力头，每个头学习不同的关注模式
+// 头1可能关注语法关系，头2可能关注语义相似性，头3可能关注共指关系...
+MultiHead(Q,K,V) = Concat(head₁,...,headₕ) · Wᴼ
+        </div>
+        <p>
+          <strong>关键洞察：</strong>注意力矩阵 QKᵀ 的每一行是一个概率分布——它本质上是在计算"每个token对其他token的信息抽取权重"。
+          这就是为什么注意力和第一性原理中的"概率分布"是统一的：模型在用概率来组织信息流。
+        </p>
+      </div>
+
+      <div class="tab-panel" id="tab-ffn">
+        <h3>Feed-Forward Network — 知识的存储器</h3>
+        <p>
+          FFN是Transformer中最被低估的组件。如果注意力层负责"信息路由"（决定信息从哪来），FFN负责"信息处理"（决定如何变换信息）。
+        </p>
+        <div class="code-block">
+FFN(x) = activation(x · W₁ + b₁) · W₂ + b₂
+
+// W₁: [d_model → d_ff]  (通常 d_ff = 4 × d_model)
+// W₂: [d_ff → d_model]
+
+// 现代变体: SwiGLU (LLaMA, Mistral)
+FFN_SwiGLU(x) = (Swish(x · W₁) ⊙ x · W₃) · W₂
+
+// ⊙ 代表逐元素乘法 (gating mechanism)
+        </div>
+        <p>
+          <strong>核心发现：</strong>2023-2024年的研究表明，FFN层的权重矩阵存储了大量事实知识。当模型"知道"巴黎是法国首都时，这个信息编码在FFN的参数中。
+          这意味着：<strong>参数量 ≈ 知识容量</strong>，这是为什么大模型需要大参数的物理原因。
+        </p>
+      </div>
+
+      <div class="tab-panel" id="tab-norm">
+        <h3>归一化 — 训练稳定性的基石</h3>
+        <p>
+          深度网络训练不稳定的根本原因：每一层的输入分布随参数更新而变化（内部协变量偏移）。
+          LayerNorm强制每一层的输出在固定分布内，让梯度信号能有效传播。
+        </p>
+        <div class="code-block">
+// Pre-Norm (现代LLM标准做法)
+output = x + SubLayer(LayerNorm(x))
+
+// RMSNorm (LLaMA, Mistral 采用，更快)
+RMSNorm(x) = x / √(mean(x²) + ε) · γ
+
+// 为什么 Pre-Norm 优于 Post-Norm？
+// Pre-Norm: 残差路径上没有归一化，梯度可直接回传
+// Post-Norm: 梯度需经过Norm层，深层网络中容易消失
+        </div>
+        <p>
+          <strong>第一性原理视角：</strong>归一化不是trick，而是在高维优化空间中保持损失曲面局部光滑的必要操作。
+          没有归一化，参数空间中的"山脊"和"悬崖"会让优化器寸步难行。
+        </p>
+      </div>
+
+      <div class="tab-panel" id="tab-moe">
+        <h3>Mixture of Experts — 条件计算的工程解</h3>
+        <p>
+          MoE的核心思想来自第一性原理：不是所有输入都需要全部参数来处理。
+          "今天天气真好"和"蛋白质折叠预测"激活的知识完全不同——为什么不让不同的专家处理？
+        </p>
+        <div class="code-block">
+// MoE Layer
+gate = softmax(x · W_g)          // 路由器决定每个token分配给哪些专家
+output = Σ gate_i · Expert_i(x)   // 加权聚合专家输出
+
+// Mixtral 8x7B: 8个专家，每次激活2个
+// 总参数: 47B  |  激活参数: 13B  |  效果 ≈ 70B dense model
+
+// 核心挑战: 负载均衡
+// 如果所有token都路由到同一个专家 → 计算不均、训练崩溃
+// 解决: 添加辅助损失(entropy bonus)鼓励均匀分配
+        </div>
+        <p>
+          <strong>启示：</strong>MoE的出现证明了一件事——大模型的参数空间是高度稀疏可利用的。
+          未来方向可能是更细粒度的条件激活，接近"每个token只激活1%参数"的极端稀疏模式。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 3: Training Paradigm -->
+<section id="training">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">03</div>
+      <div class="section-tag">Training · 训练</div>
+      <h2 class="section-title">三阶段训练范式</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <p class="reveal" style="font-size:15px; color:var(--text-secondary); line-height:1.9; margin-bottom:16px; max-width:720px;">
+      LLM的训练不是单一过程，而是三个本质不同的阶段，每个阶段解决不同的问题。理解这个递进关系是理解LLM的关键。
+    </p>
+
+    <div class="timeline reveal">
+      <div class="timeline-item">
+        <div class="timeline-year">PHASE 1</div>
+        <h3 class="timeline-title" style="color:var(--accent-cyan);">预训练 — 压缩人类知识</h3>
+        <p class="timeline-desc">
+          <strong>目标函数：</strong>最小化下一个token的预测损失（交叉熵）<br>
+          <strong>数据：</strong>数万亿token的互联网文本（Common Crawl、书籍、代码、论文）<br>
+          <strong>本质：</strong>这是一个无监督的压缩任务。模型必须隐式学习语法规则、世界知识、推理模式、多语言映射——因为只有理解了这些结构，才能更准确地预测下一个token。<br><br>
+          <strong>关键洞察：</strong>预训练后的模型是一个"知识库"，但不是一个"助手"。它会续写文本，但不会回答问题——因为续写和对话是两种不同的概率分布。
+        </p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">PHASE 2</div>
+        <h3 class="timeline-title" style="color:var(--accent-gold);">监督微调 (SFT) — 学习对话格式</h3>
+        <p class="timeline-desc">
+          <strong>目标函数：</strong>在高质量指令-回复对上做监督学习<br>
+          <strong>数据：</strong>人工标注的 (instruction, response) 对，通常10万-100万条<br>
+          <strong>本质：</strong>教会模型"这种输入格式应该产生什么输出格式"。模型已经拥有知识（预训练），SFT只是激活了"回答问题"这个行为模式。<br><br>
+          <strong>关键洞察：</strong>SFT的数据质量远比数量重要。1万条高质量数据可以胜过100万条低质量数据。这就是"数据飞轮"效应——好的数据让模型更好，更好的模型可以辅助生成更好的数据。
+        </p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">PHASE 3</div>
+        <h3 class="timeline-title" style="color:var(--accent-rose);">人类反馈强化学习 (RLHF/DPO) — 对齐人类偏好</h3>
+        <p class="timeline-desc">
+          <strong>目标函数：</strong>优化模型输出使其符合人类偏好<br>
+          <strong>RLHF路径：</strong>训练奖励模型 → 用PPO优化策略<br>
+          <strong>DPO路径：</strong>直接从偏好对中学习，绕过奖励模型<br>
+          <strong>本质：</strong>这是一个多目标约束优化问题。"有帮助"、"安全"、"诚实"、"无害"——这些目标有时相互矛盾。RLHF就是在这些矛盾中找到帕累托最优解。<br><br>
+          <strong>关键洞察：</strong>RLHF最大的挑战不是算法，而是"什么是对齐"这个定义问题。不同文化、不同用户对"好的回答"有不同定义——这让对齐成了一个开放的哲学问题。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 4: Scaling Laws -->
+<section id="scaling">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">04</div>
+      <div class="section-tag">Scaling · 规模</div>
+      <h2 class="section-title">规模法则 — 当量变引发质变</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="reveal">
+      <div class="quote-block">
+        <p class="quote-text">
+          "语言模型的性能是模型规模、数据规模和计算量的幂律函数。这不是经验发现，而是深度学习的热力学定律。"
+        </p>
+        <p class="quote-author">— Kaplan et al., "Scaling Laws for Neural Language Models" (2020)</p>
+      </div>
+    </div>
+
+    <div class="scaling-container reveal">
+      <div class="arch-title">性能 = f(参数量, 数据量, 计算量)</div>
+      <svg class="scaling-curve" viewBox="0 0 800 300" style="width:100%; height:300px;">
+        <!-- Axes -->
+        <line x1="60" y1="260" x2="760" y2="260" stroke="#2a2a30" stroke-width="1"/>
+        <line x1="60" y1="260" x2="60" y2="20" stroke="#2a2a30" stroke-width="1"/>
+        <!-- Grid lines -->
+        <line x1="60" y1="180" x2="760" y2="180" stroke="#1a1a20" stroke-width="0.5" stroke-dasharray="4"/>
+        <line x1="60" y1="100" x2="760" y2="100" stroke="#1a1a20" stroke-width="0.5" stroke-dasharray="4"/>
+        <line x1="260" y1="260" x2="260" y2="20" stroke="#1a1a20" stroke-width="0.5" stroke-dasharray="4"/>
+        <line x1="460" y1="260" x2="460" y2="20" stroke="#1a1a20" stroke-width="0.5" stroke-dasharray="4"/>
+        <line x1="660" y1="260" x2="660" y2="20" stroke="#1a1a20" stroke-width="0.5" stroke-dasharray="4"/>
+        <!-- Performance curve (power law) -->
+        <path d="M 80 40 Q 200 60, 350 110 Q 500 155, 650 190 Q 720 205, 755 215"
+              fill="none" stroke="#d4a843" stroke-width="2.5" id="scalingPath"/>
+        <!-- Emergence zone -->
+        <rect x="380" y="80" width="200" height="100" fill="rgba(212,168,67,0.04)" stroke="rgba(212,168,67,0.15)" stroke-dasharray="4"/>
+        <text x="480" y="135" text-anchor="middle" fill="#d4a843" font-family="DM Mono" font-size="11" opacity="0.8">涌现区</text>
+        <!-- Labels -->
+        <text x="755" y="240" text-anchor="end" fill="#5a5650" font-family="DM Mono" font-size="10">参数/数据/计算 →</text>
+        <text x="45" y="30" text-anchor="end" fill="#5a5650" font-family="DM Mono" font-size="10">性能 ↑</text>
+        <!-- Data points -->
+        <circle cx="150" cy="70" r="4" fill="#4ecdc4" opacity="0.8"/>
+        <text x="160" y="66" fill="#4ecdc4" font-family="DM Mono" font-size="9">GPT-2</text>
+        <circle cx="320" cy="130" r="4" fill="#4ecdc4" opacity="0.8"/>
+        <text x="330" y="126" fill="#4ecdc4" font-family="DM Mono" font-size="9">GPT-3</text>
+        <circle cx="500" cy="170" r="5" fill="#e85d75" opacity="0.8"/>
+        <text x="510" y="166" fill="#e85d75" font-family="DM Mono" font-size="9">GPT-4</text>
+        <circle cx="640" cy="200" r="5" fill="#e85d75" opacity="0.8"/>
+        <text x="650" y="196" fill="#e85d75" font-family="DM Mono" font-size="9">前沿模型</text>
+      </svg>
+
+      <div class="scaling-factor">
+        <div class="scaling-item">
+          <div class="scaling-value">N⁰·⁷³</div>
+          <div class="scaling-label-text">参数量贡献</div>
+        </div>
+        <div class="scaling-item">
+          <div class="scaling-value">D⁰·⁵⁵</div>
+          <div class="scaling-label-text">数据量贡献</div>
+        </div>
+        <div class="scaling-item">
+          <div class="scaling-value">C⁰·⁰⁵</div>
+          <div class="scaling-label-text">计算效率</div>
+        </div>
+        <div class="scaling-item">
+          <div class="scaling-value">~10×</div>
+          <div class="scaling-label-text">涌现阈值跨度</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Emergent Abilities -->
+    <h3 class="reveal" style="font-family:'Syne',sans-serif; font-size:22px; font-weight:700; margin-top:64px; margin-bottom:8px;">
+      涌现能力 — 规模带来的"相变"
+    </h3>
+    <p class="reveal" style="font-size:14px; color:var(--text-secondary); line-height:1.8; margin-bottom:8px; max-width:680px;">
+      某些能力在小模型中完全不存在，但当规模超过临界点时突然出现。这类似于物理学中的相变——水在99°C和100°C之间的状态完全不同。
+    </p>
+
+    <div class="emergent-grid reveal">
+      <div class="emergent-item">
+        <div class="emergent-threshold">≥ 10B params</div>
+        <div class="emergent-name">思维链推理</div>
+        <div class="emergent-desc">Chain-of-Thought：分步解决复杂问题</div>
+      </div>
+      <div class="emergent-item">
+        <div class="emergent-threshold">≥ 60B params</div>
+        <div class="emergent-name">零样本翻译</div>
+        <div class="emergent-desc">无翻译对训练，直接翻译任意语言</div>
+      </div>
+      <div class="emergent-item">
+        <div class="emergent-threshold">≥ 100B params</div>
+        <div class="emergent-name">代码生成</div>
+        <div class="emergent-desc">从自然语言描述生成可执行代码</div>
+      </div>
+      <div class="emergent-item">
+        <div class="emergent-threshold">≥ 100B params</div>
+        <div class="emergent-name">指令遵循</div>
+        <div class="emergent-desc">理解并执行复杂多步骤指令</div>
+      </div>
+      <div class="emergent-item">
+        <div class="emergent-threshold">≥ 500B params</div>
+        <div class="emergent-name">数学推理</div>
+        <div class="emergent-desc">解决竞赛级别的数学问题</div>
+      </div>
+      <div class="emergent-item">
+        <div class="emergent-threshold">≥ 1T params</div>
+        <div class="emergent-name">元认知</div>
+        <div class="emergent-desc">评估自身确定性，承认不确定性</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 5: Solutions -->
+<section id="solutions">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">05</div>
+      <div class="section-tag">Solutions · 方案</div>
+      <h2 class="section-title">解决思路 — 六大关键挑战与应对</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="solutions-grid">
+      <div class="solution-card reveal">
+        <div class="solution-number">SOLUTION 01</div>
+        <h3 class="solution-title">推理成本优化</h3>
+        <p class="solution-text">
+          <strong>问题：</strong>GPT-4级别模型单次推理成本高，限制大规模部署。<br>
+          <strong>第一性原理：</strong>推理成本 = 参数量 × 序列长度 × 每参数FLOP。降低任一因子即可降本。<br>
+          <strong>方案：</strong>KV Cache优化(PagedAttention)、量化(GPTQ/AWQ)、投机解码(Speculative Decoding)、模型蒸馏到小模型。
+        </p>
+        <div class="solution-tags">
+          <span class="solution-tag">KV Cache</span>
+          <span class="solution-tag">量化</span>
+          <span class="solution-tag">投机解码</span>
+          <span class="solution-tag">蒸馏</span>
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-number">SOLUTION 02</div>
+        <h3 class="solution-title">长上下文处理</h3>
+        <p class="solution-text">
+          <strong>问题：</strong>标准注意力的计算和内存成本与序列长度呈二次关系 O(n²)。<br>
+          <strong>第一性原理：</strong>真正需要全局注意力的token很少，大部分注意力权重接近零——信息是稀疏的。<br>
+          <strong>方案：</strong>Flash Attention(IO感知精确注意力)、Ring Attention(分布式序列并行)、稀疏注意力模式、状态空间模型(Mamba)作为替代架构。
+        </p>
+        <div class="solution-tags">
+          <span class="solution-tag">Flash Attention</span>
+          <span class="solution-tag">Ring Attention</span>
+          <span class="solution-tag">SSM</span>
+          <span class="solution-tag">稀疏注意力</span>
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-number">SOLUTION 03</div>
+        <h3 class="solution-title">幻觉问题缓解</h3>
+        <p class="solution-text">
+          <strong>问题：</strong>模型生成看似合理但事实上错误的内容。<br>
+          <strong>第一性原理：</strong>幻觉是自回归生成的固有属性——模型在每个token上做局部最优采样，但不保证全局事实一致性。<br>
+          <strong>方案：</strong>RAG(检索增强生成)、事实核查链(Fact-Check Chain)、置信度校准、工具调用（让模型用搜索引擎而非凭记忆回答）。
+        </p>
+        <div class="solution-tags">
+          <span class="solution-tag">RAG</span>
+          <span class="solution-tag">工具调用</span>
+          <span class="solution-tag">CoVe</span>
+          <span class="solution-tag">置信度校准</span>
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-number">SOLUTION 04</div>
+        <h3 class="solution-title">数据瓶颈突破</h3>
+        <p class="solution-text">
+          <strong>问题：</strong>高质量互联网文本数据正在耗尽（预计2026-2028年）。<br>
+          <strong>第一性原理：</strong>模型需要的是"信息"，不是"文本"。视频、音频、传感器数据、合成数据都是信息源。<br>
+          <strong>方案：</strong>多模态训练（视频理解）、合成数据管线（self-play、蒸馏循环）、主动学习（让模型选择最高信息量的样本）、数据高效利用（课程学习、重复数据去重策略）。
+        </p>
+        <div class="solution-tags">
+          <span class="solution-tag">合成数据</span>
+          <span class="solution-tag">多模态</span>
+          <span class="solution-tag">主动学习</span>
+          <span class="solution-tag">课程学习</span>
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-number">SOLUTION 05</div>
+        <h3 class="solution-title">Agent 能力构建</h3>
+        <p class="solution-text">
+          <strong>问题：</strong>从"语言模型"到"行动智能体"的跨越。LLM能说但不能做。<br>
+          <strong>第一性原理：</strong>Agent = LLM(决策引擎) + Memory(记忆) + Tools(工具) + Planning(规划)。核心瓶颈是长程规划的可靠性。<br>
+          <strong>方案：</strong>ReAct框架（推理-行动循环）、层级规划（高层目标分解→低层执行）、反馈驱动的自我修正、多Agent协作框架。
+        </p>
+        <div class="solution-tags">
+          <span class="solution-tag">ReAct</span>
+          <span class="solution-tag">Tool Use</span>
+          <span class="solution-tag">Planning</span>
+          <span class="solution-tag">Multi-Agent</span>
+        </div>
+      </div>
+
+      <div class="solution-card reveal">
+        <div class="solution-number">SOLUTION 06</div>
+        <h3 class="solution-title">安全与可控性</h3>
+        <p class="solution-text">
+          <strong>问题：</strong>如何确保模型在所有场景下行为可控？<br>
+          <strong>第一性原理：</strong>可控性 = 可预测性 + 可中断性 + 可解释性。当前模型在这三方面都不够完善。<br>
+          <strong>方案：</strong>Constitutional AI(宪法AI)、机械可解释性(Mechanistic Interpretability)、红队测试自动化、安全边界层（外部系统约束模型行为）。
+        </p>
+        <div class="solution-tags">
+          <span class="solution-tag">Constitutional AI</span>
+          <span class="solution-tag">可解释性</span>
+          <span class="solution-tag">红队测试</span>
+          <span class="solution-tag">安全护栏</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 6: Interactive Demo -->
+<section id="demo">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">06</div>
+      <div class="section-tag">Interactive · 交互</div>
+      <h2 class="section-title">动手实验 — Token化与注意力可视化</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- Tokenizer Demo -->
+    <div class="demo-container reveal">
+      <div class="demo-header">
+        <div class="demo-dot red"></div>
+        <div class="demo-dot yellow"></div>
+        <div class="demo-dot green"></div>
+        <span class="demo-label">TOKENIZER VISUALIZER</span>
+      </div>
+
+      <p style="font-size:14px; color:var(--text-secondary); margin-bottom:20px; line-height:1.7;">
+        LLM看到的不是"文字"，而是token序列。在下方输入文本，观察模型如何"切分"你的输入：
+      </p>
+
+      <div style="margin-bottom:16px;">
+        <input type="text" id="tokenInput" value="大语言模型正在改变世界" placeholder="输入任意文本..."
+               style="width:100%; padding:14px 20px; background:rgba(0,0,0,0.3); border:1px solid var(--border);
+                      color:var(--text-primary); font-family:'DM Mono',monospace; font-size:15px; outline:none;
+                      transition: border-color 0.3s;"
+               onfocus="this.style.borderColor='var(--accent-gold-dim)'"
+               onblur="this.style.borderColor='var(--border)'"
+               oninput="tokenize(this.value)">
+      </div>
+
+      <div class="token-visualizer">
+        <div class="token-display" id="tokenDisplay">
+          <!-- Tokens will be rendered here -->
+        </div>
+        <div class="demo-info" id="tokenInfo">
+          输入文本后按回车或等待自动分词...
+        </div>
+      </div>
+
+      <div class="demo-controls">
+        <button class="demo-btn primary" onclick="tokenize(document.getElementById('tokenInput').value)">重新分词</button>
+        <button class="demo-btn" onclick="setExample('Attention is all you need')">Attention is all you need</button>
+        <button class="demo-btn" onclick="setExample('机器学习的第一性原理是什么')">机器学习的第一性原理</button>
+        <button class="demo-btn" onclick="setExample('The quick brown fox jumps over the lazy dog')">经典英文句</button>
+      </div>
+    </div>
+
+    <!-- Attention Pattern Demo -->
+    <div class="demo-container reveal" style="margin-top:32px;">
+      <div class="demo-header">
+        <div class="demo-dot red"></div>
+        <div class="demo-dot yellow"></div>
+        <div class="demo-dot green"></div>
+        <span class="demo-label">ATTENTION PATTERN SIMULATOR</span>
+      </div>
+
+      <p style="font-size:14px; color:var(--text-secondary); margin-bottom:20px; line-height:1.7;">
+        点击"生成注意力模式"查看模拟的注意力矩阵。颜色越深表示注意力权重越高——模型正在决定"关注谁"。
+      </p>
+
+      <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+        <button class="demo-btn primary" onclick="generateAttention()">生成注意力模式</button>
+        <select id="patternType" style="padding:10px 16px; background:var(--bg-surface); border:1px solid var(--border);
+                color:var(--text-secondary); font-family:'DM Mono',monospace; font-size:12px; outline:none;">
+          <option value="causal">因果注意力 (Causal)</option>
+          <option value="local">局部注意力 (Local Window)</option>
+          <option value="global">全局注意力 (Global)</option>
+        </select>
+      </div>
+
+      <div id="attentionGrid" style="overflow-x:auto;">
+        <!-- Attention matrix will be rendered here -->
+      </div>
+      <div class="demo-info" id="attentionInfo">
+        选择模式后点击"生成注意力模式"
+      </div>
+    </div>
+
+    <!-- Comparison Table -->
+    <h3 class="reveal" style="font-family:'Syne',sans-serif; font-size:22px; font-weight:700; margin-top:64px; margin-bottom:8px;">
+      主流模型架构对比
+    </h3>
+    <p class="reveal" style="font-size:14px; color:var(--text-secondary); margin-bottom:16px;">
+      不同设计选择反映了不同的工程权衡。悬停查看详细说明。
+    </p>
+
+    <div class="reveal" style="overflow-x:auto;">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>模型</th>
+            <th>参数量</th>
+            <th>架构</th>
+            <th>上下文长度</th>
+            <th>关键创新</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="model-name">GPT-4</span></td>
+            <td>~1.8T (MoE)</td>
+            <td>MoE Decoder</td>
+            <td>128K</td>
+            <td>极致的训练数据质量 + RLHF</td>
+          </tr>
+          <tr>
+            <td><span class="model-name">LLaMA 3</span></td>
+            <td>8B / 70B / 405B</td>
+            <td>Dense Decoder</td>
+            <td>128K</td>
+            <td>开源全系列 + 高效训练配方</td>
+          </tr>
+          <tr>
+            <td><span class="model-name">Mixtral</span></td>
+            <td>47B (13B active)</td>
+            <td>Sparse MoE</td>
+            <td>32K</td>
+            <td>8×7B MoE，高性价比推理</td>
+          </tr>
+          <tr>
+            <td><span class="model-name">Claude 3.5</span></td>
+            <td>未公开</td>
+            <td>未公开</td>
+            <td>200K</td>
+            <td>Constitutional AI + 极长上下文</td>
+          </tr>
+          <tr>
+            <td><span class="model-name">Gemini</span></td>
+            <td>未公开 (MoE)</td>
+            <td>原生多模态</td>
+            <td>1M+</td>
+            <td>原生多模态 + 超长上下文</td>
+          </tr>
+          <tr>
+            <td><span class="model-name">DeepSeek V3</span></td>
+            <td>671B (37B active)</td>
+            <td>Dense MoE</td>
+            <td>128K</td>
+            <td>极致MoE效率 + 开源</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Section 7: Risks -->
+<section id="risks">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">07</div>
+      <div class="section-tag">Risks · 风险</div>
+      <h2 class="section-title">风险图谱 — 不可忽视的暗面</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="reveal">
+      <div class="risk-item">
+        <div class="risk-severity high">!</div>
+        <div>
+          <h4 class="risk-title">对齐失败 (Misalignment)</h4>
+          <p class="risk-desc">
+            模型能力越强，对齐失败的后果越严重。一个足够强大的模型如果目标函数被错误指定(Goodhart's Law)，可能找到人类意想不到的"捷径"来最大化奖励——这不是恶意，而是优化的自然结果。第一性原理告诉我们：对齐不是工程问题，而是价值形式化问题。
+          </p>
+        </div>
+      </div>
+
+      <div class="risk-item">
+        <div class="risk-severity high">!</div>
+        <div>
+          <h4 class="risk-title">认知污染 (Cognitive Pollution)</h4>
+          <p class="risk-desc">
+            LLM生成的文本越来越难以与人类写作区分。当互联网上充斥AI生成内容时，未来模型的训练数据将不可避免地包含AI生成内容——这可能导致"模型塌缩"(Model Collapse)，即分布退化和多样性丧失。
+          </p>
+        </div>
+      </div>
+
+      <div class="risk-item">
+        <div class="risk-severity medium">~</div>
+        <div>
+          <h4 class="risk-title">能力集中 (Capability Concentration)</h4>
+          <p class="risk-desc">
+            训练前沿LLM需要数十亿美元的投入，这导致AI能力集中在少数几个组织手中。从第一性原理看：计算集中→能力集中→权力集中。如何确保这种力量被负责任地使用，是一个超越技术的社会问题。
+          </p>
+        </div>
+      </div>
+
+      <div class="risk-item">
+        <div class="risk-severity medium">~</div>
+        <div>
+          <h4 class="risk-title">过度依赖 (Over-reliance)</h4>
+          <p class="risk-desc">
+            当LLM被嵌入决策流程（医疗、法律、教育），人类可能逐渐丧失独立判断能力。LLM的高流畅性制造了"它什么都知道"的幻觉——但流畅不等于正确，自信不等于可靠。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 8: Guidance -->
+<section id="guidance">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">08</div>
+      <div class="section-tag">Guidance · 建议</div>
+      <h2 class="section-title">指导性建议 — 给不同角色的行动框架</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="rec-container reveal">
+      <div class="rec-item">
+        <div class="rec-num">01</div>
+        <div class="rec-content">
+          <h4>对于技术决策者：不要追求最大，追求最合适</h4>
+          <p>
+            80%的业务场景不需要GPT-4级别的模型。用7B-13B的开源模型 + 领域微调 + RAG，往往比直接调用最大API效果更好、成本更低、数据更安全。先定义问题，再选择工具——这是第一性原理的基本要求。
+          </p>
+        </div>
+      </div>
+
+      <div class="rec-item">
+        <div class="rec-num">02</div>
+        <div class="rec-content">
+          <h4>对于研究者：关注涌现机制，而非榜单刷分</h4>
+          <p>
+            当前最重要的科学问题不是"如何把benchmark再提高2个点"，而是"为什么规模增长会带来能力涌现"、"幻觉的数学本质是什么"、"对齐的可证明保证如何建立"。这些基础问题的突破将定义下一个十年。
+          </p>
+        </div>
+      </div>
+
+      <div class="rec-item">
+        <div class="rec-num">03</div>
+        <div class="rec-content">
+          <h4>对于产品设计者：LLM是材料，不是产品</h4>
+          <p>
+            就像钢铁是建筑材料而非建筑本身，LLM是产品的"智能材料"。成功的AI产品需要理解用户场景、设计合适的交互模式、处理好AI不确定性带来的体验问题。技术本身不构成壁垒，应用方式才是。
+          </p>
+        </div>
+      </div>
+
+      <div class="rec-item">
+        <div class="rec-num">04</div>
+        <div class="rec-content">
+          <h4>对于政策制定者：监管框架应聚焦"使用"而非"技术"</h4>
+          <p>
+            监管LLM本身就像监管"数学"——它太基础、太通用。更有效的策略是监管具体使用场景：深度伪造的法律边界、AI辅助决策的责任认定、数据隐私的强制标准。技术中立原则在AI时代依然适用。
+          </p>
+        </div>
+      </div>
+
+      <div class="rec-item">
+        <div class="rec-num">05</div>
+        <div class="rec-content">
+          <h4>对于每个人：保持批判性思维</h4>
+          <p>
+            LLM的输出是概率采样的结果，不是"真理"。它可能极其流畅地说出完全错误的内容。使用LLM的最佳心智模型是：把它当成一个知识渊博但偶尔会自信地犯错的同事——尊重它的能力，但永远独立思考。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <p class="footer-text">
+      LLM FIRST PRINCIPLES RESEARCH REPORT — ARCHITECT PERSONA<br>
+      <span style="color:var(--accent-gold);">用第一性原理思考，用系统思维构建</span>
+    </p>
+  </div>
+</footer>
+
+<script>
+// === TAB SWITCHING ===
+function switchTab(event, tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// === TOKENIZER SIMULATOR ===
+function simpleTokenize(text) {
+  if (!text.trim()) return [];
+
+  const tokens = [];
+  // Simulate BPE-like tokenization
+  const chars = text.split('');
+  let i = 0;
+
+  while (i < chars.length) {
+    const ch = chars[i];
+
+    // Chinese characters: 1 char = 1 token (simplified)
+    if (/[\u4e00-\u9fff]/.test(ch)) {
+      // Group consecutive Chinese chars (2-3 at a time)
+      let group = ch;
+      let j = i + 1;
+      while (j < chars.length && /[\u4e00-\u9fff]/.test(chars[j]) && (j - i) < 2) {
+        group += chars[j];
+        j++;
+      }
+      tokens.push(group);
+      i = j;
+    }
+    // English words
+    else if (/[a-zA-Z]/.test(ch)) {
+      let word = ch;
+      let j = i + 1;
+      while (j < chars.length && /[a-zA-Z0-9]/.test(chars[j])) {
+        word += chars[j];
+        j++;
+      }
+      // Simulate BPE splitting for longer words
+      if (word.length > 4) {
+        tokens.push(word.slice(0, Math.ceil(word.length / 2)));
+        tokens.push(word.slice(Math.ceil(word.length / 2)));
+      } else {
+        tokens.push(word);
+      }
+      i = j;
+    }
+    // Numbers
+    else if (/[0-9]/.test(ch)) {
+      let num = ch;
+      let j = i + 1;
+      while (j < chars.length && /[0-9]/.test(chars[j])) {
+        num += chars[j];
+        j++;
+      }
+      tokens.push(num);
+      i = j;
+    }
+    // Whitespace → special marker
+    else if (/\s/.test(ch)) {
+      tokens.push('␣');
+      i++;
+    }
+    // Punctuation and other
+    else {
+      tokens.push(ch);
+      i++;
+    }
+  }
+
+  return tokens.filter(t => t !== '␣' || true);
+}
+
+function tokenize(text) {
+  const display = document.getElementById('tokenDisplay');
+  const info = document.getElementById('tokenInfo');
+
+  if (!text.trim()) {
+    display.innerHTML = '';
+    info.textContent = '输入文本后查看分词结果...';
+    return;
+  }
+
+  const tokens = simpleTokenize(text);
+  const colors = ['var(--accent-gold)', 'var(--accent-cyan)', 'var(--accent-rose)', 'var(--accent-violet)'];
+
+  display.innerHTML = tokens.map((t, i) => {
+    const color = colors[i % colors.length];
+    const border = `1px solid ${color}40`;
+    const bg = `${color}10`;
+    return `<span class="token" style="border-color:${color}40; background:${bg};"
+            onmouseenter="this.style.borderColor='${color}'; this.style.background='${color}25'"
+            onmouseleave="this.style.borderColor='${color}40'; this.style.background='${bg}'"
+            >${t === ' ' ? '·' : t}</span>`;
+  }).join('');
+
+  const uniqueTokens = new Set(tokens).size;
+  info.innerHTML = `共 <span style="color:var(--accent-gold)">${tokens.length}</span> 个token | ` +
+                   `去重后 <span style="color:var(--accent-cyan)">${uniqueTokens}</span> 个唯一token | ` +
+                   `压缩比 ≈ <span style="color:var(--accent-rose)">${(text.length / tokens.length).toFixed(1)}</span> 字符/token`;
+}
+
+function setExample(text) {
+  document.getElementById('tokenInput').value = text;
+  tokenize(text);
+}
+
+// === ATTENTION PATTERN GENERATOR ===
+function generateAttention() {
+  const grid = document.getElementById('attentionGrid');
+  const info = document.getElementById('attentionInfo');
+  const pattern = document.getElementById('patternType').value;
+
+  const tokens = ['The', 'model', 'learned', 'to', 'predict', 'the', 'next', 'token'];
+  const n = tokens.length;
+
+  let html = '<div style="display:inline-block;">';
+
+  // Header row with tokens
+  html += '<div style="display:flex; align-items:flex-end; margin-left:60px; margin-bottom:4px;">';
+  tokens.forEach(t => {
+    html += `<div style="width:36px; text-align:center; font-family:'DM Mono',monospace; font-size:9px;
+             color:var(--text-muted); transform:rotate(-45deg); transform-origin:center; white-space:nowrap;
+             margin:0 2px; padding-bottom:4px;">${t}</div>`;
+  });
+  html += '</div>';
+
+  // Matrix rows
+  for (let i = 0; i < n; i++) {
+    html += '<div style="display:flex; align-items:center;">';
+    html += `<div style="width:60px; text-align:right; padding-right:8px; font-family:'DM Mono',monospace;
+             font-size:10px; color:var(--text-muted); flex-shrink:0;">${tokens[i]}</div>`;
+
+    for (let j = 0; j < n; j++) {
+      let weight = 0;
+
+      if (pattern === 'causal') {
+        // Causal: only attend to previous tokens + self
+        if (j <= i) {
+          weight = Math.random() * 0.3 + 0.1;
+          // Stronger attention to recent tokens
+          if (j >= i - 1) weight += 0.3;
+          // Random "head" pattern
+          if (Math.random() > 0.7) weight += 0.2;
+        }
+      } else if (pattern === 'local') {
+        // Local window attention
+        if (Math.abs(i - j) <= 2) {
+          weight = Math.random() * 0.4 + 0.3;
+          if (i === j) weight = 0.8;
+        }
+      } else {
+        // Global attention
+        weight = Math.random() * 0.4 + 0.1;
+        if (i === j) weight = 0.7 + Math.random() * 0.3;
+        if (Math.random() > 0.85) weight += 0.3;
+      }
+
+      weight = Math.min(weight, 1);
+      const alpha = weight;
+      const color = weight > 0.5
+        ? `rgba(212, 168, 67, ${alpha})`
+        : `rgba(78, 205, 196, ${alpha * 0.6})`;
+
+      html += `<div class="attention-cell" style="background:${color}; width:36px; height:36px;"
+               title="${tokens[i]} → ${tokens[j]}: ${weight.toFixed(2)}"
+               onmouseenter="this.style.outline='1px solid var(--accent-gold)'"
+               onmouseleave="this.style.outline='none'"
+               >${weight > 0.05 ? weight.toFixed(1) : ''}</div>`;
+    }
+    html += '</div>';
+  }
+
+  html += '</div>';
+  grid.innerHTML = html;
+
+  const descriptions = {
+    causal: '因果注意力 (Causal)：每个token只能看到自己和之前的token。这是自回归生成的基础——模型无法"偷看"未来。',
+    local: '局部注意力 (Local)：每个token只关注窗口内的邻近token。减少计算量，适合捕获局部模式（如短语、语法结构）。',
+    global: '全局注意力 (Global)：每个token可以关注所有token。信息最充分，但计算成本为O(n²)。'
+  };
+  info.innerHTML = descriptions[pattern];
+}
+
+// === SCROLL REVEAL ===
+function revealOnScroll() {
+  const reveals = document.querySelectorAll('.reveal, .timeline-item');
+  const windowHeight = window.innerHeight;
+
+  reveals.forEach(el => {
+    const top = el.getBoundingClientRect().top;
+    if (top < windowHeight - 80) {
+      el.classList.add('visible');
+    }
+  });
+}
+
+// === PROGRESS BAR ===
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = (scrollTop / docHeight) * 100;
+  document.getElementById('progressBar').style.width = progress + '%';
+}
+
+// === ACTIVE NAV LINK ===
+function updateActiveNav() {
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.nav-links a');
+  let current = '';
+
+  sections.forEach(section => {
+    const top = section.offsetTop - 100;
+    if (window.scrollY >= top) {
+      current = section.getAttribute('id');
+    }
+  });
+
+  navLinks.forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('href') === '#' + current) {
+      link.classList.add('active');
+    }
+  });
+}
+
+// === EVENT LISTENERS ===
+window.addEventListener('scroll', () => {
+  revealOnScroll();
+  updateProgress();
+  updateActiveNav();
+}, { passive: true });
+
+window.addEventListener('load', () => {
+  revealOnScroll();
+  tokenize(document.getElementById('tokenInput').value);
+});
+
+// Smooth scroll for nav links
+document.querySelectorAll('.nav-links a').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+</body>
+</html>

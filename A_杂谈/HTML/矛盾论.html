@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>矛盾论 · 第一性原理深度研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700;900&family=ZCOOL+KuaiLe&family=Source+Serif+4:ital,wght@0,300;0,500;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-elevated: #111111;
+  --surface: #1a1816;
+  --surface-hover: #221f1a;
+  --accent: #d4a24e;
+  --accent-dim: #a07830;
+  --accent-glow: rgba(212, 162, 78, 0.15);
+  --accent-bright: #f0c060;
+  --text-primary: #e8e2d8;
+  --text-secondary: #a09888;
+  --text-muted: #605848;
+  --danger: #c44d3e;
+  --success: #4ea87a;
+  --border: rgba(212, 162, 78, 0.12);
+  --border-strong: rgba(212, 162, 78, 0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-dim) var(--bg);
+}
+
+body {
+  font-family: 'Source Serif 4', 'Noto Serif SC', serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* ═══════════ NAVIGATION ═══════════ */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(20px);
+  background: rgba(10, 10, 10, 0.8);
+  border-bottom: 1px solid var(--border);
+  transition: transform 0.3s ease;
+}
+
+.nav.hidden { transform: translateY(-100%); }
+
+.nav-logo {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  transition: color 0.3s;
+  font-family: 'Noto Serif SC', serif;
+}
+
+.nav-links a:hover { color: var(--accent); }
+
+/* ═══════════ HERO ═══════════ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  padding: 2rem;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 800px; height: 800px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  animation: heroPulse 6s ease-in-out infinite;
+}
+
+@keyframes heroPulse {
+  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+.hero-badge {
+  display: inline-block;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+  padding: 0.4rem 1.2rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+  position: relative;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.3s;
+}
+
+.hero-title {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 900;
+  font-size: clamp(3rem, 8vw, 7rem);
+  line-height: 1.1;
+  color: var(--text-primary);
+  position: relative;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.5s;
+}
+
+.hero-title span {
+  color: var(--accent);
+  display: inline-block;
+  position: relative;
+}
+
+.hero-title span::after {
+  content: '';
+  position: absolute;
+  bottom: 0.1em; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: lineExpand 0.8s ease forwards 1.3s;
+}
+
+@keyframes lineExpand {
+  to { transform: scaleX(1); }
+}
+
+.hero-sub {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin-top: 1.5rem;
+  position: relative;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.8s;
+  font-style: italic;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 3rem;
+  margin-top: 3rem;
+  position: relative;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 1s;
+}
+
+.hero-meta-item {
+  text-align: center;
+}
+
+.hero-meta-item .label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.hero-meta-item .value {
+  font-size: 1.3rem;
+  color: var(--accent);
+  font-weight: 700;
+  font-family: 'Noto Serif SC', serif;
+}
+
+.scroll-indicator {
+  position: absolute;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 1.5s;
+}
+
+.scroll-line {
+  width: 1px; height: 40px;
+  background: var(--accent-dim);
+  position: relative;
+  overflow: hidden;
+}
+
+.scroll-line::after {
+  content: '';
+  position: absolute;
+  top: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  animation: scrollDown 2s ease infinite;
+}
+
+@keyframes scrollDown {
+  0% { top: -100%; }
+  100% { top: 100%; }
+}
+
+/* ═══════════ SECTIONS ═══════════ */
+.section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6rem 2rem;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.section-label .num {
+  font-size: 0.75rem;
+  color: var(--accent);
+  letter-spacing: 0.2em;
+  font-weight: 700;
+}
+
+.section-label .line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.section-title {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 900;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.3;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+}
+
+.section-desc {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  max-width: 700px;
+  margin-bottom: 3rem;
+}
+
+/* ═══════════ FIRST PRINCIPLES DECOMPOSITION ═══════════ */
+.decomp-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  margin-top: 2rem;
+}
+
+.decomp-item {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.4s ease;
+}
+
+.decomp-item:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.decomp-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 900;
+  font-size: 1.8rem;
+  color: var(--accent);
+  background: rgba(212, 162, 78, 0.05);
+  border-right: 1px solid var(--border);
+}
+
+.decomp-content {
+  padding: 2rem;
+}
+
+.decomp-content h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.decomp-content p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.decomp-expand {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s ease, padding 0.3s ease;
+}
+
+.decomp-item.active .decomp-expand {
+  max-height: 300px;
+}
+
+.decomp-expand-inner {
+  padding: 0 2rem 2rem 2rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.decomp-item.active {
+  background: var(--surface-hover);
+}
+
+.decomp-item.active .decomp-num {
+  color: var(--accent-bright);
+  background: rgba(212, 162, 78, 0.1);
+}
+
+/* ═══════════ CORE CONCEPTS CARDS ═══════════ */
+.concepts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.concept-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s ease;
+  cursor: pointer;
+}
+
+.concept-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s ease;
+}
+
+.concept-card:hover::before {
+  transform: scaleX(1);
+}
+
+.concept-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.concept-icon {
+  width: 48px; height: 48px;
+  border: 1px solid var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+  color: var(--accent);
+}
+
+.concept-card h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+  margin-bottom: 0.8rem;
+  color: var(--text-primary);
+}
+
+.concept-card p {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.8;
+}
+
+.concept-tag {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.7rem;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  letter-spacing: 0.1em;
+}
+
+/* ═══════════ INTERACTIVE DIALECTIC ═══════════ */
+.dialectic-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3rem;
+  margin-top: 2rem;
+  position: relative;
+}
+
+.dialectic-title {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin-bottom: 2rem;
+  letter-spacing: 0.05em;
+}
+
+.dialectic-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 2rem 0;
+  position: relative;
+  height: 200px;
+}
+
+.dialectic-side {
+  flex: 1;
+  text-align: center;
+  padding: 2rem;
+  transition: all 0.5s ease;
+}
+
+.dialectic-side h4 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.8rem;
+  font-weight: 900;
+  transition: all 0.4s ease;
+}
+
+.dialectic-side.thesis h4 { color: var(--accent); }
+.dialectic-side.antithesis h4 { color: var(--danger); }
+.dialectic-side.synthesis h4 { color: var(--success); }
+
+.dialectic-side p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.dialectic-arrow {
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 60px;
+  text-align: center;
+  animation: arrowPulse 2s ease infinite;
+}
+
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; color: var(--accent); }
+}
+
+.slider-container {
+  margin-top: 2rem;
+}
+
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--danger), var(--success));
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  background: var(--accent-bright);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(212, 162, 78, 0.5);
+  transition: transform 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+}
+
+.dialectic-output {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(212, 162, 78, 0.05);
+  border-left: 3px solid var(--accent);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  min-height: 80px;
+  transition: all 0.3s;
+}
+
+/* ═══════════ MATRIX TABLE ═══════════ */
+.matrix-wrapper {
+  overflow-x: auto;
+  margin-top: 2rem;
+}
+
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.matrix-table thead th {
+  background: rgba(212, 162, 78, 0.08);
+  color: var(--accent);
+  font-weight: 700;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-family: 'Noto Serif SC', serif;
+  border-bottom: 2px solid var(--accent-dim);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.matrix-table tbody td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  vertical-align: top;
+}
+
+.matrix-table tbody tr {
+  transition: background 0.3s;
+}
+
+.matrix-table tbody tr:hover {
+  background: rgba(212, 162, 78, 0.03);
+}
+
+.matrix-table .highlight {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ═══════════ EXAMPLES ═══════════ */
+.example-timeline {
+  position: relative;
+  padding-left: 3rem;
+  margin-top: 2rem;
+}
+
+.example-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-dim), transparent);
+}
+
+.example-item {
+  position: relative;
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all 0.4s ease;
+}
+
+.example-item:hover {
+  border-color: var(--border-strong);
+  transform: translateX(8px);
+}
+
+.example-item::before {
+  content: '';
+  position: absolute;
+  left: -3rem;
+  top: 2.5rem;
+  width: 12px; height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  transform: translateX(-5px);
+  box-shadow: 0 0 20px rgba(212, 162, 78, 0.4);
+}
+
+.example-item h4 {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.example-item .scene {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.example-item .analysis {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.example-item .analysis strong {
+  color: var(--text-primary);
+}
+
+.example-item .principle {
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  background: rgba(212, 162, 78, 0.06);
+  border-left: 3px solid var(--accent-dim);
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+/* ═══════════ SOLUTIONS ═══════════ */
+.solutions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.solution-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s;
+}
+
+.solution-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 40px rgba(212, 162, 78, 0.08);
+}
+
+.solution-card .step-num {
+  position: absolute;
+  top: -10px; right: 15px;
+  font-size: 5rem;
+  font-weight: 900;
+  color: rgba(212, 162, 78, 0.06);
+  font-family: 'Noto Serif SC', serif;
+  line-height: 1;
+}
+
+.solution-card h4 {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin-bottom: 0.8rem;
+  position: relative;
+}
+
+.solution-card p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  position: relative;
+}
+
+.solution-card .action {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  position: relative;
+}
+
+.solution-card .action::before {
+  content: '→ ';
+  color: var(--accent);
+}
+
+/* ═══════════ QUOTE ═══════════ */
+.quote-block {
+  position: relative;
+  padding: 3rem 4rem;
+  margin: 3rem 0;
+  background: linear-gradient(135deg, rgba(212, 162, 78, 0.05), transparent);
+  border-left: 4px solid var(--accent);
+}
+
+.quote-block::before {
+  content: '"';
+  position: absolute;
+  top: 1rem; left: 1.5rem;
+  font-size: 4rem;
+  color: var(--accent-dim);
+  font-family: 'Noto Serif SC', serif;
+  line-height: 1;
+}
+
+.quote-block p {
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--text-primary);
+  line-height: 2;
+  font-family: 'Noto Serif SC', serif;
+}
+
+.quote-block cite {
+  display: block;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+/* ═══════════ TABS ═══════════ */
+.tabs-container {
+  margin-top: 2rem;
+}
+
+.tab-header {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  gap: 0;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 1rem 2rem;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s;
+  letter-spacing: 0.03em;
+}
+
+.tab-btn:hover { color: var(--text-secondary); }
+
+.tab-btn.active {
+  color: var(--accent);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.tab-panel {
+  display: none;
+  padding: 2rem 0;
+  animation: fadeIn 0.4s ease;
+}
+
+.tab-panel.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════ CONCLUSION ═══════════ */
+.conclusion-box {
+  background: linear-gradient(135deg, var(--surface), rgba(212, 162, 78, 0.05));
+  border: 1px solid var(--border-strong);
+  padding: 3rem;
+  margin-top: 2rem;
+  position: relative;
+}
+
+.conclusion-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.conclusion-box h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 1.5rem;
+}
+
+.conclusion-list {
+  list-style: none;
+}
+
+.conclusion-list li {
+  padding: 0.8rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.conclusion-list li:last-child { border-bottom: none; }
+
+.conclusion-list li::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-size: 0.6rem;
+  top: 1.1rem;
+}
+
+/* ═══════════ FOOTER ═══════════ */
+.footer {
+  text-align: center;
+  padding: 4rem 2rem;
+  border-top: 1px solid var(--border);
+  margin-top: 4rem;
+}
+
+.footer p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.footer .big-char {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 3rem;
+  font-weight: 900;
+  color: rgba(212, 162, 78, 0.1);
+  display: block;
+  margin-bottom: 1rem;
+}
+
+/* ═══════════ ANIMATIONS ═══════════ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.7s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ═══════════ RESPONSIVE ═══════════ */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .hero-meta { flex-direction: column; gap: 1rem; }
+  .dialectic-visual { flex-direction: column; height: auto; gap: 1rem; }
+  .dialectic-arrow { transform: rotate(90deg); width: auto; }
+  .concepts-grid { grid-template-columns: 1fr; }
+  .solutions-grid { grid-template-columns: 1fr; }
+  .quote-block { padding: 2rem; }
+  .tab-btn { padding: 0.8rem 1rem; font-size: 0.8rem; }
+  .decomp-item { grid-template-columns: 50px 1fr; }
+  .decomp-num { font-size: 1.3rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <div class="nav-logo">矛盾论</div>
+  <ul class="nav-links">
+    <li><a href="#decompose">第一性拆解</a></li>
+    <li><a href="#concepts">核心概念</a></li>
+    <li><a href="#interactive">交互体验</a></li>
+    <li><a href="#examples">案例分析</a></li>
+    <li><a href="#solutions">解决方案</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">第一性原理研究报告</div>
+  <h1 class="hero-title">矛盾<span>论</span></h1>
+  <p class="hero-sub">"事物发展的根本原因，不是在事物的外部，而是在事物的内部，在于事物内部的矛盾性。"</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item">
+      <div class="label">核心命题</div>
+      <div class="value">对立统一</div>
+    </div>
+    <div class="hero-meta-item">
+      <div class="label">方法论</div>
+      <div class="value">唯物辩证法</div>
+    </div>
+    <div class="hero-meta-item">
+      <div class="label">关键维度</div>
+      <div class="value">5 大定律</div>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- Section 1: First Principles Decomposition -->
+<section class="section" id="decompose">
+  <div class="section-label reveal">
+    <span class="num">01</span>
+    <span class="line"></span>
+  </div>
+  <h2 class="section-title reveal">第一性原理拆解</h2>
+  <p class="section-desc reveal">回归事物最基本的公理和假设，从不可再分的真理出发，逐层构建矛盾论的完整认知体系。</p>
+
+  <div class="quote-block reveal">
+    <p>所谓第一性原理，就是回归事物最基本的条件，将其拆分成最基本的要素，然后从这个起点开始推导。</p>
+    <cite>—— 亚里士多德 · 本原论</cite>
+  </div>
+
+  <div class="decomp-grid">
+    <div class="decomp-item reveal" onclick="toggleDecomp(this)">
+      <div class="decomp-num">01</div>
+      <div class="decomp-content">
+        <h3>公理起点：世界是物质的，物质是运动的</h3>
+        <p>矛盾论的不可再分的逻辑起点——物质世界永恒运动，运动是绝对的，静止是相对的。</p>
+      </div>
+    </div>
+    <div class="decomp-item reveal" onclick="toggleDecomp(this)">
+      <div class="decomp-num">02</div>
+      <div class="decomp-content">
+        <h3>推导链条：运动的根源是什么？</h3>
+        <p>运动不是凭空发生的，其根源在于事物内部对立面的统一与斗争——即矛盾。</p>
+      </div>
+    </div>
+    <div class="decomp-item reveal" onclick="toggleDecomp(this)">
+      <div class="decomp-num">03</div>
+      <div class="decomp-content">
+        <h3>核心构件：矛盾的两大基本属性</h3>
+        <p>同一性（对立面相互依存、转化）与斗争性（对立面相互排斥、否定）——两者缺一不可。</p>
+      </div>
+    </div>
+    <div class="decomp-item reveal" onclick="toggleDecomp(this)">
+      <div class="decomp-num">04</div>
+      <div class="decomp-content">
+        <h3>结构分析：主要矛盾与次要矛盾</h3>
+        <p>复杂事物中存在多个矛盾，但必有一个主要矛盾决定事物发展方向——"擒贼先擒王"。</p>
+      </div>
+    </div>
+    <div class="decomp-item reveal" onclick="toggleDecomp(this)">
+      <div class="decomp-num">05</div>
+      <div class="decomp-content">
+        <h3>动态演进：矛盾的转化与质变</h3>
+        <p>矛盾双方力量此消彼长，量变积累到一定程度引发质变——旧矛盾解决，新矛盾产生。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2: Core Concepts -->
+<section class="section" id="concepts">
+  <div class="section-label reveal">
+    <span class="num">02</span>
+    <span class="line"></span>
+  </div>
+  <h2 class="section-title reveal">五大核心定律</h2>
+  <p class="section-desc reveal">矛盾论的知识图谱，从"矛盾的普遍性"到"矛盾的对抗性"，构成一套完整的分析框架。</p>
+
+  <div class="concepts-grid">
+    <div class="concept-card reveal">
+      <div class="concept-icon">⊕</div>
+      <h3>矛盾的普遍性</h3>
+      <p>矛盾存在于一切事物的发展过程中，贯穿于每一事物发展过程的始终。没有矛盾就没有世界。这是唯物辩证法最根本的定律。</p>
+      <span class="concept-tag">无处不在 · 无时不有</span>
+    </div>
+
+    <div class="concept-card reveal">
+      <div class="concept-icon">◎</div>
+      <h3>矛盾的特殊性</h3>
+      <p>不同事物的矛盾各有特点，同一事物在不同发展阶段矛盾也不同。具体问题具体分析，是马克思主义活的灵魂。</p>
+      <span class="concept-tag">具体分析 · 因时制宜</span>
+    </div>
+
+    <div class="concept-card reveal">
+      <div class="concept-icon">◈</div>
+      <h3>主要矛盾与次要矛盾</h3>
+      <p>在复杂事物中，各种矛盾发展不平衡。抓住主要矛盾，一切问题迎刃而解；主次不分，则事倍功半。</p>
+      <span class="concept-tag">抓牛鼻子 · 以点带面</span>
+    </div>
+
+    <div class="concept-card reveal">
+      <div class="concept-icon">∞</div>
+      <h3>矛盾的同一性与斗争性</h3>
+      <p>同一性是相对的、有条件的；斗争性是绝对的、无条件的。两者相互结合，推动事物从量变到质变的飞跃。</p>
+      <span class="concept-tag">对立统一 · 相反相成</span>
+    </div>
+
+    <div class="concept-card reveal">
+      <div class="concept-icon">⟡</div>
+      <h3>对抗性与非对抗性矛盾</h3>
+      <p>对抗是矛盾斗争的一种形式。敌我矛盾用专政方法解决，人民内部矛盾用民主方法解决——方法论的关键分野。</p>
+      <span class="concept-tag">区分性质 · 对症下药</span>
+    </div>
+  </div>
+</section>
+
+<!-- Section 3: Interactive Experience -->
+<section class="section" id="interactive">
+  <div class="section-label reveal">
+    <span class="num">03</span>
+    <span class="line"></span>
+  </div>
+  <h2 class="section-title reveal">交互体验：矛盾的运动</h2>
+  <p class="section-desc reveal">拖动滑块，体验矛盾双方力量的此消彼长，理解对立统一的动态过程。</p>
+
+  <div class="dialectic-container reveal">
+    <div class="dialectric-title">矛盾动力学模拟器</div>
+
+    <div class="dialectic-visual">
+      <div class="dialectic-side thesis">
+        <h4 id="thesis-word">正题</h4>
+        <p id="thesis-desc">事物的肯定方面</p>
+      </div>
+      <div class="dialectic-arrow">⟷</div>
+      <div class="dialectic-side antithesis">
+        <h4 id="antithesis-word">反题</h4>
+        <p id="antithesis-desc">事物的否定方面</p>
+      </div>
+      <div class="dialectic-arrow">→</div>
+      <div class="dialectic-side synthesis">
+        <h4 id="synthesis-word">合题</h4>
+        <p id="synthesis-desc">新的统一</p>
+      </div>
+    </div>
+
+    <div class="slider-container">
+      <div class="slider-label">
+        <span>量变积累阶段</span>
+        <span>质变飞跃阶段</span>
+      </div>
+      <input type="range" id="dialecticSlider" min="0" max="100" value="20">
+    </div>
+
+    <div class="dialectic-output" id="dialecticOutput">
+      <strong>当前阶段：量变初期</strong><br>
+      矛盾双方共处于统一体中，正题占主导地位。事物保持相对稳定，但内部否定因素正在悄然积累。表面的平静之下，暗流涌动。
+    </div>
+  </div>
+
+  <!-- Tabs: Perspectives -->
+  <div class="tabs-container reveal">
+    <div class="tab-header">
+      <button class="tab-btn active" onclick="switchTab(0)">认识论视角</button>
+      <button class="tab-btn" onclick="switchTab(1)">方法论视角</button>
+      <button class="tab-btn" onclick="switchTab(2)">实践论视角</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-0">
+      <div class="matrix-wrapper">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>矛盾论</th>
+              <th>形而上学</th>
+              <th>核心差异</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="highlight">发展观</span></td>
+              <td>发展是对立的统一</td>
+              <td>发展是量的增减</td>
+              <td>内因 vs 外因</td>
+            </tr>
+            <tr>
+              <td><span class="highlight">动因论</span></td>
+              <td>内部矛盾是根本动力</td>
+              <td>外力推动是根本原因</td>
+              <td>自组织 vs 他组织</td>
+            </tr>
+            <tr>
+              <td><span class="highlight">联系观</span></td>
+              <td>事物普遍联系、相互转化</td>
+              <td>事物孤立、静止、片面</td>
+              <td>系统 vs 局部</td>
+            </tr>
+            <tr>
+              <td><span class="highlight">方法论</span></td>
+              <td>具体问题具体分析</td>
+              <td>一刀切、教条主义</td>
+              <td>灵活 vs 机械</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-1">
+      <p style="color: var(--text-secondary); line-height: 2; margin-bottom: 1.5rem;">矛盾论的方法论精髓可以概括为"三步走"：</p>
+      <div class="solutions-grid">
+        <div class="solution-card">
+          <div class="step-num">1</div>
+          <h4>识别矛盾</h4>
+          <p>面对复杂局面，首先要梳理出存在的所有矛盾，区分主要矛盾和次要矛盾。如同医生诊断，先列症状，再找病因。</p>
+          <div class="action">实践中用"问题树"工具层层分解</div>
+        </div>
+        <div class="solution-card">
+          <div class="step-num">2</div>
+          <h4>分析矛盾</h4>
+          <p>对主要矛盾的两个方面进行深入分析：哪方面是主要的？矛盾处于什么阶段？有无对抗性？性质决定方法。</p>
+          <div class="action">实践中用"SWOT + 阶段判断"综合分析</div>
+        </div>
+        <div class="solution-card">
+          <div class="step-num">3</div>
+          <h4>转化矛盾</h4>
+          <p>创造条件促使矛盾向有利方向转化：在量变阶段积蓄力量，在质变节点果断行动，在新矛盾中持续迭代。</p>
+          <div class="action">实践中用"PDCA循环"持续优化</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-2">
+      <p style="color: var(--text-secondary); line-height: 2; margin-bottom: 1.5rem;">从实践维度看，矛盾论提供的不是抽象理论，而是可操作的思维工具：</p>
+      <div class="matrix-wrapper">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>实践场景</th>
+              <th>矛盾表现</th>
+              <th>分析方法</th>
+              <th>解决路径</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="highlight">企业战略</span></td>
+              <td>短期利润 vs 长期投入</td>
+              <td>判断主要矛盾阶段</td>
+              <td>动态资源配置</td>
+            </tr>
+            <tr>
+              <td><span class="highlight">产品设计</span></td>
+              <td>功能丰富 vs 体验简洁</td>
+              <td>识别用户核心需求</td>
+              <td>分层满足策略</td>
+            </tr>
+            <tr>
+              <td><span class="highlight">团队管理</span></td>
+              <td>效率优先 vs 创新空间</td>
+              <td>区分对抗/非对抗性</td>
+              <td>结构化自治机制</td>
+            </tr>
+            <tr>
+              <td><span class="highlight">个人成长</span></td>
+              <td>稳定舒适 vs 突破挑战</td>
+              <td>量变积累到质变飞跃</td>
+              <td>刻意练习 + 复盘</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 4: Case Analysis -->
+<section class="section" id="examples">
+  <div class="section-label reveal">
+    <span class="num">04</span>
+    <span class="line"></span>
+  </div>
+  <h2 class="section-title reveal">案例深度分析</h2>
+  <p class="section-desc reveal">通过真实案例，验证矛盾论作为分析工具的解释力与预测力。</p>
+
+  <div class="example-timeline">
+    <div class="example-item reveal">
+      <h4>案例一：技术革命中的矛盾运动</h4>
+      <div class="scene">场景：AI 时代下，"效率提升"与"就业替代"的矛盾</div>
+      <div class="analysis">
+        <strong>矛盾识别：</strong>技术进步（生产力）与现有就业结构（生产关系）之间的矛盾。AI 提升效率是主要矛盾的主要方面，因为它代表了不可逆的历史趋势。<br><br>
+        <strong>矛盾分析：</strong>当前处于量变阶段——AI 正在逐步渗透各行业，但尚未引发全面的结构性质变。同一性表现：技术创造新岗位的同时消灭旧岗位。斗争性表现：利益格局调整引发的社会张力。<br><br>
+        <strong>矛盾转化：</strong>关键在于创造条件推动矛盾向有利方向转化——通过教育转型、社会保障制度创新、新型就业形态培育，使"技术替代"转化为"人机协同"。
+      </div>
+      <div class="principle">启示：不是否定技术进步，而是主动创造转化条件。</div>
+    </div>
+
+    <div class="example-item reveal">
+      <h4>案例二：企业经营中的主次矛盾转换</h4>
+      <div class="scene">场景：一家创业公司从 0 到 1、从 1 到 100 的发展过程</div>
+      <div class="analysis">
+        <strong>阶段一（0→1）：</strong>主要矛盾是"产品与市场需求的匹配度"。此时所有资源应聚焦于验证核心假设。次要矛盾（融资、团队规模、品牌建设）应让位于此。<br><br>
+        <strong>阶段二（1→10）：</strong>产品验证后，主要矛盾转化为"规模化增长与组织能力的矛盾"。此时如果还像早期一样只关注产品，就会忽视组织建设，导致增长瓶颈。<br><br>
+        <strong>阶段三（10→100）：</strong>主要矛盾再次转换为"效率优化与创新突破"的矛盾。大企业病与创新活力的博弈成为核心命题。
+      </div>
+      <div class="principle">启示：主要矛盾是动态变化的，成功的秘诀在于正确判断"当前阶段"的主要矛盾。</div>
+    </div>
+
+    <div class="example-item reveal">
+      <h4>案例三：个人认知升级中的矛盾论应用</h4>
+      <div class="scene">场景：学习者从"不知道自己不知道"到"知道自己知道"的认知跃迁</div>
+      <div class="analysis">
+        <strong>矛盾分析：</strong>认知的"已有边界"与"未知领域"构成矛盾。学习的同一性：已知是探索未知的基础。学习的斗争性：新知识不断冲击旧认知框架。<br><br>
+        <strong>量变积累：</strong>大量阅读、实践、反思，不断扩展认知边界。每一次"恍然大悟"都是一次小质变。<br><br>
+        <strong>质变飞跃：</strong>当积累到一定程度，旧的认知范式被打破，新的认知框架建立——这就是库恩所说的"范式革命"。矛盾论提供了理解这一过程的哲学基础。
+      </div>
+      <div class="principle">启示：认知升级本质上就是不断解决"已知与未知"矛盾的过程。</div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 5: Solutions & Guidance -->
+<section class="section" id="solutions">
+  <div class="section-label reveal">
+    <span class="num">05</span>
+    <span class="line"></span>
+  </div>
+  <h2 class="section-title reveal">指导性意见与行动框架</h2>
+  <p class="section-desc reveal">将矛盾论从哲学理论转化为可操作的行动指南，建立系统化的思维工具箱。</p>
+
+  <div class="solutions-grid">
+    <div class="solution-card reveal">
+      <div class="step-num">一</div>
+      <h4>建立"矛盾清单"思维</h4>
+      <p>面对任何复杂问题，先列出所有存在的矛盾，用"影响力 × 紧迫度"矩阵排序，锁定主要矛盾。</p>
+      <div class="action">每周审视一次你的"矛盾清单"，确保精力聚焦在主要矛盾上</div>
+    </div>
+
+    <div class="solution-card reveal">
+      <div class="step-num">二</div>
+      <h4>练习"阶段判断"能力</h4>
+      <p>准确判断矛盾所处阶段（萌芽期、激化期、转化期、解决期），不同阶段采取截然不同的策略。</p>
+      <div class="action">萌芽期重观察，激化期重平衡，转化期重时机，解决期重复盘</div>
+    </div>
+
+    <div class="solution-card reveal">
+      <div class="step-num">三</div>
+      <h4>运用"两点论与重点论"统一</h4>
+      <p>既要全面分析矛盾的两个方面（两点论），又要抓住矛盾的主要方面（重点论），防止片面性和均衡主义。</p>
+      <div class="action">写分析报告时，先列全貌，再标重点，最后给结论</div>
+    </div>
+
+    <div class="solution-card reveal">
+      <div class="step-num">四</div>
+      <h4>培养"条件创造"意识</h4>
+      <p>矛盾转化不是自动发生的，需要主动创造条件。问自己："要让矛盾向有利方向转化，我需要创造什么条件？"</p>
+      <div class="action">将"条件创造"作为决策清单的固定条目</div>
+    </div>
+
+    <div class="solution-card reveal">
+      <div class="step-num">五</div>
+      <h4>区分"对抗性"与"非对抗性"</h4>
+      <p>不同性质的矛盾需要不同的解决方法。错误地将非对抗性矛盾升级为对抗性矛盾，会造成不必要的损失。</p>
+      <div class="action">冲突发生时，先判断矛盾性质，再选择策略</div>
+    </div>
+
+    <div class="solution-card reveal">
+      <div class="step-num">六</div>
+      <h4>拥抱"新矛盾"的必然性</h4>
+      <p>旧矛盾的解决必然产生新矛盾，这不是失败，而是进步的标志。建立持续迭代、永续优化的心态。</p>
+      <div class="action">将"发现新矛盾"视为进步信号，而非问题信号</div>
+    </div>
+  </div>
+
+  <div class="conclusion-box reveal">
+    <h3>结论：矛盾论作为思维操作系统</h3>
+    <ul class="conclusion-list">
+      <li><strong>本体论层面：</strong>矛盾是事物发展的根本动力——停止面对矛盾，就是停止成长</li>
+      <li><strong>认识论层面：</strong>具体问题具体分析是马克思主义活的灵魂——拒绝教条，拥抱复杂性</li>
+      <li><strong>方法论层面：</strong>抓主要矛盾、促矛盾转化——在混沌中找到秩序，在不确定中把握方向</li>
+      <li><strong>实践论层面：</strong>在实践中检验和发展认识——理论的价值在于指导行动，行动的结果修正理论</li>
+      <li><strong>终极启示：</strong>矛盾永远不会消失，但我们可以学会与矛盾共舞，在解决矛盾的过程中实现螺旋式上升</li>
+    </ul>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <span class="big-char">道</span>
+  <p>矛盾论 · 第一性原理深度研究报告</p>
+  <p style="margin-top: 0.5rem; font-size: 0.72rem;">"对立统一规律是宇宙的根本规律" —— 毛泽东</p>
+</footer>
+
+<script>
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Nav hide/show
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('nav');
+  const curr = window.scrollY;
+  if (curr > lastScroll && curr > 100) {
+    nav.classList.add('hidden');
+  } else {
+    nav.classList.remove('hidden');
+  }
+  lastScroll = curr;
+});
+
+// Decomposition accordion
+function toggleDecomp(el) {
+  el.classList.toggle('active');
+}
+
+// Dialectic slider
+const slider = document.getElementById('dialecticSlider');
+const output = document.getElementById('dialectricOutput');
+const thesisW = document.getElementById('thesis-word');
+const antithesisW = document.getElementById('antithesis-word');
+const synthesisW = document.getElementById('synthesis-word');
+const thesisDesc = document.getElementById('thesis-desc');
+const antithesisDesc = document.getElementById('antithesis-desc');
+const synthesisDesc = document.getElementById('synthesis-desc');
+
+const stages = [
+  {
+    range: [0, 20],
+    title: '量变初期',
+    text: '矛盾双方共处于统一体中，正题占主导地位。事物保持相对稳定，但内部否定因素正在悄然积累。表面的平静之下，暗流涌动。',
+    thesis: '肯定', thesisDsc: '主导地位 · 维持现状',
+    anti: '否定', antiDsc: '潜伏积累 · 暗中生长',
+    synth: '统一体', synthDsc: '相对稳定 · 表面和谐'
+  },
+  {
+    range: [21, 40],
+    title: '量变中期',
+    text: '否定因素逐渐壮大，开始与肯定因素产生明显的摩擦和张力。矛盾的斗争性增强，但尚未打破统一。这是变革前夜的蓄力阶段。',
+    thesis: '肯定', thesisDsc: '地位动摇 · 开始松动',
+    anti: '否定', antiDsc: '力量增长 · 日益活跃',
+    synth: '统一体', synthDsc: '出现裂痕 · 张力增大'
+  },
+  {
+    range: [41, 60],
+    title: '量变到质变的临界点',
+    text: '矛盾双方力量达到均势，斗争最为激烈。任何微小的变量都可能引发质变。这是事物发展的关键转折点——"山雨欲来风满楼"。',
+    thesis: '肯定', thesisDsc: '勉力维持 · 阵地收缩',
+    anti: '否定', antiDsc: '势均力敌 · 冲锋号响',
+    synth: '统一体', synthDsc: '摇摇欲坠 · 临界状态'
+  },
+  {
+    range: [61, 80],
+    title: '质变飞跃',
+    text: '否定因素战胜肯定因素，旧的统一体被打破，事物发生质变。这是最具戏剧性的阶段——"忽如一夜春风来，千树万树梨花开"。',
+    thesis: '旧肯定', thesisDsc: '退出主导 · 被扬弃',
+    anti: '新肯定', antiDsc: '夺取主导 · 翻转为正',
+    synth: '旧统一解体', synthDsc: '正在重组 · 新秩序孕育'
+  },
+  {
+    range: [81, 100],
+    title: '新的统一',
+    text: '事物在更高层次上达成新的统一。旧矛盾解决，新矛盾产生。这不是终点，而是新的起点——螺旋式上升，永无止境。',
+    thesis: '新正题', thesisDsc: '更高层次 · 螺旋上升',
+    anti: '新反题', thesisDsc: '新一轮否定 · 开始孕育',
+    synth: '新统一', synthDsc: '更高层次 · 更大格局'
+  }
+];
+
+slider.addEventListener('input', () => {
+  const val = parseInt(slider.value);
+  const stage = stages.find(s => val >= s.range[0] && val <= s.range[1]);
+  if (stage) {
+    output.innerHTML = `<strong>当前阶段：${stage.title}</strong><br>${stage.text}`;
+    thesisW.textContent = stage.thesis;
+    antithesisW.textContent = stage.anti;
+    synthesisW.textContent = stage.synth;
+    thesisDesc.textContent = stage.thesisDsc;
+    antithesisDesc.textContent = stage.antiDsc;
+    synthesisDesc.textContent = stage.synthDsc;
+  }
+});
+
+// Tabs
+function switchTab(idx) {
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.tab-panel').forEach((panel, i) => {
+    panel.classList.toggle('active', i === idx);
+  });
+}
+</script>
+
+</body>
+</html>

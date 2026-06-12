@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>监督微调（SFT）深度研究报告 — 第一性原理视角</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#06080c;
+    --bg-elevated:#0c1018;
+    --surface:#111827;
+    --surface-hover:#1a2236;
+    --border:#1e293b;
+    --accent:#00e5ff;
+    --accent-dim:rgba(0,229,255,.12);
+    --accent-glow:rgba(0,229,255,.25);
+    --amber:#ffb347;
+    --amber-dim:rgba(255,179,71,.12);
+    --red:#ff6b6b;
+    --green:#4ecdc4;
+    --green-dim:rgba(78,205,196,.12);
+    --text-primary:#e8ecf4;
+    --text-secondary:#94a3b8;
+    --text-muted:#4b5563;
+    --font-display:'Syne',sans-serif;
+    --font-body:'DM Mono',monospace;
+    --font-serif:'Noto Serif SC',serif;
+  }
+  html{scroll-behavior:smooth;font-size:16px}
+  body{
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    font-weight:400;
+    line-height:1.75;
+    overflow-x:hidden;
+  }
+
+  /* ===== Grid Background ===== */
+  body::before{
+    content:'';
+    position:fixed;inset:0;
+    background-image:
+      linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);
+    background-size:60px 60px;
+    pointer-events:none;
+    z-index:0;
+  }
+  body::after{
+    content:'';
+    position:fixed;inset:0;
+    background:radial-gradient(ellipse at 30% 20%,rgba(0,229,255,.06) 0%,transparent 50%),
+               radial-gradient(ellipse at 80% 80%,rgba(255,179,71,.04) 0%,transparent 50%);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* ===== Scrollbar ===== */
+  ::-webkit-scrollbar{width:6px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
+
+  /* ===== Layout ===== */
+  .container{max-width:1100px;margin:0 auto;padding:0 2rem;position:relative;z-index:1}
+
+  /* ===== Navigation ===== */
+  .nav{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    background:rgba(6,8,12,.85);
+    backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border);
+    transition:transform .3s ease;
+  }
+  .nav-inner{
+    max-width:1100px;margin:0 auto;padding:.75rem 2rem;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .nav-brand{
+    font-family:var(--font-display);font-weight:800;font-size:.9rem;
+    color:var(--accent);letter-spacing:.08em;text-transform:uppercase;
+  }
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{
+    font-size:.7rem;color:var(--text-muted);text-decoration:none;
+    letter-spacing:.05em;text-transform:uppercase;transition:color .2s;
+  }
+  .nav-links a:hover{color:var(--accent)}
+  .nav-toggle{display:none;background:none;border:none;color:var(--text-primary);font-size:1.2rem;cursor:pointer}
+
+  /* ===== Hero ===== */
+  .hero{
+    min-height:100vh;display:flex;flex-direction:column;
+    justify-content:center;position:relative;
+    padding-top:5rem;
+  }
+  .hero-tag{
+    font-family:var(--font-body);font-size:.7rem;letter-spacing:.15em;
+    color:var(--accent);text-transform:uppercase;margin-bottom:1.5rem;
+    opacity:0;animation:fadeUp .6s ease .2s forwards;
+  }
+  .hero-title{
+    font-family:var(--font-display);font-weight:800;
+    font-size:clamp(2.5rem,6vw,4.5rem);line-height:1.05;
+    color:var(--text-primary);margin-bottom:1.5rem;
+    opacity:0;animation:fadeUp .6s ease .35s forwards;
+  }
+  .hero-title span{color:var(--accent);position:relative}
+  .hero-title span::after{
+    content:'';position:absolute;bottom:.05em;left:0;right:0;
+    height:.06em;background:var(--accent);opacity:.3;
+  }
+  .hero-subtitle{
+    font-family:var(--font-serif);font-size:1.1rem;
+    color:var(--text-secondary);max-width:600px;line-height:1.9;
+    opacity:0;animation:fadeUp .6s ease .5s forwards;
+  }
+  .hero-meta{
+    display:flex;gap:2rem;margin-top:3rem;
+    opacity:0;animation:fadeUp .6s ease .65s forwards;
+  }
+  .hero-meta-item{
+    display:flex;flex-direction:column;gap:.2rem;
+  }
+  .hero-meta-label{font-size:.6rem;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase}
+  .hero-meta-value{font-size:.85rem;color:var(--amber);font-weight:500}
+  .scroll-hint{
+    position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:.5rem;
+    opacity:0;animation:fadeUp .6s ease .8s forwards;
+  }
+  .scroll-hint span{font-size:.6rem;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase}
+  .scroll-line{width:1px;height:40px;background:linear-gradient(to bottom,var(--accent),transparent);animation:scrollPulse 2s ease infinite}
+  @keyframes scrollPulse{0%,100%{opacity:.3}50%{opacity:1}}
+
+  /* ===== Sections ===== */
+  .section{padding:6rem 0;position:relative}
+  .section-header{margin-bottom:4rem}
+  .section-number{
+    font-family:var(--font-display);font-size:.7rem;
+    color:var(--accent);letter-spacing:.15em;margin-bottom:.75rem;
+  }
+  .section-title{
+    font-family:var(--font-display);font-weight:700;
+    font-size:clamp(1.8rem,3.5vw,2.8rem);line-height:1.15;
+    color:var(--text-primary);margin-bottom:1rem;
+  }
+  .section-desc{
+    font-family:var(--font-serif);font-size:1rem;
+    color:var(--text-secondary);max-width:700px;line-height:1.9;
+  }
+  .divider{
+    width:100%;height:1px;
+    background:linear-gradient(90deg,transparent,var(--border),transparent);
+    margin:0 auto;
+  }
+
+  /* ===== First Principles Blocks ===== */
+  .principle-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:1.5rem;margin-top:2rem;
+  }
+  .principle-card{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:8px;padding:2rem;
+    position:relative;overflow:hidden;
+    transition:border-color .3s,transform .3s;
+    cursor:default;
+  }
+  .principle-card:hover{
+    border-color:var(--accent);
+    transform:translateY(-4px);
+  }
+  .principle-card::before{
+    content:'';position:absolute;top:0;left:0;right:0;
+    height:2px;background:linear-gradient(90deg,var(--accent),transparent);
+    opacity:0;transition:opacity .3s;
+  }
+  .principle-card:hover::before{opacity:1}
+  .principle-icon{
+    font-size:1.5rem;margin-bottom:1rem;display:block;
+  }
+  .principle-label{
+    font-family:var(--font-display);font-size:.65rem;
+    color:var(--accent);letter-spacing:.12em;text-transform:uppercase;
+    margin-bottom:.75rem;
+  }
+  .principle-name{
+    font-family:var(--font-display);font-weight:700;
+    font-size:1.2rem;color:var(--text-primary);margin-bottom:.75rem;
+  }
+  .principle-text{
+    font-size:.8rem;color:var(--text-secondary);line-height:1.8;
+  }
+
+  /* ===== Flow Diagram ===== */
+  .flow-container{
+    margin:3rem 0;overflow-x:auto;padding-bottom:1rem;
+  }
+  .flow{
+    display:flex;align-items:center;gap:0;
+    min-width:fit-content;justify-content:center;
+    flex-wrap:wrap;
+  }
+  .flow-node{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;padding:1.2rem 1.5rem;
+    min-width:140px;text-align:center;position:relative;
+    transition:border-color .3s,box-shadow .3s;
+    cursor:pointer;
+  }
+  .flow-node:hover{
+    border-color:var(--accent);
+    box-shadow:0 0 20px var(--accent-dim);
+  }
+  .flow-node.active{
+    border-color:var(--accent);
+    background:rgba(0,229,255,.05);
+    box-shadow:0 0 30px var(--accent-dim);
+  }
+  .flow-node-label{
+    font-family:var(--font-display);font-size:.7rem;
+    color:var(--accent);letter-spacing:.08em;text-transform:uppercase;
+    margin-bottom:.4rem;
+  }
+  .flow-node-title{
+    font-family:var(--font-display);font-weight:600;
+    font-size:.95rem;color:var(--text-primary);
+  }
+  .flow-arrow{
+    color:var(--text-muted);font-size:1.2rem;padding:0 .5rem;
+    flex-shrink:0;
+  }
+
+  /* ===== Detail Panel ===== */
+  .detail-panel{
+    margin-top:1.5rem;
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:8px;
+    overflow:hidden;
+    max-height:0;opacity:0;
+    transition:max-height .5s ease,opacity .3s ease,padding .3s ease;
+  }
+  .detail-panel.open{
+    max-height:800px;opacity:1;
+  }
+  .detail-content{
+    padding:2rem;
+  }
+  .detail-content h4{
+    font-family:var(--font-display);font-weight:700;
+    font-size:1.1rem;color:var(--text-primary);margin-bottom:1rem;
+  }
+  .detail-content p{
+    font-size:.8rem;color:var(--text-secondary);line-height:1.9;margin-bottom:1rem;
+  }
+  .detail-content ul{
+    list-style:none;padding:0;margin:1rem 0;
+  }
+  .detail-content ul li{
+    font-size:.8rem;color:var(--text-secondary);
+    padding:.5rem 0 .5rem 1.5rem;position:relative;
+    border-bottom:1px solid rgba(30,41,59,.5);
+  }
+  .detail-content ul li::before{
+    content:'▸';position:absolute;left:0;color:var(--accent);
+  }
+
+  /* ===== Code Block ===== */
+  .code-block{
+    background:#0a0e14;
+    border:1px solid var(--border);
+    border-radius:8px;
+    overflow:hidden;
+    margin:1.5rem 0;
+  }
+  .code-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:.6rem 1rem;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+  }
+  .code-header span{
+    font-size:.65rem;color:var(--text-muted);letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  .code-dots{display:flex;gap:.4rem}
+  .code-dots span{width:8px;height:8px;border-radius:50%;background:var(--text-muted);opacity:.3}
+  pre{
+    padding:1.5rem;overflow-x:auto;font-size:.75rem;
+    line-height:1.8;color:var(--text-secondary);
+  }
+  pre .kw{color:var(--accent)}
+  pre .str{color:var(--green)}
+  pre .num{color:var(--amber)}
+  pre .cmt{color:var(--text-muted);font-style:italic}
+
+  /* ===== Comparison Table ===== */
+  .table-wrap{overflow-x:auto;margin:2rem 0;border-radius:8px;border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;font-size:.78rem}
+  thead{background:var(--surface)}
+  th{
+    padding:1rem 1.2rem;text-align:left;font-weight:600;
+    color:var(--accent);font-family:var(--font-display);
+    font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;
+    border-bottom:1px solid var(--border);
+  }
+  td{
+    padding:.9rem 1.2rem;color:var(--text-secondary);
+    border-bottom:1px solid rgba(30,41,59,.4);
+  }
+  tr:hover td{background:var(--surface-hover)}
+
+  /* ===== Interactive Parameter Explorer ===== */
+  .explorer{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:2.5rem;margin:2rem 0;
+  }
+  .explorer-title{
+    font-family:var(--font-display);font-weight:700;
+    font-size:1.2rem;color:var(--text-primary);margin-bottom:.5rem;
+  }
+  .explorer-desc{
+    font-size:.78rem;color:var(--text-muted);margin-bottom:2rem;
+  }
+  .param-group{margin-bottom:2rem}
+  .param-row{
+    display:grid;grid-template-columns:160px 1fr 80px;
+    align-items:center;gap:1.5rem;margin-bottom:1rem;
+  }
+  .param-label{
+    font-size:.72rem;color:var(--text-secondary);font-weight:500;
+    letter-spacing:.03em;
+  }
+  .param-slider{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:4px;background:var(--border);
+    border-radius:2px;outline:none;cursor:pointer;
+  }
+  .param-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--accent);cursor:pointer;
+    box-shadow:0 0 10px var(--accent-glow);
+    transition:transform .2s;
+  }
+  .param-slider::-webkit-slider-thumb:hover{transform:scale(1.3)}
+  .param-value{
+    font-size:.78rem;color:var(--amber);font-weight:500;
+    text-align:right;font-family:var(--font-body);
+  }
+  .result-box{
+    margin-top:1.5rem;padding:1.5rem;
+    background:rgba(0,229,255,.03);
+    border:1px dashed rgba(0,229,255,.2);
+    border-radius:8px;
+  }
+  .result-box h5{
+    font-family:var(--font-display);font-size:.8rem;
+    color:var(--accent);letter-spacing:.06em;
+    text-transform:uppercase;margin-bottom:.75rem;
+  }
+  .result-box p{font-size:.78rem;color:var(--text-secondary);line-height:1.8}
+  .result-metric{
+    display:flex;gap:2rem;margin-top:1rem;flex-wrap:wrap;
+  }
+  .metric-item{
+    display:flex;flex-direction:column;gap:.2rem;
+  }
+  .metric-label{font-size:.6rem;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase}
+  .metric-val{font-size:1rem;font-weight:600;color:var(--green);font-family:var(--font-display)}
+
+  /* ===== Tab System ===== */
+  .tabs{margin:2rem 0}
+  .tab-btns{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:2rem;overflow-x:auto}
+  .tab-btn{
+    background:none;border:none;color:var(--text-muted);
+    font-family:var(--font-display);font-size:.75rem;
+    letter-spacing:.06em;text-transform:uppercase;
+    padding:.8rem 1.5rem;cursor:pointer;
+    border-bottom:2px solid transparent;
+    transition:color .2s,border-color .2s;
+    white-space:nowrap;
+  }
+  .tab-btn:hover{color:var(--text-secondary)}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-panel{display:none;animation:fadeUp .4s ease}
+  .tab-panel.active{display:block}
+
+  /* ===== Case Study Card ===== */
+  .case-card{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:2rem;margin-bottom:1.5rem;
+    transition:border-color .3s;
+  }
+  .case-card:hover{border-color:rgba(0,229,255,.3)}
+  .case-badge{
+    display:inline-block;font-size:.6rem;letter-spacing:.1em;
+    text-transform:uppercase;padding:.3rem .8rem;
+    border-radius:4px;margin-bottom:1rem;
+  }
+  .case-badge.blue{background:var(--accent-dim);color:var(--accent)}
+  .case-badge.amber{background:var(--amber-dim);color:var(--amber)}
+  .case-badge.green{background:var(--green-dim);color:var(--green)}
+  .case-title{
+    font-family:var(--font-display);font-weight:700;
+    font-size:1.15rem;color:var(--text-primary);margin-bottom:.75rem;
+  }
+  .case-text{font-size:.8rem;color:var(--text-secondary);line-height:1.8;margin-bottom:1rem}
+
+  /* ===== Pitfall Grid ===== */
+  .pitfall-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:1.5rem;margin:2rem 0;
+  }
+  .pitfall-card{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-left:3px solid var(--red);
+    border-radius:0 8px 8px 0;
+    padding:1.5rem;
+  }
+  .pitfall-label{
+    font-size:.6rem;color:var(--red);letter-spacing:.1em;
+    text-transform:uppercase;margin-bottom:.5rem;
+  }
+  .pitfall-title{
+    font-family:var(--font-display);font-weight:700;
+    font-size:1rem;color:var(--text-primary);margin-bottom:.5rem;
+  }
+  .pitfall-text{font-size:.78rem;color:var(--text-secondary);line-height:1.8}
+  .solution{
+    margin-top:1rem;padding-top:1rem;
+    border-top:1px solid rgba(78,205,196,.15);
+  }
+  .solution-label{
+    font-size:.6rem;color:var(--green);letter-spacing:.1em;
+    text-transform:uppercase;margin-bottom:.4rem;
+  }
+  .solution-text{font-size:.78rem;color:var(--green);line-height:1.8;opacity:.85}
+
+  /* ===== Checklist ===== */
+  .checklist{list-style:none;margin:2rem 0}
+  .checklist li{
+    display:flex;gap:1rem;align-items:flex-start;
+    padding:1rem 0;border-bottom:1px solid rgba(30,41,59,.4);
+  }
+  .check-icon{
+    flex-shrink:0;width:20px;height:20px;
+    border:1px solid var(--accent);border-radius:4px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:.6rem;color:var(--accent);margin-top:.1rem;
+    transition:background .2s;
+  }
+  .checklist li:hover .check-icon{background:var(--accent-dim)}
+  .check-text{font-size:.82rem;color:var(--text-secondary);line-height:1.7}
+  .check-text strong{color:var(--text-primary);font-weight:600}
+
+  /* ===== Accordion ===== */
+  .accordion{margin:2rem 0}
+  .acc-item{border-bottom:1px solid var(--border)}
+  .acc-trigger{
+    width:100%;background:none;border:none;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:1.2rem 0;cursor:pointer;
+    font-family:var(--font-display);font-weight:600;
+    font-size:1rem;color:var(--text-primary);
+    text-align:left;transition:color .2s;
+  }
+  .acc-trigger:hover{color:var(--accent)}
+  .acc-icon{
+    font-size:1.2rem;color:var(--text-muted);
+    transition:transform .3s;
+  }
+  .acc-item.open .acc-icon{transform:rotate(45deg)}
+  .acc-body{
+    max-height:0;overflow:hidden;transition:max-height .4s ease;
+  }
+  .acc-body-inner{
+    padding-bottom:1.5rem;font-size:.8rem;
+    color:var(--text-secondary);line-height:1.9;
+  }
+
+  /* ===== Footer ===== */
+  .footer{
+    padding:4rem 0 2rem;
+    border-top:1px solid var(--border);
+    text-align:center;
+  }
+  .footer p{font-size:.7rem;color:var(--text-muted);line-height:1.8}
+  .footer-brand{
+    font-family:var(--font-display);font-weight:800;
+    font-size:1rem;color:var(--accent);margin-bottom:1rem;
+    letter-spacing:.05em;
+  }
+
+  /* ===== Animations ===== */
+  @keyframes fadeUp{
+    from{opacity:0;transform:translateY(20px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  .reveal{opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  /* ===== Progress Bar ===== */
+  .progress-bar{
+    position:fixed;top:0;left:0;height:2px;
+    background:linear-gradient(90deg,var(--accent),var(--amber));
+    z-index:200;transition:width .1s linear;
+  }
+
+  /* ===== Responsive ===== */
+  @media(max-width:768px){
+    .nav-links{display:none}
+    .nav-toggle{display:block}
+    .param-row{grid-template-columns:1fr;gap:.5rem}
+    .hero-meta{flex-direction:column;gap:1rem}
+    .flow{flex-direction:column;align-items:stretch}
+    .flow-arrow{transform:rotate(90deg);align-self:center}
+    .container{padding:0 1.2rem}
+    .section{padding:4rem 0}
+    .principle-grid,.pitfall-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Navigation -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">SFT Research</div>
+    <ul class="nav-links">
+      <li><a href="#principles">第一性原理</a></li>
+      <li><a href="#architecture">架构解构</a></li>
+      <li><a href="#explorer">参数探索</a></li>
+      <li><a href="#cases">案例研究</a></li>
+      <li><a href="#pitfalls">陷阱与方案</a></li>
+      <li><a href="#guidance">指导建议</a></li>
+    </ul>
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').style.display=document.querySelector('.nav-links').style.display==='flex'?'none':'flex'">☰</button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<header class="hero" id="top">
+  <div class="container">
+    <div class="hero-tag">ARCHITECT'S PERSPECTIVE — FIRST PRINCIPLES ANALYSIS</div>
+    <h1 class="hero-title">监督微调<br><span>SFT</span> 深度研究报告</h1>
+    <p class="hero-subtitle">
+      从第一性原理出发，将监督微调拆解至最基础的组成部分，
+      以建筑师的系统性思维重新审视预训练语言模型的适配过程——
+      每一层参数、每一行数据、每一次梯度更新都不是孤立事件，
+      而是一座精心设计的结构体。
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">分析框架</span>
+        <span class="hero-meta-value">第一性原理 × 系统工程</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">研究维度</span>
+        <span class="hero-meta-value">数据 · 模型 · 训练 · 评估</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">目标读者</span>
+        <span class="hero-meta-value">AI 工程师 &amp; 研究者</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>向下探索</span>
+    <div class="scroll-line"></div>
+  </div>
+</header>
+
+<div class="divider"></div>
+
+<!-- Section 1: First Principles -->
+<section class="section" id="principles">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">01 — FIRST PRINCIPLES</div>
+      <h2 class="section-title">第一性原理拆解</h2>
+      <p class="section-desc">
+        在建造任何建筑之前，建筑师必须理解材料的物理属性、力的传递路径、以及人与空间的关系。
+        同理，在实施 SFT 之前，我们必须回到最基础的问题：什么是微调？为什么需要它？它的本质机制是什么？
+      </p>
+    </div>
+
+    <div class="principle-grid">
+      <div class="principle-card reveal">
+        <span class="principle-icon">⬡</span>
+        <div class="principle-label">本源问题一</div>
+        <div class="principle-name">为什么预训练不够？</div>
+        <p class="principle-text">
+          预训练模型通过自回归/掩码语言建模习得了语言的统计规律和世界知识，但它学到的是一个"万能补全器"——
+          它不知道用户在提问时期待什么样的回答格式、风格和行为模式。
+          预训练目标（next token prediction）和下游任务目标（instruction following）之间存在根本性的<strong style="color:var(--amber)">目标函数鸿沟</strong>。
+        </p>
+      </div>
+
+      <div class="principle-card reveal">
+        <span class="principle-icon">◈</span>
+        <div class="principle-label">本源问题二</div>
+        <div class="principle-name">微调的本质是什么？</div>
+        <p class="principle-text">
+          从信息论视角，微调是在模型已有的先验分布 P(x) 上施加条件约束，将其转换为条件分布 P(y|x, task)。
+          这不是"教会模型新知识"，而是<strong style="color:var(--amber)">激活和组织模型已有的能力</strong>，
+          让它在特定任务的流形上表现出一致的行为模式。
+          参数更新的幅度虽小，但改变了模型在概率空间中的决策边界。
+        </p>
+      </div>
+
+      <div class="principle-card reveal">
+        <span class="principle-icon">△</span>
+        <div class="principle-label">本源问题三</div>
+        <div class="principle-name">监督信号为什么关键？</div>
+        <p class="principle-text">
+          监督微调的核心假设是：<strong style="color:var(--amber)">高质量的输入-输出对可以定义"正确行为"</strong>。
+          模型通过最小化与目标输出之间的差异来调整内部表征。
+          但监督信号的质量上限决定了模型性能的上限——垃圾进，垃圾出，这是不可逾越的信息论边界。
+        </p>
+      </div>
+
+      <div class="principle-card reveal">
+        <span class="principle-icon">◇</span>
+        <div class="principle-label">本源问题四</div>
+        <div class="principle-name">参数空间如何选择？</div>
+        <p class="principle-text">
+          全参数微调 vs 参数高效微调（PEFT）的本质权衡：
+          在高维参数空间中，任务相关的有效子空间远小于全参数空间。
+          LoRA 假设权重更新具有低秩结构，Adapter 在层间插入瓶颈模块，
+          Prefix-Tuning 在注意力空间中添加可控维度。
+          选择哪种方式，取决于<strong style="color:var(--amber)">任务复杂度与计算预算的帕累托最优</strong>。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Section 2: Architecture Deconstruction -->
+<section class="section" id="architecture">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">02 — ARCHITECTURE DECONSTRUCTION</div>
+      <h2 class="section-title">SFT 流水线架构解构</h2>
+      <p class="section-desc">
+        如同建筑师绘制蓝图，我们将 SFT 流程拆解为可操作的模块。点击每个节点查看详细分析。
+      </p>
+    </div>
+
+    <div class="flow-container reveal">
+      <div class="flow">
+        <div class="flow-node" data-detail="data" onclick="toggleDetail(this)">
+          <div class="flow-node-label">Step 01</div>
+          <div class="flow-node-title">数据准备</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" data-detail="preprocess" onclick="toggleDetail(this)">
+          <div class="flow-node-label">Step 02</div>
+          <div class="flow-node-title">数据预处理</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" data-detail="model" onclick="toggleDetail(this)">
+          <div class="flow-node-label">Step 03</div>
+          <div class="flow-node-title">模型选择</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" data-detail="train" onclick="toggleDetail(this)">
+          <div class="flow-node-label">Step 04</div>
+          <div class="flow-node-title">训练配置</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" data-detail="eval" onclick="toggleDetail(this)">
+          <div class="flow-node-label">Step 05</div>
+          <div class="flow-node-title">评估验证</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" data-detail="deploy" onclick="toggleDetail(this)">
+          <div class="flow-node-label">Step 06</div>
+          <div class="flow-node-title">部署迭代</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail Panels -->
+    <div class="detail-panel" id="detail-data">
+      <div class="detail-content">
+        <h4>Step 01 — 数据准备：地基决定高度</h4>
+        <p>数据是 SFT 的地基。数据质量的上限决定了模型性能的不可突破上限。建筑师知道，再精美的设计也无法弥补劣质地基。</p>
+        <ul>
+          <li><strong style="color:var(--text-primary)">数据来源规划：</strong>确定数据采集渠道——人工标注、现有数据集、模型生成（Self-Instruct）、用户日志筛选</li>
+          <li><strong style="color:var(--text-primary)">质量控制体系：</strong>建立多轮审查流程，包含自动过滤（长度、重复度、毒性检测）和人工抽检</li>
+          <li><strong style="color:var(--text-primary)">多样性保障：</strong>任务类型覆盖、难度梯度分布、语言/领域平衡——避免模型过拟合到特定模式</li>
+          <li><strong style="color:var(--text-primary)">标注规范设计：</strong>编写详细的标注指南，包含正例/反例，确保标注者间一致性（Cohen's Kappa &gt; 0.8）</li>
+          <li><strong style="color:var(--text-primary)">规模评估：</strong>一般经验，SFT 数据在 1K-100K 条高质量样本即可显著改变模型行为模式</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="detail-panel" id="detail-preprocess">
+      <div class="detail-content">
+        <h4>Step 02 — 数据预处理：将原材料加工为结构体</h4>
+        <p>原始数据必须转化为模型可以理解的结构化格式。这一步的质量直接影响训练效率和最终效果。</p>
+        <ul>
+          <li><strong style="color:var(--text-primary)">模板化：</strong>将 instruction-input-output 映射为统一的对话模板（ChatML, Alpaca, ShareGPT 格式）</li>
+          <li><strong style="color:var(--text-primary)">Tokenization：</strong>选择合适的 tokenizer，确认特殊 token 的映射，处理多语言场景</li>
+          <li><strong style="color:var(--text-primary)">长度管理：</strong>设定 max_length（常见 2048/4096），对过长样本进行截断或分割</li>
+          <li><strong style="color:var(--text-primary)">Loss Masking：</strong>仅对 assistant 回复部分计算 loss，避免模型学习复读用户指令</li>
+          <li><strong style="color:var(--text-primary)">数据去重：</strong>基于 MinHash/SimHash 去除近似重复样本，防止记忆化</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="detail-panel" id="detail-model">
+      <div class="detail-content">
+        <h4>Step 03 — 模型选择：选择合适的结构材料</h4>
+        <p>基础模型的选择决定了微调的起点和天花板。不同架构有不同的微调特性。</p>
+        <ul>
+          <li><strong style="color:var(--text-primary)">模型规模：</strong>7B 适合快速迭代和资源受限场景；13B-70B 在复杂任务上表现更佳</li>
+          <li><strong style="color:var(--text-primary)">架构选择：</strong>Decoder-only（GPT/Llama系列）是当前主流，擅长生成；Encoder-Decoder（T5）在某些特定任务上仍有优势</li>
+          <li><strong style="color:var(--text-primary)">基础能力评估：</strong>在候选模型上运行基准测试，评估预训练阶段的知识覆盖度</li>
+          <li><strong style="color:var(--text-primary)">微调方法选择：</strong>全参数微调 vs LoRA vs QLoRA——依据资源和任务复杂度做出帕累托最优决策</li>
+          <li><strong style="color:var(--text-primary)">License 检查：</strong>确认模型的商用许可（Llama 2 社区许可、Mistral Apache 2.0 等）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="detail-panel" id="detail-train">
+      <div class="detail-content">
+        <h4>Step 04 — 训练配置：精密调控施工参数</h4>
+        <p>训练超参数的调整如同调整建筑施工中的每一个螺栓——偏差看似微小，但累积效应可能致命。</p>
+        <ul>
+          <li><strong style="color:var(--text-primary)">学习率：</strong>典型范围 1e-5 ~ 5e-5，配合 cosine decay 或 linear warmup（通常 3-10% 步数）</li>
+          <li><strong style="color:var(--text-primary)">Batch Size：</strong>通过梯度累积实现有效大批量（128-256），注意 batch size 与学习率的线性缩放关系</li>
+          <li><strong style="color:var(--text-primary)">训练轮次：</strong>通常 1-3 epochs，过多会导致过拟合和灾难性遗忘</li>
+          <li><strong style="color:var(--text-primary)">正则化：</strong>Weight decay (0.01-0.1)、Dropout（谨慎使用）、梯度裁剪 (max_grad_norm=1.0)</li>
+          <li><strong style="color:var(--text-primary)">混合精度：</strong>BF16/FP16 训练节省显存，注意 loss scaling 策略</li>
+          <li><strong style="color:var(--text-primary)">DeepSpeed/FSDP：</strong>多卡并行策略选择——ZeRO Stage 2/3 和全切片数据并行</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="detail-panel" id="detail-eval">
+      <div class="detail-content">
+        <h4>Step 05 — 评估验证：质量检测与验收</h4>
+        <p>建筑需要安全检测，模型需要系统性评估。单一指标无法反映模型的真实能力。</p>
+        <ul>
+          <li><strong style="color:var(--text-primary)">自动评估：</strong>在标准基准上测试（MMLU、HumanEval、GSM8K 等），建立量化基线</li>
+          <li><strong style="color:var(--text-primary)">人工评估：</strong>通过 A/B 测试、Likert 评分评估回答质量——流畅性、准确性、有用性、安全性</li>
+          <li><strong style="color:var(--text-primary)">LLM-as-Judge：</strong>使用 GPT-4 等强模型作为评审，批量评估回答质量（成本效益高但需校准）</li>
+          <li><strong style="color:var(--text-primary)">安全性测试：</strong>红队测试（Red Teaming）——系统性地尝试攻击模型，评估有害输出风险</li>
+          <li><strong style="color:var(--text-primary)">回归测试：</strong>确保微调没有损害模型在通用任务上的表现（能力保持度检查）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="detail-panel" id="detail-deploy">
+      <div class="detail-content">
+        <h4>Step 06 — 部署迭代：持续维护与改进</h4>
+        <p>建筑交付后需要持续维护，模型部署后同样需要监控和迭代升级。</p>
+        <ul>
+          <li><strong style="color:var(--text-primary)">模型压缩：</strong>量化（GPTQ/AWQ/GGUF）减少推理成本，蒸馏到更小模型部署</li>
+          <li><strong style="color:var(--text-primary)">推理优化：</strong>vLLM/TGI 部署，启用 KV-Cache、Continuous Batching、PagedAttention</li>
+          <li><strong style="color:var(--text-primary)">监控体系：</strong>跟踪线上指标——延迟、吞吐量、用户满意度、异常输出率</li>
+          <li><strong style="color:var(--text-primary)">数据飞轮：</strong>收集用户反馈 → 筛选高质量样本 → 进入下一轮 SFT 迭代</li>
+          <li><strong style="color:var(--text-primary)">对齐增强：</strong>SFT 后通常接 RLHF/DPO 进一步对齐人类偏好</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Code Example -->
+    <div class="code-block reveal">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>sft_training.py — 典型 SFT 训练代码框架</span>
+      </div>
+      <pre><span class="kw">from</span> transformers <span class="kw">import</span> AutoModelForCausalLM, AutoTokenizer
+<span class="kw">from</span> trl <span class="kw">import</span> SFTTrainer, SFTConfig
+<span class="kw">from</span> peft <span class="kw">import</span> LoraConfig, get_peft_model
+
+<span class="cmt"># Step 1: 加载基座模型</span>
+model = AutoModelForCausalLM.from_pretrained(
+    <span class="str">"meta-llama/Llama-3-8B"</span>,
+    torch_dtype=<span class="str">"bfloat16"</span>,
+    device_map=<span class="str">"auto"</span>,
+)
+tokenizer = AutoTokenizer.from_pretrained(<span class="str">"meta-llama/Llama-3-8B"</span>)
+
+<span class="cmt"># Step 2: 配置 LoRA（参数高效微调）</span>
+lora_config = LoraConfig(
+    r=<span class="num">16</span>,                   <span class="cmt"># 秩，控制适配器容量</span>
+    lora_alpha=<span class="num">32</span>,           <span class="cmt"># 缩放因子</span>
+    target_modules=[<span class="str">"q_proj"</span>, <span class="str">"k_proj"</span>, <span class="str">"v_proj"</span>, <span class="str">"o_proj"</span>],
+    lora_dropout=<span class="num">0.05</span>,
+    task_type=<span class="str">"CAUSAL_LM"</span>,
+)
+model = get_peft_model(model, lora_config)
+
+<span class="cmt"># Step 3: 训练配置</span>
+training_config = SFTConfig(
+    output_dir=<span class="str">"./sft_output"</span>,
+    num_train_epochs=<span class="num">3</span>,
+    per_device_train_batch_size=<span class="num">4</span>,
+    gradient_accumulation_steps=<span class="num">8</span>,  <span class="cmt"># 有效 batch = 4 * 8 = 32</span>
+    learning_rate=<span class="num">2e-5</span>,
+    lr_scheduler_type=<span class="str">"cosine"</span>,
+    warmup_ratio=<span class="num">0.05</span>,
+    bf16=<span class="num">True</span>,
+    max_seq_length=<span class="num">2048</span>,
+    logging_steps=<span class="num">10</span>,
+    save_strategy=<span class="str">"epoch"</span>,
+)
+
+<span class="cmt"># Step 4: 启动训练</span>
+trainer = SFTTrainer(
+    model=model,
+    args=training_config,
+    train_dataset=train_dataset,  <span class="cmt"># 已预处理的指令数据集</span>
+    tokenizer=tokenizer,
+)
+trainer.train()</pre>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Section 3: Parameter Explorer -->
+<section class="section" id="explorer">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">03 — INTERACTIVE EXPLORER</div>
+      <h2 class="section-title">超参数交互探索器</h2>
+      <p class="section-desc">
+        调节下方参数，观察它们如何影响训练过程的行为特征。
+        如同建筑师调整结构参数以优化承重与成本的平衡。
+      </p>
+    </div>
+
+    <div class="explorer reveal">
+      <div class="explorer-title">训练参数调优模拟</div>
+      <div class="explorer-desc">拖动滑块探索不同参数组合对训练的影响</div>
+
+      <div class="param-group">
+        <div class="param-row">
+          <span class="param-label">Learning Rate</span>
+          <input type="range" class="param-slider" id="lr" min="1" max="100" value="20">
+          <span class="param-value" id="lr-val">2e-5</span>
+        </div>
+        <div class="param-row">
+          <span class="param-label">Batch Size</span>
+          <input type="range" class="param-slider" id="bs" min="1" max="8" value="3">
+          <span class="param-value" id="bs-val">32</span>
+        </div>
+        <div class="param-row">
+          <span class="param-label">Epochs</span>
+          <input type="range" class="param-slider" id="ep" min="1" max="10" value="2">
+          <span class="param-value" id="ep-val">2</span>
+        </div>
+        <div class="param-row">
+          <span class="param-label">LoRA Rank (r)</span>
+          <input type="range" class="param-slider" id="lora" min="1" max="10" value="4">
+          <span class="param-value" id="lora-val">16</span>
+        </div>
+        <div class="param-row">
+          <span class="param-label">Data Size (K)</span>
+          <input type="range" class="param-slider" id="data" min="1" max="100" value="30">
+          <span class="param-value" id="data-val">30K</span>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <h5>预测行为分析</h5>
+        <p id="analysis-text">调整参数以查看分析结果...</p>
+        <div class="result-metric">
+          <div class="metric-item">
+            <span class="metric-label">过拟合风险</span>
+            <span class="metric-val" id="risk-val">Low</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">预计 GPU 时</span>
+            <span class="metric-val" id="gpu-val">~4h</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">显存需求</span>
+            <span class="metric-val" id="mem-val">~24GB</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">收敛预期</span>
+            <span class="metric-val" id="conv-val">Good</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Section 4: Case Studies -->
+<section class="section" id="cases">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">04 — CASE STUDIES</div>
+      <h2 class="section-title">典型案例研究</h2>
+      <p class="section-desc">
+        从实践中学习，三个不同维度的真实 SFT 案例，
+        展示第一性原理在不同场景中的应用。
+      </p>
+    </div>
+
+    <div class="tabs reveal">
+      <div class="tab-btns">
+        <button class="tab-btn active" onclick="switchTab(event,'case1')">代码生成</button>
+        <button class="tab-btn" onclick="switchTab(event,'case2')">垂直领域对话</button>
+        <button class="tab-btn" onclick="switchTab(event,'case3')">多轮指令遵循</button>
+      </div>
+
+      <div class="tab-panel active" id="case1">
+        <div class="case-card">
+          <span class="case-badge blue">Code Generation</span>
+          <div class="case-title">案例一：代码生成能力的 SFT 增强</div>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">挑战：</strong>基础模型虽然具备代码知识，但生成的代码往往缺乏可执行性、不符合最佳实践、缺少注释和类型标注。
+          </p>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">第一性原理分析：</strong>代码生成的本质是将自然语言意图映射到形式化语言。关键约束包括：语法正确性（可编译）、语义正确性（可运行）、风格一致性（可维护）。
+          </p>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">SFT 策略：</strong>
+            ① 数据构建：收集高质量的 (需求描述, 可执行代码) 对，来源包括 GitHub 高星项目、LeetCode 高赞解答、Stack Overflow 排名答案；
+            ② 数据格式：不仅包含最终代码，还包含思考过程（chain-of-thought）、复杂度分析、边界条件说明；
+            ③ 训练技巧：在 loss 计算时对代码块内的 token 给予更高权重，强化模型对代码格式的精确学习。
+          </p>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">结果：</strong>经过 SFT 后，模型在 HumanEval 上 pass@1 从基座的 30% 提升至 65%，
+            代码的可执行率和可读性均有显著提升。关键洞见：<em style="color:var(--amber)">数据质量比数量更重要——5K 条高质量代码对的效果优于 50K 条低质量样本</em>。
+          </p>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="case2">
+        <div class="case-card">
+          <span class="case-badge amber">Domain Expert</span>
+          <div class="case-title">案例二：医疗垂直领域的专业对话</div>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">挑战：</strong>通用模型在医疗场景中存在幻觉风险、术语使用不准确、缺乏循证医学思维，直接应用可能造成严重后果。
+          </p>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">第一性原理分析：</strong>医疗对话的特殊性在于：① 错误的代价极高（涉及生命安全）；② 专业术语的精确性要求极高；③ 需要模型表达不确定性而非自信地给出错误答案。
+          </p>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">SFT 策略：</strong>
+            ① 数据由执业医师标注和审核，确保医学准确性；
+            ② 在训练数据中系统性地包含"我不确定"/"建议咨询专业医生"的样本，教会模型表达不确定性；
+            ③ 引入结构化输出格式：症状分析 → 可能诊断 → 建议检查 → 注意事项；
+            ④ Safety alignment：在 SFT 中嵌入拒绝有害请求的样本。
+          </p>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">结果：</strong>模型在医学问答准确率提升 40% 的同时，幻觉率降低 60%。
+            更重要的是，模型学会了在超出能力范围时主动提示用户寻求专业医疗帮助。
+            关键洞见：<em style="color:var(--amber)">教模型"知道不知道什么"比教它"知道什么"更重要</em>。
+          </p>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="case3">
+        <div class="case-card">
+          <span class="case-badge green">Multi-Turn</span>
+          <div class="case-title">案例三：复杂多轮指令遵循能力构建</div>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">挑战：</strong>模型在单轮任务上表现良好，但在多轮对话中容易丢失上下文、忘记约束条件、无法处理指令修正。
+          </p>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">第一性原理分析：</strong>多轮指令遵循的核心困难是长期依赖管理。模型需要：① 在注意力窗口内维护所有约束条件的表征；② 区分新指令是"补充"还是"替换"之前的约束；③ 在每一步都保持全局一致性。
+          </p>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">SFT 策略：</strong>
+            ① 构建复杂的多轮数据，包含指令修正、追加约束、否定指令等场景；
+            ② 在训练中将完整对话作为一个样本，而非拆分为独立轮次；
+            ③ 在数据中嵌入"回顾"类回答——让模型在回答前复述当前所有有效约束；
+            ④ 课程学习策略：从 2 轮对话开始，逐步增加到 10+ 轮。
+          </p>
+          <p class="case-text">
+            <strong style="color:var(--text-primary)">结果：</strong>多轮指令遵循准确率从 45% 提升至 78%，约束保持率（Constraint Persistence Rate）从 52% 提升至 85%。
+            关键洞见：<em style="color:var(--amber)">多轮能力不能通过单轮数据增强获得——必须在多轮环境中训练</em>。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Section 5: Pitfalls & Solutions -->
+<section class="section" id="pitfalls">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">05 — PITFALLS & SOLUTIONS</div>
+      <h2 class="section-title">常见陷阱与解决方案</h2>
+      <p class="section-desc">
+        建筑师的职责不仅是设计美观的结构，更要预见和规避潜在的风险。
+        以下是 SFT 实践中最常见的失败模式及其系统性解决方案。
+      </p>
+    </div>
+
+    <div class="pitfall-grid">
+      <div class="pitfall-card reveal">
+        <div class="pitfall-label">陷阱 #1</div>
+        <div class="pitfall-title">灾难性遗忘</div>
+        <p class="pitfall-text">
+          微调后模型在目标任务上提升了，但在通用能力上严重退化。
+          例如：SFT 后模型在医疗问答上变好了，但基础推理和编程能力大幅下降。
+        </p>
+        <div class="solution">
+          <div class="solution-label">解决方案</div>
+          <p class="solution-text">
+            ① 使用低学习率 + 少量 epoch 控制偏离幅度；
+            ② 在 SFT 数据中混入 5-10% 的通用指令数据（数据混合法）；
+            ③ 采用 LoRA 等参数高效方法，保持原始权重冻结；
+            ④ 定期在通用基准上执行回归测试。
+          </p>
+        </div>
+      </div>
+
+      <div class="pitfall-card reveal">
+        <div class="pitfall-label">陷阱 #2</div>
+        <div class="pitfall-title">过拟合与记忆化</div>
+        <p class="pitfall-text">
+          模型逐字记忆训练数据中的回答，丧失泛化能力。
+          在生成时重复训练集中的特定短语和模式，对新输入表现不稳定。
+        </p>
+        <div class="solution">
+          <div class="solution-label">解决方案</div>
+          <p class="solution-text">
+            ① 增加训练数据的多样性和规模（如果可能）；
+            ② 使用 dropout（0.05-0.1）和 weight decay（0.01-0.1）；
+            ③ 监控 train/eval loss 曲线，eval loss 上升时及时停止（early stopping）；
+            ④ 限制训练 epoch 在 1-3 轮。
+          </p>
+        </div>
+      </div>
+
+      <div class="pitfall-card reveal">
+        <div class="pitfall-label">陷阱 #3</div>
+        <div class="pitfall-title">格式坍缩（Format Collapse）</div>
+        <p class="pitfall-text">
+          模型开始对所有输入都输出相同的格式/模板，丧失了根据内容调整输出形式的灵活性。
+          表现为所有回答都以相同句式开头、使用相同的结构。
+        </p>
+        <div class="solution">
+          <div class="solution-label">解决方案</div>
+          <p class="solution-text">
+            ① 确保训练数据中同一任务有多种不同的回答格式和风格；
+            ② 避免数据中存在过强的格式偏差（如每条数据都以"好的，我来..."开头）；
+            ③ 在数据预处理阶段统计格式多样性指标，确保覆盖短/长、结构化/自由文本等多种形式。
+          </p>
+        </div>
+      </div>
+
+      <div class="pitfall-card reveal">
+        <div class="pitfall-label">陷阱 #4</div>
+        <div class="pitfall-title">学习率灾难</div>
+        <p class="pitfall-text">
+          学习率过高导致训练不稳定甚至发散；学习率过低导致训练不充分或陷入局部最优。
+          常见表现：loss 震荡不降或 loss 始终保持在高位。
+        </p>
+        <div class="solution">
+          <div class="solution-label">解决方案</div>
+          <p class="solution-text">
+            ① 使用 learning rate finder：从极小值开始指数增长，找到 loss 快速下降的拐点；
+            ② 全参微调建议 1e-5 ~ 5e-5，LoRA 可使用稍高的 1e-4 ~ 3e-4；
+            ③ 配合 cosine decay + linear warmup（3-10% 总步数）；
+            ④ 训练初期密切监控 loss 曲线，前 100 步即可判断学习率是否合适。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Additional comparison -->
+    <div class="table-wrap reveal" style="margin-top:3rem">
+      <table>
+        <thead>
+          <tr>
+            <th>微调方法</th>
+            <th>可训练参数</th>
+            <th>显存需求</th>
+            <th>训练速度</th>
+            <th>适用场景</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color:var(--text-primary);font-weight:600">Full Fine-Tuning</td>
+            <td>100%</td>
+            <td>极高（≥80GB × 8）</td>
+            <td>最慢</td>
+            <td>大规模数据，追求极致性能</td>
+          </tr>
+          <tr>
+            <td style="color:var(--accent);font-weight:600">LoRA</td>
+            <td>0.1% ~ 1%</td>
+            <td>中等（24-40GB）</td>
+            <td>快 2-3x</td>
+            <td>最通用的 PEFT 方案</td>
+          </tr>
+          <tr>
+            <td style="color:var(--amber);font-weight:600">QLoRA</td>
+            <td>0.1% ~ 1%</td>
+            <td>低（12-24GB）</td>
+            <td>中等</td>
+            <td>消费级 GPU，资源受限</td>
+          </tr>
+          <tr>
+            <td style="color:var(--green);font-weight:600">Adapter</td>
+            <td>1% ~ 5%</td>
+            <td>中等</td>
+            <td>快</td>
+            <td>多任务切换，模块化</td>
+          </tr>
+          <tr>
+            <td style="color:var(--red);font-weight:600">Prefix-Tuning</td>
+            <td>&lt; 0.1%</td>
+            <td>最低</td>
+            <td>最快</td>
+            <td>生成任务，极端资源限制</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Section 6: Guidance -->
+<section class="section" id="guidance">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-number">06 — GUIDANCE & RECOMMENDATIONS</div>
+      <h2 class="section-title">建筑师的指导性建议</h2>
+      <p class="section-desc">
+        就像建筑大师维特鲁威提出"坚固、实用、美观"三原则，
+        SFT 的实施也有其核心指导原则。以下是基于第一性原理推导出的系统性建议。
+      </p>
+    </div>
+
+    <div class="accordion reveal">
+      <div class="acc-item">
+        <button class="acc-trigger" onclick="toggleAccordion(this)">
+          <span>原则一：数据质量优先于一切</span>
+          <span class="acc-icon">+</span>
+        </button>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            这是 SFT 的第一原则，也是最常被违反的原则。1000 条精心标注的高质量数据，
+            往往比 100,000 条自动生成的低质量数据更有效。
+            <br><br>
+            <strong style="color:var(--accent)">实践建议：</strong>
+            <br>① 投入至少 40% 的项目时间在数据质量和标注规范上；
+            <br>② 建立多层质量审查：自动过滤 → 交叉验证 → 专家抽检；
+            <br>③ 使用 LLM 辅助数据质量评估，但人工做最终裁决；
+            <br>④ 对每条数据问：如果模型完美复现这条数据的行为，是我想要的吗？
+          </div>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <button class="acc-trigger" onclick="toggleAccordion(this)">
+          <span>原则二：从简单到复杂的渐进式训练</span>
+          <span class="acc-icon">+</span>
+        </button>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            不要一开始就试图用最复杂的数据和最高的参数。
+            建筑的逻辑是先打地基，再建框架，最后做精装修。
+            <br><br>
+            <strong style="color:var(--accent)">实践建议：</strong>
+            <br>① 先用小规模（1-5K）高质量数据验证 pipeline 是否通畅；
+            <br>② 确认基础效果后，逐步增加数据规模和任务复杂度；
+            <br>③ 使用课程学习（Curriculum Learning）——从简单任务到复杂任务；
+            <br>④ 每个阶段都做充分评估，确认方向正确后再进入下一阶段。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <button class="acc-trigger" onclick="toggleAccordion(this)">
+          <span>原则三：监控是你的安全网</span>
+          <span class="acc-icon">+</span>
+        </button>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            没有监控的训练就像没有安全检查的建筑工地——你不知道什么时候会出事。
+            好的监控体系能让你在问题发生之前就发现苗头。
+            <br><br>
+            <strong style="color:var(--accent)">实践建议：</strong>
+            <br>① 实时监控 training loss 和 evaluation loss 的分离趋势（过拟合预警）；
+            <br>② 定期生成样本（每 100-500 步），人工检查生成质量；
+            <br>③ 在多个基准上跟踪性能变化（不仅仅是目标任务）；
+            <br>④ 保存多个检查点，确保可以回滚到任何历史状态。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <button class="acc-trigger" onclick="toggleAccordion(this)">
+          <span>原则四：SFT 不是终点，而是起点</span>
+          <span class="acc-icon">+</span>
+        </button>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            SFT 为模型注入了基础的指令遵循能力，但要达到生产级别，
+            通常需要配合后续的对齐技术形成完整的训练流水线。
+            <br><br>
+            <strong style="color:var(--accent)">实践建议：</strong>
+            <br>① SFT → RLHF/DPO：使用人类偏好数据进一步优化输出质量；
+            <br>② SFT → Iterative：建立数据飞轮，持续从线上反馈中改进；
+            <br>③ SFT → Distillation：将大模型 SFT 的效果蒸馏到更小的部署模型；
+            <br>④ 将 SFT 视为持续工程（Continuous Engineering），而非一次性项目。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <button class="acc-trigger" onclick="toggleAccordion(this)">
+          <span>原则五：保持对"不变性"的尊重</span>
+          <span class="acc-icon">+</span>
+        </button>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            建筑中，你不能改变重力定律。在 SFT 中，同样有一些不可逾越的限制。
+            尊重这些限制，而不是试图绕过它们。
+            <br><br>
+            <strong style="color:var(--accent)">实践建议：</strong>
+            <br>① 数据上限定模型性能上限——不要期望模型超越训练数据的质量；
+            <br>② 参数更新量与遗忘程度正相关——更多的改变意味着更多的副作用；
+            <br>③ 模型没有"真正理解"——它在做高度复杂的模式匹配，请据此设计安全边界；
+            <br>④ 分布外（OOD）输入永远是风险来源——部署时建立输入验证和输出过滤机制。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Final Checklist -->
+    <div style="margin-top:4rem" class="reveal">
+      <h3 style="font-family:var(--font-display);font-weight:700;font-size:1.3rem;color:var(--text-primary);margin-bottom:.5rem">
+        SFT 实施检查清单
+      </h3>
+      <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:1.5rem">
+        在启动你的 SFT 项目之前，逐项确认以下要点：
+      </p>
+      <ul class="checklist">
+        <li>
+          <span class="check-icon">✓</span>
+          <span class="check-text"><strong>明确任务目标</strong> — 清晰定义模型需要完成的具体行为，可量化的成功标准</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span class="check-text"><strong>数据质量审计</strong> — 完成数据来源审查、标注质量验证、多样性检查</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span class="check-text"><strong>基座模型评估</strong> — 在目标任务上评估候选基座模型的零样本/少样本性能</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span class="check-text"><strong>计算资源规划</strong> — 确认 GPU 显存、训练时长、存储空间满足需求</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span class="check-text"><strong>评估体系就绪</strong> — 自动评估基准 + 人工评估方案 + 安全测试用例</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span class="check-text"><strong>回归测试基线</strong> — 记录模型在通用基准上的初始性能，用于训练后对比</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span class="check-text"><strong>监控与回滚方案</strong> — 训练监控配置就绪，检查点保存策略已设定</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-brand">SFT DEEP RESEARCH</div>
+    <p>
+      监督微调深度研究报告 · 第一性原理视角<br>
+      以建筑师的系统性思维，重构 AI 工程实践
+    </p>
+  </div>
+</footer>
+
+<script>
+// ===== Scroll Progress Bar =====
+window.addEventListener('scroll', () => {
+  const bar = document.getElementById('progressBar');
+  const h = document.documentElement;
+  const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  bar.style.width = pct + '%';
+});
+
+// ===== Scroll Reveal =====
+const reveals = document.querySelectorAll('.reveal');
+const revealObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+reveals.forEach(el => revealObs.observe(el));
+
+// ===== Flow Detail Panels =====
+function toggleDetail(node) {
+  const key = node.dataset.detail;
+  const panel = document.getElementById('detail-' + key);
+  const isOpen = panel.classList.contains('open');
+
+  // Close all
+  document.querySelectorAll('.detail-panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.flow-node').forEach(n => n.classList.remove('active'));
+
+  if (!isOpen) {
+    panel.classList.add('open');
+    node.classList.add('active');
+  }
+}
+
+// ===== Tab System =====
+function switchTab(e, id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+// ===== Accordion =====
+function toggleAccordion(trigger) {
+  const item = trigger.parentElement;
+  const body = item.querySelector('.acc-body');
+  const isOpen = item.classList.contains('open');
+
+  // Close all
+  document.querySelectorAll('.acc-item').forEach(i => {
+    i.classList.remove('open');
+    i.querySelector('.acc-body').style.maxHeight = null;
+  });
+
+  if (!isOpen) {
+    item.classList.add('open');
+    body.style.maxHeight = body.scrollHeight + 'px';
+  }
+}
+
+// ===== Parameter Explorer =====
+const lrSlider = document.getElementById('lr');
+const bsSlider = document.getElementById('bs');
+const epSlider = document.getElementById('ep');
+const loraSlider = document.getElementById('lora');
+const dataSlider = document.getElementById('data');
+
+function updateExplorer() {
+  const lrRaw = parseInt(lrSlider.value);
+  const bsPow = parseInt(bsSlider.value);
+  const ep = parseInt(epSlider.value);
+  const loraR = parseInt(loraSlider.value) * 4;
+  const dataK = parseInt(dataSlider.value);
+
+  const lr = (lrRaw / 1e6).toExponential(1);
+  const bs = Math.pow(2, bsPow + 1);
+  const totalSteps = Math.ceil((dataK * 1000 * ep) / bs);
+
+  document.getElementById('lr-val').textContent = lr;
+  document.getElementById('bs-val').textContent = bs;
+  document.getElementById('ep-val').textContent = ep;
+  document.getElementById('lora-val').textContent = loraR;
+  document.getElementById('data-val').textContent = dataK + 'K';
+
+  // Compute metrics
+  let overfitRisk = 'Low';
+  let riskColor = 'var(--green)';
+  if (ep >= 5) { overfitRisk = 'High'; riskColor = 'var(--red)'; }
+  else if (ep >= 3 || dataK < 5) { overfitRisk = 'Medium'; riskColor = 'var(--amber)'; }
+
+  const gpuHours = Math.round((totalSteps * bs * 0.003) * (1 + loraR / 64));
+  const memGB = Math.round(8 + (loraR / 16) * 2 + (bs > 16 ? 8 : 0));
+  const convergence = lrRaw > 70 ? 'Unstable' : lrRaw > 50 ? 'Risky' : lrRaw < 10 ? 'Slow' : 'Good';
+  let convColor = 'var(--green)';
+  if (convergence === 'Unstable' || convergence === 'Risky') convColor = 'var(--red)';
+  else if (convergence === 'Slow') convColor = 'var(--amber)';
+
+  document.getElementById('risk-val').textContent = overfitRisk;
+  document.getElementById('risk-val').style.color = riskColor;
+  document.getElementById('gpu-val').textContent = '~' + gpuHours + 'h';
+  document.getElementById('mem-val').textContent = '~' + memGB + 'GB';
+  document.getElementById('conv-val').textContent = convergence;
+  document.getElementById('conv-val').style.color = convColor;
+
+  // Analysis text
+  let analysis = '';
+  if (lrRaw > 70) {
+    analysis = '学习率偏高，训练可能不稳定。建议降低到 2e-5 ~ 5e-5 范围，或增加 warmup 比例到 10%。高学习率会破坏预训练阶段习得的表征。';
+  } else if (lrRaw < 10) {
+    analysis = '学习率偏低，模型可能无法充分学习目标任务的模式。建议适当提高学习率或增加训练轮次来补偿。';
+  } else if (ep >= 5) {
+    analysis = '训练轮次过多，过拟合风险显著增加。建议限制在 2-3 个 epoch，并配合 early stopping 策略。SFT 通常不需要太多轮次。';
+  } else if (dataK < 5) {
+    analysis = '数据量偏少（< 5K）。在数据有限的情况下，建议使用 LoRA 而非全参微调，并确保数据的高质量和多样性。';
+  } else if (loraR > 48) {
+    analysis = 'LoRA Rank 较高，可训练参数增多。高 rank 可能导致过拟合且增加显存开销。建议从 r=16 开始，根据效果调整。';
+  } else {
+    analysis = '当前参数组合较为合理。学习率适中，数据量充足，训练轮次控制得当。建议先运行小规模验证，确认效果后再扩展。持续监控 train/eval loss 分离趋势。';
+  }
+  document.getElementById('analysis-text').textContent = analysis;
+}
+
+[lrSlider, bsSlider, epSlider, loraSlider, dataSlider].forEach(s => {
+  s.addEventListener('input', updateExplorer);
+});
+updateExplorer();
+</script>
+</body>
+</html>

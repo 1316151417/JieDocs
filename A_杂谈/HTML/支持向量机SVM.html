@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVM 支持向量机 — 第一性原理研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   BLUEPRINT AESTHETIC — ARCHITECT'S CANVAS
+   ═══════════════════════════════════════════ */
+:root {
+  --bg-deep: #060e1a;
+  --bg-surface: #0c1a2e;
+  --bg-card: #0f1f38;
+  --bg-card-hover: #142847;
+  --accent: #00d4ff;
+  --accent-glow: rgba(0, 212, 255, 0.15);
+  --accent-warm: #ff6b35;
+  --accent-warm-glow: rgba(255, 107, 53, 0.15);
+  --accent-green: #00e896;
+  --accent-purple: #a78bfa;
+  --text-primary: #e8edf5;
+  --text-secondary: #8899b3;
+  --text-muted: #4a5d7a;
+  --grid-line: rgba(0, 212, 255, 0.06);
+  --border: rgba(0, 212, 255, 0.12);
+  --border-strong: rgba(0, 212, 255, 0.25);
+  --radius: 2px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: 'Noto Serif SC', 'DM Mono', serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.8;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Blueprint grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Grain overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ═══ LAYOUT ═══ */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══ HERO ═══ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  padding: 4rem 0;
+}
+
+.hero-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 2rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.2s;
+}
+
+.hero-eyebrow::before {
+  content: '── ';
+  color: var(--text-muted);
+}
+
+.hero-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.4s;
+}
+
+.hero-title em {
+  font-style: italic;
+  color: var(--accent);
+  position: relative;
+}
+
+.hero-title em::after {
+  content: '';
+  position: absolute;
+  bottom: 0.08em;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0.4;
+}
+
+.hero-subtitle {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.15rem;
+  font-weight: 300;
+  color: var(--text-secondary);
+  max-width: 640px;
+  line-height: 2;
+  margin-bottom: 3rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.6s;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 3rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.8s;
+}
+
+.hero-meta span { display: flex; align-items: center; gap: 0.5rem; }
+.hero-meta .dot {
+  width: 4px; height: 4px;
+  background: var(--accent);
+  display: inline-block;
+}
+
+/* ═══ SCROLL INDICATOR ═══ */
+.scroll-hint {
+  position: absolute;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 1.2s;
+}
+
+.scroll-hint span {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.scroll-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--accent), transparent);
+  animation: scrollPulse 2s ease infinite;
+}
+
+/* ═══ SECTION STRUCTURE ═══ */
+section {
+  padding: 6rem 0;
+  position: relative;
+}
+
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.section-label::before {
+  content: '';
+  width: 32px;
+  height: 1px;
+  background: var(--accent);
+}
+
+.section-number {
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+h2 {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 400;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+h2 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.section-desc {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 700px;
+  margin-bottom: 3rem;
+  font-weight: 300;
+}
+
+h3 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+/* ═══ DIVIDER ═══ */
+.divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+  margin: 0;
+}
+
+/* ═══ CARD SYSTEM ═══ */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+
+.card:hover::before { opacity: 1; }
+
+.card-icon {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+  margin-bottom: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 1.35rem;
+  margin-bottom: 0.8rem;
+  color: var(--text-primary);
+}
+
+.card-body {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  font-weight: 300;
+}
+
+/* ═══ PRINCIPLE CHAIN — FIXED ═══ */
+.principle-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 2.5rem 0;
+  padding: 0;
+}
+
+.principle-step {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding: 2rem 2.5rem 2rem 5rem;
+  border-left: 1px solid var(--border);
+  margin-left: 2rem;
+  position: relative;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease;
+}
+
+.principle-step.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.principle-step::before {
+  content: attr(data-step);
+  position: absolute;
+  left: -1.4rem;
+  top: 2rem;
+  width: 2.8rem;
+  height: 2.8rem;
+  background: var(--bg-deep);
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  z-index: 2;
+}
+
+.principle-step:hover::before {
+  background: var(--accent);
+  color: var(--bg-deep);
+}
+
+.step-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 2.5rem;
+  transition: all 0.3s ease;
+}
+
+.principle-step:hover .step-content {
+  border-color: var(--border-strong);
+  background: var(--bg-card-hover);
+}
+
+.step-content h4 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 1.35rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.step-content p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-weight: 300;
+  line-height: 2;
+}
+
+.step-content strong {
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+.step-content em {
+  color: var(--accent);
+  font-style: italic;
+}
+
+/* ═══ MATH BLOCK ═══ */
+.math-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 2rem 2.5rem;
+  margin: 2rem 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.95rem;
+  line-height: 2.2;
+  color: var(--text-primary);
+  overflow-x: auto;
+  position: relative;
+}
+
+.math-block .label {
+  position: absolute;
+  top: -0.6em;
+  left: 1.5rem;
+  background: var(--bg-card);
+  padding: 0 0.8rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.math-block .comment {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ═══ INTERACTIVE CANVAS ═══ */
+.canvas-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  margin: 2rem 0;
+  position: relative;
+}
+
+.canvas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.canvas-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.canvas-controls {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.canvas-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 1.2rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: var(--radius);
+}
+
+.canvas-btn:hover, .canvas-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+canvas#svmCanvas {
+  width: 100%;
+  height: 500px;
+  display: block;
+  cursor: crosshair;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-deep);
+}
+
+.canvas-hint {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 1rem;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+
+.canvas-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.stat-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.4rem;
+  color: var(--accent);
+}
+
+.stat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-top: 0.3rem;
+}
+
+/* ═══ KERNEL VISUALIZER ═══ */
+.kernel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.kernel-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.4s ease;
+}
+
+.kernel-card:hover, .kernel-card.active {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+  transform: translateY(-3px);
+}
+
+.kernel-card.active {
+  box-shadow: 0 8px 32px var(--accent-glow);
+}
+
+.kernel-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.kernel-formula {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.8rem;
+}
+
+.kernel-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 300;
+  line-height: 1.7;
+}
+
+.kernel-canvas {
+  margin-top: 1rem;
+}
+
+.kernel-canvas canvas {
+  width: 100%;
+  height: 180px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-deep);
+}
+
+/* ═══ COMPARISON TABLE ═══ */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  font-size: 0.85rem;
+}
+
+.comparison-table th {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: left;
+  padding: 1rem;
+  border-bottom: 2px solid var(--accent);
+  background: var(--bg-card);
+}
+
+.comparison-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 300;
+  vertical-align: top;
+}
+
+.comparison-table tr:hover td {
+  background: var(--bg-card);
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  border-radius: 1px;
+  margin: 0.1rem;
+}
+
+.tag-green { background: rgba(0, 232, 150, 0.1); color: var(--accent-green); border: 1px solid rgba(0, 232, 150, 0.2); }
+.tag-warm { background: var(--accent-warm-glow); color: var(--accent-warm); border: 1px solid rgba(255, 107, 53, 0.2); }
+.tag-purple { background: rgba(167, 139, 250, 0.1); color: var(--accent-purple); border: 1px solid rgba(167, 139, 250, 0.2); }
+.tag-blue { background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(0, 212, 255, 0.2); }
+
+/* ═══ CODE BLOCK ═══ */
+.code-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem 2rem;
+  margin: 1.5rem 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.9;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  position: relative;
+}
+
+.code-block .code-label {
+  position: absolute;
+  top: -0.5em;
+  right: 1rem;
+  background: var(--bg-card);
+  padding: 0 0.6rem;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.code-kw { color: var(--accent-purple); }
+.code-fn { color: var(--accent); }
+.code-str { color: var(--accent-green); }
+.code-cm { color: var(--text-muted); font-style: italic; }
+.code-num { color: var(--accent-warm); }
+
+/* ═══ INSIGHT BOX ═══ */
+.insight-box {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(0, 212, 255, 0.02));
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 2rem;
+  margin: 2rem 0;
+}
+
+.insight-box .insight-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.8rem;
+}
+
+.insight-box p {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 300;
+  line-height: 1.9;
+}
+
+/* ═══ SLIDER CONTROL ═══ */
+.slider-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.slider-group label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  min-width: 100px;
+  letter-spacing: 0.1em;
+}
+
+.slider-group input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  outline: none;
+}
+
+.slider-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider-group .slider-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ═══ TIMELINE ═══ */
+.timeline {
+  position: relative;
+  margin: 3rem 0;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.timeline-item:nth-child(odd) {
+  flex-direction: row;
+  padding-right: calc(50% + 2rem);
+  text-align: right;
+}
+
+.timeline-item:nth-child(even) {
+  flex-direction: row-reverse;
+  padding-left: calc(50% + 2rem);
+}
+
+.timeline-dot {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.timeline-year {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.3rem;
+}
+
+.timeline-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 300;
+}
+
+/* ═══ FOOTER ═══ */
+.footer {
+  padding: 4rem 0 2rem;
+  border-top: 1px solid var(--border);
+  margin-top: 4rem;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+.footer h4 {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.footer p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 300;
+  line-height: 1.8;
+}
+
+.footer-bottom {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ═══ TABS ═══ */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  padding: 0.8rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tab-btn:hover { color: var(--text-secondary); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-content { display: none; padding: 1.5rem 0; }
+.tab-content.active { display: block; }
+
+/* ═══ NAV ═══ */
+.nav-toc {
+  position: fixed;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.nav-toc a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 0;
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+}
+
+.nav-toc a .dot-nav {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.3s ease;
+}
+
+.nav-toc a:hover .dot-nav,
+.nav-toc a.active .dot-nav {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  width: 8px;
+  height: 8px;
+}
+
+.nav-toc a:hover { font-size: 0.6rem; }
+.nav-toc a.active { font-size: 0.6rem; color: var(--accent); }
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scrollPulse {
+  0%, 100% { opacity: 1; transform: scaleY(1); }
+  50% { opacity: 0.3; transform: scaleY(0.6); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 768px) {
+  .container { padding: 0 1.2rem; }
+  section { padding: 3rem 0; }
+  .nav-toc { display: none; }
+  .hero-meta { flex-direction: column; gap: 0.5rem; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .timeline::before { left: 1rem; }
+  .timeline-item:nth-child(odd),
+  .timeline-item:nth-child(even) {
+    padding-left: 3rem;
+    padding-right: 0;
+    text-align: left;
+    flex-direction: row;
+  }
+  .timeline-dot { left: 1rem; }
+  canvas#svmCanvas { height: 350px; }
+  .principle-step {
+    margin-left: 1rem;
+    padding: 1.5rem 1rem 1.5rem 3.5rem;
+  }
+  .step-content {
+    padding: 1.5rem;
+  }
+}
+
+/* ═══ CUSTOM SCROLLBAR ═══ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- NAVIGATION DOTS -->
+<nav class="nav-toc">
+  <a href="#hero"><span class="dot-nav"></span><span>首页</span></a>
+  <a href="#decomposition"><span class="dot-nav"></span><span>拆解</span></a>
+  <a href="#math"><span class="dot-nav"></span><span>数学</span></a>
+  <a href="#interactive"><span class="dot-nav"></span><span>交互</span></a>
+  <a href="#kernel"><span class="dot-nav"></span><span>核函数</span></a>
+  <a href="#guide"><span class="dot-nav"></span><span>指导</span></a>
+</nav>
+
+<!-- ═══════════════════════════════════
+     HERO SECTION
+     ═══════════════════════════════════ -->
+<header class="hero" id="hero">
+  <div class="container">
+    <div class="hero-eyebrow">First-Principles Research Report</div>
+    <h1 class="hero-title">
+      Support Vector<br><em>Machine</em>
+    </h1>
+    <p class="hero-subtitle">
+      以建筑师的思维，从第一性原理出发，逐层拆解支持向量机的本质逻辑——
+      从几何直觉到对偶理论，从线性可分到核技巧，构建一个完整的认知框架。
+    </p>
+    <div class="hero-meta">
+      <span><span class="dot"></span>深度拆解 × 交互体验</span>
+      <span><span class="dot"></span>6 个核心模块</span>
+      <span><span class="dot"></span>可操作的 SVM 模拟器</span>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>Scroll to explore</span>
+    <div class="scroll-line"></div>
+  </div>
+</header>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════
+     01 — 第一性原理拆解
+     ═══════════════════════════════════ -->
+<section id="decomposition">
+  <div class="container">
+    <div class="section-label reveal">
+      <span>Section</span>
+      <span class="section-number">01</span>
+    </div>
+    <h2 class="reveal">第一性原理<span>拆解</span></h2>
+    <p class="section-desc reveal">
+      不从公式出发，而是从最根本的问题开始：我们到底在解决什么？每一个假设是否站得住脚？
+    </p>
+
+    <!-- 拆解链 -->
+    <div class="principle-chain">
+      <div class="principle-step" data-step="Q1">
+        <div class="step-content">
+          <h4>最本质的问题是什么？</h4>
+          <p>
+            我们有一堆数据点，它们分属两个类别。我们需要在它们之间<strong>画一条"线"</strong>，
+            把两类分开。这不是一个统计问题——这是一个<strong>几何问题</strong>。
+            核心问题是：<em>在无穷多种可能的分界线中，哪一条是最好的？</em>
+          </p>
+        </div>
+      </div>
+
+      <div class="principle-step" data-step="Q2">
+        <div class="step-content">
+          <h4>什么叫做"最好"？</h4>
+          <p>
+            直觉告诉我们：最好的分界线应该离两类数据都尽可能远。就像建筑师在两栋建筑之间规划道路——
+            我们要<strong>最大化道路的宽度</strong>。这个宽度，在SVM中叫做 <strong>margin（间隔）</strong>。
+            最大化间隔，就是SVM的唯一目标。
+          </p>
+        </div>
+      </div>
+
+      <div class="principle-step" data-step="Q3">
+        <div class="step-content">
+          <h4>哪些点决定了这条路？</h4>
+          <p>
+            不是所有的数据点都有用。只有那些<strong>站在最边缘、最靠近分界线的点</strong>才决定了间隔的宽度。
+            这些点就叫做 <strong>支持向量（Support Vectors）</strong>——它们是唯一重要的点，
+            其余的点即使被移除，也不会改变最终的分界线。
+          </p>
+        </div>
+      </div>
+
+      <div class="principle-step" data-step="Q4">
+        <div class="step-content">
+          <h4>如果不是线性可分的呢？</h4>
+          <p>
+            现实数据很少是完美线性可分的。这里有一个天才的想法：
+            <strong>把数据映射到更高维度的空间</strong>。在低维空间中纠缠不清的数据，
+            到了高维空间可能就一目了然了。而"核技巧"让我们<strong>不需要真的去做这个映射</strong>，
+            只需要计算高维空间中的内积——这极大地降低了计算成本。
+          </p>
+        </div>
+      </div>
+
+      <div class="principle-step" data-step="Q5">
+        <div class="step-content">
+          <h4>允许犯错，但要惩罚</h4>
+          <p>
+            即使在高维空间，噪声和异常值仍然存在。与其追求完美分类，不如<strong>允许一些点越过边界</strong>，
+            但对越界行为施加惩罚。惩罚的力度由参数 <strong>C</strong> 控制。
+            C 大 → 不容忍错误（可能过拟合）；C 小 → 更宽容（更鲁棒）。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box reveal">
+      <div class="insight-label">建筑师洞察</div>
+      <p>
+        SVM 的哲学本质是<strong>结构性风险管理</strong>。就像建筑师设计一座桥梁——不是让它在完美条件下最好，
+        而是让它在最恶劣条件下仍然安全。最大化间隔 = 最大化结构的安全冗余。
+        支持向量 = 关键承重节点。核技巧 = 用高维结构解决低维的困境。
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════
+     02 — 数学基础
+     ═══════════════════════════════════ -->
+<section id="math">
+  <div class="container">
+    <div class="section-label reveal">
+      <span>Section</span>
+      <span class="section-number">02</span>
+    </div>
+    <h2 class="reveal">数学<span>基石</span></h2>
+    <p class="section-desc reveal">
+      建筑需要蓝图。SVM的数学推导就是这座建筑的结构力学——每一步都有明确的物理含义。
+    </p>
+
+    <!-- Tabs for math -->
+    <div class="tab-bar reveal">
+      <button class="tab-btn active" data-tab="tab-primal">原始问题</button>
+      <button class="tab-btn" data-tab="tab-dual">对偶问题</button>
+      <button class="tab-btn" data-tab="tab-kkt">KKT条件</button>
+      <button class="tab-btn" data-tab="tab-soft">软间隔</button>
+    </div>
+
+    <div id="tab-primal" class="tab-content active">
+      <h3>超平面与间隔最大化</h3>
+      <p style="color:var(--text-secondary);font-weight:300;margin-bottom:1rem;line-height:1.9">
+        对于线性可分的数据，超平面定义为 <code style="color:var(--accent)">w·x + b = 0</code>。
+        点到超平面的距离为 <code style="color:var(--accent)">|w·x + b| / ||w||</code>。
+        通过缩放使得支持向量满足 <code style="color:var(--accent)">|w·x + b| = 1</code>，
+        间隔宽度 = <code style="color:var(--accent)">2/||w||</code>。
+      </p>
+      <div class="math-block">
+        <span class="label">原始优化问题</span>
+        min       (1/2) ||w||²
+        <br>s.t.    yᵢ(w · xᵢ + b) ≥ 1,  ∀i = 1, ..., n
+        <br><br><span class="comment">// 最小化 ||w||² 等价于最大化间隔 2/||w||</span>
+        <br><span class="comment">// 约束条件：每个点都在间隔边界之外</span>
+      </div>
+    </div>
+
+    <div id="tab-dual" class="tab-content">
+      <h3>拉格朗日对偶</h3>
+      <p style="color:var(--text-secondary);font-weight:300;margin-bottom:1rem;line-height:1.9">
+        通过引入拉格朗日乘子 αᵢ ≥ 0，将带约束的优化问题转化为无约束问题。
+        对偶形式的妙处在于：<strong>数据只以内积 xᵢ·xⱼ 的形式出现</strong>——这为核技巧埋下伏笔。
+      </p>
+      <div class="math-block">
+        <span class="label">对偶问题</span>
+        max  Σαᵢ - (1/2) ΣΣ αᵢαⱼyᵢyⱼ(xᵢ · xⱼ)
+        <br>s.t.  Σαᵢyᵢ = 0,  αᵢ ≥ 0
+        <br><br><span class="comment">// w* = Σ αᵢyᵢxᵢ  （w 是支持向量的线性组合）</span>
+        <br><span class="comment">// 只有 αᵢ > 0 的点才是支持向量</span>
+      </div>
+    </div>
+
+    <div id="tab-kkt" class="tab-content">
+      <h3>KKT 互补松弛条件</h3>
+      <p style="color:var(--text-secondary);font-weight:300;margin-bottom:1rem;line-height:1.9">
+        KKT条件告诉我们：<strong>只有支持向量的 α 才非零</strong>。
+        这就是为什么SVM是"稀疏"的——决策边界只由少数关键点决定。
+      </p>
+      <div class="math-block">
+        <span class="label">KKT 条件</span>
+        αᵢ ≥ 0
+        <br>yᵢ(w · xᵢ + b) - 1 ≥ 0
+        <br>αᵢ [yᵢ(w · xᵢ + b) - 1] = 0   <span class="comment">← 互补松弛</span>
+        <br><br><span class="comment">// 若 αᵢ > 0 → yᵢ(w·xᵢ+b) = 1 → xᵢ 是支持向量</span>
+        <br><span class="comment">// 若 αᵢ = 0 → 该点对决策边界无影响</span>
+      </div>
+    </div>
+
+    <div id="tab-soft" class="tab-content">
+      <h3>软间隔（Soft Margin）</h3>
+      <p style="color:var(--text-secondary);font-weight:300;margin-bottom:1rem;line-height:1.9">
+        引入松弛变量 ξᵢ ≥ 0，允许部分数据点违反间隔约束。
+        参数 C 控制"违反约束的惩罚"与"间隔宽度"之间的权衡。
+      </p>
+      <div class="math-block">
+        <span class="label">软间隔 SVM</span>
+        min  (1/2) ||w||² + C Σξᵢ
+        <br>s.t.  yᵢ(w · xᵢ + b) ≥ 1 - ξᵢ,  ξᵢ ≥ 0
+        <br><br><span class="comment">// C 大 → 惩罚重 → 间隔窄 → 对训练数据拟合更紧</span>
+        <br><span class="comment">// C 小 → 惩罚轻 → 间隔宽 → 泛化能力可能更强</span>
+        <br><span class="comment">// ξᵢ > 1 的点被误分类</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════
+     03 — 交互式 SVM 模拟器
+     ═══════════════════════════════════ -->
+<section id="interactive">
+  <div class="container">
+    <div class="section-label reveal">
+      <span>Section</span>
+      <span class="section-number">03</span>
+    </div>
+    <h2 class="reveal">交互式 <span>模拟器</span></h2>
+    <p class="section-desc reveal">
+      亲手构建数据点，观察SVM决策边界如何实时响应。理论只有经过操作才能内化。
+    </p>
+
+    <div class="canvas-section reveal">
+      <div class="canvas-header">
+        <div class="canvas-title">SVM Decision Boundary Simulator</div>
+        <div class="canvas-controls">
+          <button class="canvas-btn active" id="btnClass1" onclick="setDrawClass(1)">+ 类别 A（左键）</button>
+          <button class="canvas-btn" id="btnClass2" onclick="setDrawClass(-1)">+ 类别 B（右键）</button>
+          <button class="canvas-btn" onclick="clearCanvas()">清空画布</button>
+          <button class="canvas-btn" onclick="generateSample()">随机样本</button>
+          <button class="canvas-btn" onclick="toggleSVM()">训练 SVM</button>
+        </div>
+      </div>
+
+      <canvas id="svmCanvas" width="1100" height="500"></canvas>
+
+      <div class="canvas-hint">
+        点击画布添加数据点 · 左键添加当前类别 · 右键添加另一类别 · 调节参数观察变化
+      </div>
+
+      <div style="max-width:500px;margin:1.5rem auto 0">
+        <div class="slider-group">
+          <label>C (惩罚系数)</label>
+          <input type="range" id="sliderC" min="-2" max="3" step="0.1" value="1" oninput="updateParams()">
+          <span class="slider-val" id="valC">10</span>
+        </div>
+        <div class="slider-group">
+          <label>间隔宽度</label>
+          <input type="range" id="sliderMargin" min="0" max="100" step="1" value="50" disabled>
+          <span class="slider-val" id="valMargin">—</span>
+        </div>
+      </div>
+
+      <div class="canvas-stats">
+        <div class="stat-item">
+          <div class="stat-value" id="statPoints">0</div>
+          <div class="stat-label">数据点</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="statSV">0</div>
+          <div class="stat-label">支持向量</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="statMargin">—</div>
+          <div class="stat-label">间隔宽度</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="statAcc">—</div>
+          <div class="stat-label">训练准确率</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════
+     04 — 核函数
+     ═══════════════════════════════════ -->
+<section id="kernel">
+  <div class="container">
+    <div class="section-label reveal">
+      <span>Section</span>
+      <span class="section-number">04</span>
+    </div>
+    <h2 class="reveal">核函数<span>宇宙</span></h2>
+    <p class="section-desc reveal">
+      核技巧是SVM最优雅的设计——它让计算在低维完成，效果却在高维生效。
+      选择核函数，就像选择建筑材料——不同的场景需要不同的材料。
+    </p>
+
+    <div class="kernel-grid reveal">
+      <div class="kernel-card active" onclick="selectKernel('linear', this)">
+        <div class="kernel-name">Linear</div>
+        <div class="kernel-formula">K(x, x') = x · x'</div>
+        <div class="kernel-desc">线性核。最简单也最快速。适用于线性可分或高维稀疏数据（如文本分类）。</div>
+      </div>
+      <div class="kernel-card" onclick="selectKernel('poly', this)">
+        <div class="kernel-name">Polynomial</div>
+        <div class="kernel-formula">K(x, x') = (γx·x' + r)^d</div>
+        <div class="kernel-desc">多项式核。可以捕获特征间的交互关系。d 控制复杂度，过高的 d 可能过拟合。</div>
+      </div>
+      <div class="kernel-card" onclick="selectKernel('rbf', this)">
+        <div class="kernel-name">RBF (Gaussian)</div>
+        <div class="kernel-formula">K(x, x') = exp(-γ||x-x'||²)</div>
+        <div class="kernel-desc">径向基核。最常用的核函数。理论上可以映射到无限维。γ 控制"影响半径"。</div>
+      </div>
+      <div class="kernel-card" onclick="selectKernel('sigmoid', this)">
+        <div class="kernel-name">Sigmoid</div>
+        <div class="kernel-formula">K(x, x') = tanh(γx·x' + r)</div>
+        <div class="kernel-desc">Sigmoid 核。类似神经网络。并非总是正定核，需谨慎使用。</div>
+      </div>
+    </div>
+
+    <div class="canvas-section reveal">
+      <div class="canvas-header">
+        <div class="canvas-title">核函数可视化 — 决策边界对比</div>
+        <div class="canvas-controls">
+          <button class="canvas-btn" onclick="generateKernelSample('circle')">环形数据</button>
+          <button class="canvas-btn" onclick="generateKernelSample('xor')">XOR 数据</button>
+          <button class="canvas-btn" onclick="generateKernelSample('moon')">月牙数据</button>
+        </div>
+      </div>
+      <canvas id="kernelCanvas" width="1100" height="350"></canvas>
+      <div class="canvas-hint">
+        选择数据集和核函数，观察不同核函数如何划分非线性数据
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════
+     05 — 深度对比与历史
+     ═══════════════════════════════════ -->
+<section id="comparison">
+  <div class="container">
+    <div class="section-label reveal">
+      <span>Section</span>
+      <span class="section-number">05</span>
+    </div>
+    <h2 class="reveal">对比<span>分析</span>与历史</h2>
+    <p class="section-desc reveal">
+      好的建筑师不仅懂自己的结构，还要了解整个城市的格局。
+    </p>
+
+    <!-- 历史时间线 -->
+    <div class="timeline reveal">
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div>
+          <div class="timeline-year">1963</div>
+          <div class="timeline-text">Vapnik & Lerner 提出广义肖像法（Generalized Portrait），SVM 的前身。</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div>
+          <div class="timeline-year">1992</div>
+          <div class="timeline-text">Boser, Guyon, Vapnik 发表"最优间隔分类"论文，核技巧正式引入。</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div>
+          <div class="timeline-year">1995</div>
+          <div class="timeline-text">Cortes & Vapnik 提出软间隔 SVM，处理非线性可分数据。</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div>
+          <div class="timeline-year">2000s</div>
+          <div class="timeline-text">SVM 在手写识别、文本分类、生物信息学领域大放异彩。深度学习崛起前的"分类之王"。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 对比表 -->
+    <h3 class="reveal" style="margin-top:3rem">SVM vs 其他经典算法</h3>
+    <div style="overflow-x:auto" class="reveal">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>SVM</th>
+            <th>逻辑回归</th>
+            <th>决策树</th>
+            <th>神经网络</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>理论基础</strong></td>
+            <td>统计学习理论 / VC维</td>
+            <td>最大似然估计</td>
+            <td>信息论 / 递归分割</td>
+            <td>函数逼近理论</td>
+          </tr>
+          <tr>
+            <td><strong>数据规模</strong></td>
+            <td><span class="tag tag-warm">≤ 10万</span> 样本有效</td>
+            <td><span class="tag tag-green">大规模</span> 友好</td>
+            <td><span class="tag tag-green">大规模</span> 友好</td>
+            <td><span class="tag tag-blue">需GPU</span> 加速</td>
+          </tr>
+          <tr>
+            <td><strong>高维数据</strong></td>
+            <td><span class="tag tag-green">强项</span> 维度无关</td>
+            <td><span class="tag tag-green">良好</span></td>
+            <td><span class="tag tag-warm">一般</span> 容易过拟合</td>
+            <td><span class="tag tag-green">良好</span></td>
+          </tr>
+          <tr>
+            <td><strong>可解释性</strong></td>
+            <td><span class="tag tag-green">高</span> 支持向量可查</td>
+            <td><span class="tag tag-green">高</span> 系数可解释</td>
+            <td><span class="tag tag-green">高</span> 规则可视化</td>
+            <td><span class="tag tag-warm">低</span> 黑箱模型</td>
+          </tr>
+          <tr>
+            <td><strong>非线性能力</strong></td>
+            <td><span class="tag tag-green">核技巧</span> 天然支持</td>
+            <td><span class="tag tag-warm">需手动</span> 特征工程</td>
+            <td><span class="tag tag-green">天然</span> 支持</td>
+            <td><span class="tag tag-green">天然</span> 支持</td>
+          </tr>
+          <tr>
+            <td><strong>调参难度</strong></td>
+            <td><span class="tag tag-blue">中等</span> C + 核参数</td>
+            <td><span class="tag tag-green">简单</span> 正则化参数</td>
+            <td><span class="tag tag-green">简单</span> 树深度等</td>
+            <td><span class="tag tag-warm">复杂</span> 超参数多</td>
+          </tr>
+          <tr>
+            <td><strong>全局最优</strong></td>
+            <td><span class="tag tag-green">是</span> 凸优化</td>
+            <td><span class="tag tag-green">是</span> 凸优化</td>
+            <td><span class="tag tag-warm">贪心</span> 启发式</td>
+            <td><span class="tag tag-warm">否</span> 局部最优</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="insight-box reveal">
+      <div class="insight-label">建筑师洞察</div>
+      <p>
+        SVM 在"中小规模 + 高维度 + 理论保证"场景下几乎是无敌的选择。
+        但当数据量达到百万级、或者需要自动学习特征表示时，深度学习更有优势。
+        关键不在于"谁更好"，而在于<strong>了解每种工具的最佳施工场景</strong>。
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════
+     06 — 实战指导
+     ═══════════════════════════════════ -->
+<section id="guide">
+  <div class="container">
+    <div class="section-label reveal">
+      <span>Section</span>
+      <span class="section-number">06</span>
+    </div>
+    <h2 class="reveal">实战<span>指导</span>手册</h2>
+    <p class="section-desc reveal">
+      从理论到落地的每一步——什么时候用、怎么调、怎么避坑。
+    </p>
+
+    <div class="card-grid reveal">
+      <div class="card">
+        <div class="card-icon">01 — 适用场景</div>
+        <div class="card-title">什么时候该用 SVM？</div>
+        <div class="card-body">
+          <span class="tag tag-green">推荐</span> 样本量 ≤ 10 万、特征维度高（文本/基因数据）、需要理论保证、二分类问题。<br><br>
+          <span class="tag tag-warm">慎用</span> 样本量 > 100 万（训练时间 O(n²)~O(n³)）、多分类（需 one-vs-one/one-vs-all）、需要概率输出、实时在线学习。
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">02 — 数据预处理</div>
+        <div class="card-title">施工前的准备工作</div>
+        <div class="card-body">
+          <span class="tag tag-green">必须</span> <strong>特征缩放</strong>——SVM 基于距离计算，不缩放的特征会让某些维度主导。StandardScaler 或 MinMaxScaler 是标配。<br><br>
+          <span class="tag tag-blue">建议</span> 处理缺失值和异常值。SVM 对异常值敏感（尤其是线性核）。考虑使用软间隔来缓解。
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">03 — 核函数选择</div>
+        <div class="card-title">选择正确的建筑材料</div>
+        <div class="card-body">
+          <strong>经验法则</strong>：先试线性核（尤其是特征数 > 样本数时）。线性核不行再试 RBF。
+          RBF 是"万金油"，大多数场景表现不错。多项式核在特定领域（图像）有奇效。
+          <br><br>
+          <span class="tag tag-warm">警告</span> 不要在没有交叉验证的情况下随意选择核函数和参数。
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">04 — 调参策略</div>
+        <div class="card-title">精密的参数调试</div>
+        <div class="card-body">
+          对于 RBF 核，核心参数是 <strong>C</strong> 和 <strong>γ (gamma)</strong>。<br><br>
+          <strong>C 的搜索范围</strong>：10⁻³ ~ 10³（对数间隔）<br>
+          <strong>γ 的搜索范围</strong>：10⁻⁹ ~ 10³（对数间隔）<br><br>
+          使用 <span class="tag tag-blue">GridSearchCV</span> 或 <span class="tag tag-blue">RandomizedSearchCV</span>。
+          先粗搜再细搜，分层 K 折交叉验证。
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">05 — 多分类策略</div>
+        <div class="card-title">扩展到多类别问题</div>
+        <div class="card-body">
+          <strong>OvR (One-vs-Rest)</strong>：训练 K 个分类器，每个区分"该类 vs 其余"。
+          速度快，但可能类别不平衡。<br><br>
+          <strong>OvO (One-vs-One)</strong>：训练 K(K-1)/2 个分类器，每两个类别之间训练一个。
+          训练多但每个简单。多数库默认使用此策略。
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">06 — 常见陷阱</div>
+        <div class="card-title">避坑清单</div>
+        <div class="card-body">
+          <span class="tag tag-warm">陷阱 1</span> 忘记特征缩放 → 结果很差<br>
+          <span class="tag tag-warm">陷阱 2</span> C 过大 → 过拟合，训练准确率 100% 但测试很差<br>
+          <span class="tag tag-warm">陷阱 3</span> γ 过大 → 决策边界过于复杂<br>
+          <span class="tag tag-warm">陷阱 4</span> 样本太少就用 RBF → 噪声都被记住了<br>
+          <span class="tag tag-warm">陷阱 5</span> 不做交叉验证 → 参数选择随机
+        </div>
+      </div>
+    </div>
+
+    <!-- 代码示例 -->
+    <h3 class="reveal" style="margin-top:3rem">Python 实战代码模板</h3>
+    <div class="code-block reveal">
+      <span class="code-label">Python</span>
+      <span class="code-kw">from</span> sklearn.svm <span class="code-kw">import</span> SVC
+<span class="code-kw">from</span> sklearn.preprocessing <span class="code-kw">import</span> StandardScaler
+<span class="code-kw">from</span> sklearn.pipeline <span class="code-kw">import</span> Pipeline
+<span class="code-kw">from</span> sklearn.model_selection <span class="code-kw">import</span> GridSearchCV
+
+<span class="code-cm"># 构建管道：缩放 + SVM（这一步不能省！）</span>
+pipe = Pipeline([
+    (<span class="code-str">'scaler'</span>, StandardScaler()),
+    (<span class="code-str">'svm'</span>, SVC(kernel=<span class="code-str">'rbf'</span>))
+])
+
+<span class="code-cm"># 参数网格搜索</span>
+param_grid = {
+    <span class="code-str">'svm__C'</span>:     [<span class="code-num">0.01</span>, <span class="code-num">0.1</span>, <span class="code-num">1</span>, <span class="code-num">10</span>, <span class="code-num">100</span>],
+    <span class="code-str">'svm__gamma'</span>: [<span class="code-num">0.001</span>, <span class="code-num">0.01</span>, <span class="code-num">0.1</span>, <span class="code-num">1</span>, <span class="code-num">10</span>],
+}
+
+<span class="code-cm"># 5 折交叉验证，选择最佳参数</span>
+grid = GridSearchCV(pipe, param_grid, cv=<span class="code-num">5</span>, scoring=<span class="code-str">'accuracy'</span>, n_jobs=-<span class="code-num">1</span>)
+grid.fit(X_train, y_train)
+
+<span class="code-fn">print</span>(f<span class="code-str">"最佳参数: {grid.best_params_}"</span>)
+<span class="code-fn">print</span>(f<span class="code-str">"最佳准确率: {grid.best_score_:.4f}"</span>)
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h4>关于本报告</h4>
+        <p>
+          本研究报告以建筑师的第一性原理思维为方法论，从最本质的问题出发，
+          逐层构建对支持向量机的完整认知。所有交互式组件均在浏览器端实时计算，
+          无需服务器依赖。
+        </p>
+      </div>
+      <div>
+        <h4>核心方法论</h4>
+        <p>
+          问题本质化<br>
+          假设检验化<br>
+          结构层次化<br>
+          方案可视化<br>
+          反馈闭环化
+        </p>
+      </div>
+      <div>
+        <h4>推荐阅读</h4>
+        <p>
+          《统计学习方法》— 李航<br>
+          《Pattern Recognition and Machine Learning》— Bishop<br>
+          《The Nature of Statistical Learning Theory》— Vapnik<br>
+          Scikit-learn SVM 文档
+        </p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      SVM Research Report — First-Principles Architecture · Built with pure HTML/CSS/JS
+    </div>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════
+     SCRIPTS
+     ═══════════════════════════════════ -->
+<script>
+// ═══ SCROLL REVEAL ═══
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal, .principle-step').forEach(el => observer.observe(el));
+
+// ═══ NAV HIGHLIGHT ═══
+const sections = document.querySelectorAll('section, header');
+const navLinks = document.querySelectorAll('.nav-toc a');
+
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    const top = s.offsetTop - 200;
+    if (scrollY >= top) current = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.remove('active');
+    if (a.getAttribute('href') === '#' + current) a.classList.add('active');
+  });
+});
+
+// ═══ TABS ═══
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tabGroup = btn.parentElement;
+    const content = btn.closest('.container') || btn.closest('section');
+    tabGroup.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tabId = btn.dataset.tab;
+    content.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    content.querySelector('#' + tabId).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════
+// INTERACTIVE SVM SIMULATOR
+// ═══════════════════════════════════════
+const svmCanvas = document.getElementById('svmCanvas');
+const svmCtx = svmCanvas.getContext('2d');
+let points = [];
+let svmTrained = false;
+let svmResult = null;
+let drawClass = 1;
+
+function initCanvas() {
+  const rect = svmCanvas.getBoundingClientRect();
+  svmCanvas.width = rect.width * 2;
+  svmCanvas.height = rect.height * 2;
+  svmCtx.scale(2, 2);
+  redrawSVM();
+}
+
+window.addEventListener('resize', () => {
+  initCanvas();
+});
+
+function setDrawClass(c) {
+  drawClass = c;
+  document.getElementById('btnClass1').classList.toggle('active', c === 1);
+  document.getElementById('btnClass2').classList.toggle('active', c === -1);
+}
+
+svmCanvas.addEventListener('click', (e) => {
+  const rect = svmCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  points.push({ x, y, label: drawClass });
+  svmTrained = false;
+  svmResult = null;
+  redrawSVM();
+});
+
+svmCanvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const rect = svmCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  points.push({ x, y, label: -drawClass });
+  svmTrained = false;
+  svmResult = null;
+  redrawSVM();
+});
+
+function clearCanvas() {
+  points = [];
+  svmTrained = false;
+  svmResult = null;
+  updateStats(0, 0, 0, 0);
+  redrawSVM();
+}
+
+function generateSample() {
+  points = [];
+  const n = 20;
+  for (let i = 0; i < n; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 0.12 + Math.random() * 0.08;
+    points.push({
+      x: 0.35 + Math.cos(angle) * r,
+      y: 0.5 + Math.sin(angle) * r,
+      label: 1
+    });
+  }
+  for (let i = 0; i < n; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 0.12 + Math.random() * 0.08;
+    points.push({
+      x: 0.65 + Math.cos(angle) * r,
+      y: 0.5 + Math.sin(angle) * r,
+      label: -1
+    });
+  }
+  svmTrained = false;
+  svmResult = null;
+  redrawSVM();
+}
+
+function updateParams() {
+  const cExp = parseFloat(document.getElementById('sliderC').value);
+  document.getElementById('valC').textContent = Math.pow(10, cExp).toFixed(1);
+}
+
+function redrawSVM() {
+  const w = svmCanvas.width / 2;
+  const h = svmCanvas.height / 2;
+  svmCtx.clearRect(0, 0, w, h);
+
+  if (svmTrained && svmResult) {
+    const step = 4;
+    for (let px = 0; px < w; px += step) {
+      for (let py = 0; py < h; py += step) {
+        const nx = px / w;
+        const ny = py / h;
+        const val = evalLinearSVM(nx, ny);
+        if (Math.abs(val) < 0.15) {
+          const alpha = (1 - Math.abs(val) / 0.15) * 0.3;
+          if (val >= 0) {
+            svmCtx.fillStyle = `rgba(0, 212, 255, ${alpha})`;
+          } else {
+            svmCtx.fillStyle = `rgba(255, 107, 53, ${alpha})`;
+          }
+          svmCtx.fillRect(px, py, step, step);
+        }
+      }
+    }
+
+    svmCtx.strokeStyle = 'rgba(0, 212, 255, 0.5)';
+    svmCtx.lineWidth = 1;
+    svmCtx.setLineDash([5, 5]);
+    drawDecisionLine(svmCtx, w, h, 1);
+    svmCtx.strokeStyle = 'rgba(255, 107, 53, 0.5)';
+    drawDecisionLine(svmCtx, w, h, -1);
+
+    svmCtx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    svmCtx.lineWidth = 1.5;
+    svmCtx.setLineDash([]);
+    drawDecisionLine(svmCtx, w, h, 0);
+    svmCtx.setLineDash([]);
+  }
+
+  points.forEach(p => {
+    const px = p.x * w;
+    const py = p.y * h;
+    const isSV = svmResult && svmResult.svIndices.has(points.indexOf(p));
+
+    svmCtx.beginPath();
+    svmCtx.arc(px, py, isSV ? 8 : 6, 0, Math.PI * 2);
+    if (p.label === 1) {
+      svmCtx.fillStyle = isSV ? '#00d4ff' : 'rgba(0, 212, 255, 0.8)';
+    } else {
+      svmCtx.fillStyle = isSV ? '#ff6b35' : 'rgba(255, 107, 53, 0.8)';
+    }
+    svmCtx.fill();
+
+    if (isSV) {
+      svmCtx.strokeStyle = 'white';
+      svmCtx.lineWidth = 2;
+      svmCtx.stroke();
+    }
+  });
+
+  document.getElementById('statPoints').textContent = points.length;
+}
+
+function drawDecisionLine(ctx, w, h, offset) {
+  if (!svmResult) return;
+  const { w1, w2, b } = svmResult;
+  ctx.beginPath();
+  let started = false;
+  for (let px = 0; px <= w; px += 2) {
+    const nx = px / w;
+    const ny = (offset - b - w1 * nx) / w2;
+    const py = ny * h;
+    if (py >= 0 && py <= h) {
+      if (!started) { ctx.moveTo(px, py); started = true; }
+      else ctx.lineTo(px, py);
+    }
+  }
+  ctx.stroke();
+}
+
+function evalLinearSVM(nx, ny) {
+  if (!svmResult) return 0;
+  return svmResult.w1 * nx + svmResult.w2 * ny + svmResult.b;
+}
+
+function toggleSVM() {
+  if (points.length < 4) {
+    alert('请至少添加 4 个数据点');
+    return;
+  }
+  trainSVM();
+}
+
+function trainSVM() {
+  const C = Math.pow(10, parseFloat(document.getElementById('sliderC').value));
+  const n = points.length;
+
+  let alphas = new Float64Array(n);
+  let b = 0;
+  const labels = points.map(p => p.label);
+  const xs = points.map(p => [p.x, p.y]);
+
+  function kernel(i, j) {
+    return xs[i][0] * xs[j][0] + xs[i][1] * xs[j][1];
+  }
+
+  const maxIter = 2000;
+  let passes = 0;
+  let iter = 0;
+
+  while (passes < 10 && iter < maxIter) {
+    let numChanged = 0;
+    for (let i = 0; i < n; i++) {
+      let fxi = b;
+      for (let j = 0; j < n; j++) fxi += alphas[j] * labels[j] * kernel(j, i);
+      const Ei = fxi - labels[i];
+
+      if ((labels[i] * Ei < -0.001 && alphas[i] < C) ||
+          (labels[i] * Ei > 0.001 && alphas[i] > 0)) {
+        let j = i;
+        while (j === i) j = Math.floor(Math.random() * n);
+
+        let fxj = b;
+        for (let k = 0; k < n; k++) fxj += alphas[k] * labels[k] * kernel(k, j);
+        const Ej = fxj - labels[j];
+
+        const aiOld = alphas[i];
+        const ajOld = alphas[j];
+
+        let L, H;
+        if (labels[i] !== labels[j]) {
+          L = Math.max(0, ajOld - aiOld);
+          H = Math.min(C, C + ajOld - aiOld);
+        } else {
+          L = Math.max(0, aiOld + ajOld - C);
+          H = Math.min(C, aiOld + ajOld);
+        }
+        if (L === H) continue;
+
+        const eta = 2 * kernel(i, j) - kernel(i, i) - kernel(j, j);
+        if (eta >= 0) continue;
+
+        alphas[j] = ajOld - labels[j] * (Ei - Ej) / eta;
+        alphas[j] = Math.min(H, Math.max(L, alphas[j]));
+        if (Math.abs(alphas[j] - ajOld) < 1e-5) continue;
+
+        alphas[i] = aiOld + labels[i] * labels[j] * (ajOld - alphas[j]);
+        alphas[i] = Math.min(C, Math.max(0, alphas[i]));
+
+        const b1 = b - Ei - labels[i] * (alphas[i] - aiOld) * kernel(i, i) - labels[j] * (alphas[j] - ajOld) * kernel(i, j);
+        const b2 = b - Ej - labels[i] * (alphas[i] - aiOld) * kernel(i, j) - labels[j] * (alphas[j] - ajOld) * kernel(j, j);
+
+        if (alphas[i] > 0 && alphas[i] < C) b = b1;
+        else if (alphas[j] > 0 && alphas[j] < C) b = b2;
+        else b = (b1 + b2) / 2;
+
+        numChanged++;
+      }
+    }
+    passes = numChanged === 0 ? passes + 1 : 0;
+    iter++;
+  }
+
+  let w1 = 0, w2 = 0;
+  const svIndices = new Set();
+  for (let i = 0; i < n; i++) {
+    if (alphas[i] > 0.001) {
+      svIndices.add(i);
+      w1 += alphas[i] * labels[i] * xs[i][0];
+      w2 += alphas[i] * labels[i] * xs[i][1];
+    }
+  }
+
+  svmResult = { w1, w2, b, alphas, svIndices };
+  svmTrained = true;
+
+  const wNorm = Math.sqrt(w1 * w1 + w2 * w2);
+  const margin = wNorm > 0 ? 2 / wNorm : 0;
+
+  let correct = 0;
+  points.forEach((p, i) => {
+    const pred = w1 * p.x + w2 * p.y + b;
+    if ((pred >= 0 && p.label === 1) || (pred < 0 && p.label === -1)) correct++;
+  });
+  const acc = (correct / n * 100).toFixed(1);
+
+  updateStats(n, svIndices.size, margin.toFixed(3), acc + '%');
+
+  document.getElementById('sliderMargin').value = Math.min(100, margin * 200);
+  document.getElementById('valMargin').textContent = margin.toFixed(3);
+
+  redrawSVM();
+}
+
+function updateStats(total, sv, margin, acc) {
+  document.getElementById('statSV').textContent = sv;
+  document.getElementById('statMargin').textContent = margin;
+  document.getElementById('statAcc').textContent = acc;
+}
+
+// ═══════════════════════════════════════
+// KERNEL VISUALIZER
+// ═══════════════════════════════════════
+let currentKernel = 'linear';
+let kernelData = [];
+
+function selectKernel(kernel, el) {
+  currentKernel = kernel;
+  document.querySelectorAll('.kernel-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  drawKernelViz();
+}
+
+function generateKernelSample(type) {
+  kernelData = [];
+  const canvas = document.getElementById('kernelCanvas');
+  const w = canvas.getBoundingClientRect().width;
+  const h = canvas.getBoundingClientRect().height;
+  canvas.width = w * 2;
+  canvas.height = h * 2;
+
+  if (type === 'circle') {
+    for (let i = 0; i < 60; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 0.15 + Math.random() * 0.05;
+      kernelData.push({ x: 0.5 + Math.cos(a) * r, y: 0.5 + Math.sin(a) * r, label: 1 });
+    }
+    for (let i = 0; i < 60; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r1 = 0.3 + Math.random() * 0.05;
+      kernelData.push({ x: 0.5 + Math.cos(a) * r1, y: 0.5 + Math.sin(a) * r1, label: -1 });
+    }
+  } else if (type === 'xor') {
+    for (let i = 0; i < 30; i++) {
+      kernelData.push({ x: 0.25 + Math.random() * 0.2, y: 0.25 + Math.random() * 0.2, label: 1 });
+      kernelData.push({ x: 0.55 + Math.random() * 0.2, y: 0.55 + Math.random() * 0.2, label: 1 });
+      kernelData.push({ x: 0.55 + Math.random() * 0.2, y: 0.25 + Math.random() * 0.2, label: -1 });
+      kernelData.push({ x: 0.25 + Math.random() * 0.2, y: 0.55 + Math.random() * 0.2, label: -1 });
+    }
+  } else if (type === 'moon') {
+    for (let i = 0; i < 60; i++) {
+      const a = Math.PI * (0.15 + Math.random() * 0.7);
+      const r = 0.3 + (Math.random() - 0.5) * 0.06;
+      kernelData.push({ x: 0.5 + Math.cos(a) * r, y: 0.35 + Math.sin(a) * r, label: 1 });
+    }
+    for (let i = 0; i < 60; i++) {
+      const a = Math.PI * (1.15 + Math.random() * 0.7);
+      const r = 0.3 + (Math.random() - 0.5) * 0.06;
+      kernelData.push({ x: 0.5 + Math.cos(a) * r, y: 0.65 + Math.sin(a) * r, label: -1 });
+    }
+  }
+
+  drawKernelViz();
+}
+
+function drawKernelViz() {
+  const canvas = document.getElementById('kernelCanvas');
+  if (!canvas.width) {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+  }
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width / 2;
+  const h = canvas.height / 2;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  if (kernelData.length === 0) {
+    ctx.fillStyle = 'rgba(136, 153, 179, 0.3)';
+    ctx.font = '14px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('选择一个数据集开始', w / 2, h / 2);
+    return;
+  }
+
+  const step = 8;
+  for (let px = 0; px < w; px += step) {
+    for (let py = 0; py < h; py += step) {
+      const nx = px / w;
+      const ny = py / h;
+      let score = 0;
+
+      if (currentKernel === 'linear') {
+        kernelData.forEach(p => {
+          const dist = Math.sqrt((p.x - nx) ** 2 + (p.y - ny) ** 2);
+          const influence = Math.exp(-dist * 5);
+          score += p.label * influence;
+        });
+      } else if (currentKernel === 'rbf') {
+        kernelData.forEach(p => {
+          const dist2 = (p.x - nx) ** 2 + (p.y - ny) ** 2;
+          const gamma = 30;
+          score += p.label * Math.exp(-gamma * dist2);
+        });
+      } else if (currentKernel === 'poly') {
+        kernelData.forEach(p => {
+          const dot = p.x * nx + p.y * ny;
+          score += p.label * Math.pow(dot + 1, 3) * 0.01 / (Math.sqrt((p.x - nx) ** 2 + (p.y - ny) ** 2) * 50 + 1);
+        });
+      } else {
+        kernelData.forEach(p => {
+          const dist = Math.sqrt((p.x - nx) ** 2 + (p.y - ny) ** 2);
+          score += p.label * Math.exp(-dist * 5);
+        });
+      }
+
+      const alpha = Math.min(0.25, Math.abs(score) * 0.08);
+      if (score > 0) {
+        ctx.fillStyle = `rgba(0, 212, 255, ${alpha})`;
+      } else {
+        ctx.fillStyle = `rgba(255, 107, 53, ${alpha})`;
+      }
+      ctx.fillRect(px, py, step, step);
+    }
+  }
+
+  kernelData.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x * w, p.y * h, 4, 0, Math.PI * 2);
+    ctx.fillStyle = p.label === 1 ? 'rgba(0, 212, 255, 0.85)' : 'rgba(255, 107, 53, 0.85)';
+    ctx.fill();
+  });
+}
+
+// Initialize
+initCanvas();
+updateParams();
+</script>
+
+</body>
+</html>

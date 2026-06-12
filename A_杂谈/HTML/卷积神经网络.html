@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN 架构第一性原理 — 深度研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e1a;
+  --bg-elevated: #111827;
+  --surface: #1a2035;
+  --surface-hover: #222b45;
+  --grid-line: rgba(56, 189, 248, 0.06);
+  --accent: #38bdf8;
+  --accent-warm: #f59e0b;
+  --accent-rose: #f43f5e;
+  --accent-emerald: #10b981;
+  --accent-violet: #8b5cf6;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --border: rgba(56, 189, 248, 0.12);
+  --glow: rgba(56, 189, 248, 0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Mono', 'Noto Serif SC', monospace;
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+/* === BLUEPRINT GRID BACKGROUND === */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* === SCROLL PROGRESS === */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-violet), var(--accent-rose));
+  z-index: 1000;
+  transition: width 0.1s;
+}
+
+/* === NAV === */
+.nav {
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nav-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.nav-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px var(--glow);
+}
+
+.nav-dot:hover::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+}
+
+/* === LAYOUT === */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 40px;
+  position: relative;
+  z-index: 1;
+}
+
+section {
+  padding: 120px 0;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* === TYPOGRAPHY === */
+.display-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-label::before {
+  content: '';
+  width: 32px;
+  height: 1px;
+  background: var(--accent);
+}
+
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 24px;
+}
+
+.body-text {
+  font-size: 15px;
+  color: var(--text-secondary);
+  max-width: 680px;
+  line-height: 1.9;
+}
+
+.body-text strong {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.highlight-box {
+  background: linear-gradient(135deg, rgba(56,189,248,0.08), rgba(139,92,246,0.05));
+  border-left: 3px solid var(--accent);
+  padding: 20px 24px;
+  border-radius: 0 8px 8px 0;
+  margin: 24px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* === HERO === */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-top: 60px;
+  opacity: 1;
+  transform: none;
+}
+
+.hero-content {
+  position: relative;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(56,189,248,0.1);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--accent);
+  margin-bottom: 32px;
+}
+
+.hero-badge .pulse {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.hero-title {
+  margin-bottom: 24px;
+}
+
+.hero-title span {
+  display: block;
+}
+
+.hero-title .outline-text {
+  -webkit-text-stroke: 1.5px var(--accent);
+  color: transparent;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 32px;
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+}
+
+.meta-item {
+  text-align: left;
+}
+
+.meta-item .meta-value {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--text-primary);
+}
+
+.meta-item .meta-label {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* === ARCHITECTURE CANVAS (interactive) === */
+.arch-canvas {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px 32px;
+  margin: 40px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.arch-canvas::before {
+  content: 'INTERACTIVE';
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16,185,129,0.3);
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.cnn-layers-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 20px 0;
+}
+
+.cnn-layer-block {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.cnn-layer-block:hover {
+  transform: translateY(-8px) scale(1.05);
+  z-index: 2;
+}
+
+.layer-cube {
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: #fff;
+  text-align: center;
+  line-height: 1.2;
+  border: 2px solid transparent;
+  transition: all 0.35s;
+  position: relative;
+  overflow: hidden;
+}
+
+.layer-cube::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  pointer-events: none;
+}
+
+.cnn-layer-block:hover .layer-cube {
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+
+.layer-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.3s;
+}
+
+.cnn-layer-block:hover .layer-label {
+  color: var(--text-primary);
+}
+
+.arrow-connector {
+  color: var(--text-muted);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Layer tooltip */
+.layer-tooltip {
+  position: absolute;
+  bottom: calc(100% + 16px);
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  width: 260px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s;
+  z-index: 10;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+}
+
+.layer-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--bg-elevated);
+}
+
+.cnn-layer-block:hover .layer-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.tooltip-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.tooltip-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.tooltip-param {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(56,189,248,0.1);
+  color: var(--accent);
+}
+
+/* === FIRST PRINCIPLES CARDS === */
+.principles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.principle-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 28px;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  transition: all 0.4s;
+}
+
+.principle-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.principle-card:hover {
+  border-color: rgba(56,189,248,0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+
+.principle-card:hover::before {
+  opacity: 1;
+}
+
+.principle-number {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 48px;
+  color: rgba(56,189,248,0.08);
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  line-height: 1;
+}
+
+.principle-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.principle-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.principle-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+/* === TIMELINE === */
+.timeline {
+  position: relative;
+  padding-left: 40px;
+  margin-top: 48px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent), var(--accent-violet), var(--accent-rose));
+  border-radius: 2px;
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 48px;
+  padding-left: 24px;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: all 0.6s ease;
+}
+
+.timeline-item.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -33px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 3px solid var(--accent);
+  z-index: 1;
+}
+
+.timeline-year {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.timeline-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.timeline-detail {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.timeline-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.tag {
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  border: 1px solid;
+  letter-spacing: 0.05em;
+}
+
+.tag-blue { border-color: rgba(56,189,248,0.3); color: var(--accent); background: rgba(56,189,248,0.05); }
+.tag-amber { border-color: rgba(245,158,11,0.3); color: var(--accent-warm); background: rgba(245,158,11,0.05); }
+.tag-emerald { border-color: rgba(16,185,129,0.3); color: var(--accent-emerald); background: rgba(16,185,129,0.05); }
+.tag-violet { border-color: rgba(139,92,246,0.3); color: var(--accent-violet); background: rgba(139,92,246,0.05); }
+.tag-rose { border-color: rgba(244,63,94,0.3); color: var(--accent-rose); background: rgba(244,63,94,0.05); }
+
+/* === COMPARISON TABLE === */
+.comparison-wrapper {
+  overflow-x: auto;
+  margin: 40px 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.comparison-table thead {
+  background: var(--surface);
+}
+
+.comparison-table th {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 16px 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.comparison-table td {
+  padding: 14px 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(56,189,248,0.05);
+  vertical-align: top;
+}
+
+.comparison-table tbody tr {
+  transition: background 0.2s;
+}
+
+.comparison-table tbody tr:hover {
+  background: rgba(56,189,248,0.03);
+}
+
+.model-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+/* === CONVOLUTION DEMO === */
+.conv-demo {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  margin: 32px 0;
+}
+
+.conv-grid-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+
+.conv-matrix {
+  display: grid;
+  gap: 3px;
+}
+
+.conv-cell {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.conv-cell.input-cell {
+  background: rgba(56,189,248,0.1);
+  color: var(--accent);
+  border: 1px solid rgba(56,189,248,0.15);
+}
+
+.conv-cell.input-cell.active {
+  background: rgba(56,189,248,0.3);
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(56,189,248,0.2);
+}
+
+.conv-cell.kernel-cell {
+  background: rgba(245,158,11,0.15);
+  color: var(--accent-warm);
+  border: 1px solid rgba(245,158,11,0.2);
+}
+
+.conv-cell.output-cell {
+  background: rgba(16,185,129,0.15);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16,185,129,0.2);
+  font-weight: 700;
+}
+
+.conv-cell.output-cell.highlight {
+  background: rgba(16,185,129,0.4);
+  border-color: var(--accent-emerald);
+  box-shadow: 0 0 16px rgba(16,185,129,0.2);
+}
+
+.matrix-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.conv-operators {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 20px;
+}
+
+.demo-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  padding: 10px 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 0.05em;
+}
+
+.btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  letter-spacing: 0.12em;
+}
+
+.btn.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+/* === FILTER VISUALIZER === */
+.filter-visual {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin: 32px 0;
+}
+
+.filter-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.filter-card:hover, .filter-card.selected {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  width: fit-content;
+  margin: 0 auto 12px;
+}
+
+.filter-pixel {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+}
+
+.filter-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.filter-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* === PROBLEM-SOLUTION CARDS === */
+.ps-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-top: 40px;
+}
+
+.ps-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.4s;
+}
+
+.ps-card:hover {
+  border-color: rgba(56,189,248,0.3);
+}
+
+.ps-header {
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.ps-arrow {
+  color: var(--text-muted);
+  font-size: 14px;
+  transition: transform 0.3s;
+  flex-shrink: 0;
+}
+
+.ps-card.open .ps-arrow {
+  transform: rotate(90deg);
+}
+
+.ps-problem {
+  flex: 1;
+}
+
+.ps-problem-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--accent-rose);
+  margin-bottom: 4px;
+}
+
+.ps-problem-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.ps-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ps-card.open .ps-body {
+  max-height: 800px;
+}
+
+.ps-content {
+  padding: 0 28px 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.solution-block {
+  background: rgba(16,185,129,0.05);
+  border: 1px solid rgba(16,185,129,0.1);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.solution-block h4 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent-emerald);
+  margin-bottom: 8px;
+}
+
+.solution-block p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.insight-block {
+  background: rgba(139,92,246,0.05);
+  border: 1px solid rgba(139,92,246,0.1);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.insight-block h4 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent-violet);
+  margin-bottom: 8px;
+}
+
+.insight-block p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* === CHANNEL VISUALIZER === */
+.channel-vis {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 24px 0;
+  flex-wrap: wrap;
+  perspective: 800px;
+}
+
+.channel-block {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+}
+
+.channel-block:hover {
+  transform: scale(1.3) rotateY(10deg);
+  z-index: 2;
+}
+
+/* === PERFORMANCE CHART (CSS only) === */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: 220px;
+  padding: 0 20px;
+  margin: 32px 0;
+}
+
+.bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.bar {
+  width: 100%;
+  max-width: 60px;
+  border-radius: 6px 6px 0 0;
+  transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-height: 4px;
+  cursor: pointer;
+}
+
+.bar:hover {
+  filter: brightness(1.3);
+}
+
+.bar-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  max-height: 80px;
+  overflow: hidden;
+}
+
+.bar-value {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* === FUTURE CARDS === */
+.future-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.future-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s;
+}
+
+.future-card:hover {
+  border-color: rgba(56,189,248,0.3);
+  transform: translateY(-4px);
+}
+
+.future-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  transition: opacity 0.4s;
+  opacity: 0;
+}
+
+.future-card:hover::after {
+  opacity: 1;
+}
+
+.future-card:nth-child(1)::after { background: linear-gradient(90deg, var(--accent), transparent); }
+.future-card:nth-child(2)::after { background: linear-gradient(90deg, var(--accent-warm), transparent); }
+.future-card:nth-child(3)::after { background: linear-gradient(90deg, var(--accent-emerald), transparent); }
+.future-card:nth-child(4)::after { background: linear-gradient(90deg, var(--accent-violet), transparent); }
+
+.future-icon {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.future-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.future-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* === FOOTER === */
+.report-footer {
+  text-align: center;
+  padding: 60px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.footer-line {
+  margin-bottom: 8px;
+}
+
+.footer-line a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .container { padding: 0 20px; }
+  section { padding: 80px 0; }
+  .nav { display: none; }
+  .hero-meta { flex-wrap: wrap; gap: 20px; }
+  .ps-content { grid-template-columns: 1fr; }
+  .cnn-layers-visual { gap: 4px; }
+  .layer-cube { width: 48px !important; height: 48px !important; font-size: 9px; }
+  .layer-tooltip { width: 200px; }
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes typeWriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+</style>
+</head>
+<body>
+
+<!-- Scroll Progress -->
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<!-- Navigation Dots -->
+<nav class="nav" id="navDots">
+  <div class="nav-dot active" data-target="hero" data-label="封面"></div>
+  <div class="nav-dot" data-target="first-principles" data-label="第一性原理"></div>
+  <div class="nav-dot" data-target="architecture" data-label="核心架构"></div>
+  <div class="nav-dot" data-target="convolution" data-label="卷积演示"></div>
+  <div class="nav-dot" data-target="evolution" data-label="演进历程"></div>
+  <div class="nav-dot" data-target="problems" data-label="问题与方案"></div>
+  <div class="nav-dot" data-target="comparison" data-label="性能对比"></div>
+  <div class="nav-dot" data-target="future" data-label="未来方向"></div>
+</nav>
+
+<!-- ========== HERO ========== -->
+<section class="hero visible" id="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="pulse"></span>
+        第一性原理研究报告 · 建筑师视角
+      </div>
+      <h1 class="display-title hero-title">
+        <span>卷积神经网络</span>
+        <span class="outline-text">CNN Architecture</span>
+        <span style="font-size: 0.5em; color: var(--text-secondary); font-weight: 400; margin-top: 8px; display: block;">
+          从底层结构力学到现代设计范式的深度解构
+        </span>
+      </h1>
+      <p class="body-text" style="margin-top: 16px;">
+        作为一名架构师，我相信一切伟大的结构都始于对基本单元的深刻理解。
+        本报告将从<strong>第一性原理</strong>出发，逐层拆解CNN的每一根"承重梁"与"结构柱"，
+        揭示从 LeNet 到 ConvNeXt 背后不变的设计哲学。
+      </p>
+      <div class="hero-meta">
+        <div class="meta-item">
+          <div class="meta-value">6</div>
+          <div class="meta-label">核心原理</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-value">35+</div>
+          <div class="meta-label">年演进历程</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-value">4</div>
+          <div class="meta-label">关键问题域</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-value">∞</div>
+          <div class="meta-label">设计可能性</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FIRST PRINCIPLES ========== -->
+<section id="first-principles">
+  <div class="container">
+    <div class="section-label">01 · First Principles</div>
+    <h2 class="section-title">第一性原理：CNN 的六根承重柱</h2>
+    <p class="body-text">
+      剥离所有工程技巧和花哨命名，CNN 的本质建筑在六个不可再分的基本假设之上。
+      理解它们，就拥有了设计任何视觉模型的元能力。
+    </p>
+
+    <div class="principles-grid">
+      <div class="principle-card">
+        <div class="principle-number">01</div>
+        <div class="principle-icon" style="background: rgba(56,189,248,0.12); color: var(--accent);">◇</div>
+        <h3 class="principle-title">局部性假设 (Locality)</h3>
+        <p class="principle-desc">
+          视觉信息是局部聚合的——像素的意义在邻域中产生。卷积核就是建筑师的"模块化单元"，
+          只关注局部窗口内的结构关系，而非全局铺开。这使得参数从 O(n²) 降至 O(k²)。
+        </p>
+      </div>
+
+      <div class="principle-card">
+        <div class="principle-number">02</div>
+        <div class="principle-icon" style="background: rgba(245,158,11,0.12); color: var(--accent-warm);">⟲</div>
+        <h3 class="principle-title">平移等变性 (Equivariance)</h3>
+        <p class="principle-desc">
+          同一个特征在图像的不同位置应当被同等识别。权重共享机制让卷积核成为一把"万能钥匙"，
+          无论目标出现在左上角还是右下角，都能触发相同的响应模式。
+        </p>
+      </div>
+
+      <div class="principle-card">
+        <div class="principle-number">03</div>
+        <div class="principle-icon" style="background: rgba(16,185,129,0.12); color: var(--accent-emerald);">⧉</div>
+        <h3 class="principle-title">层次组合 (Hierarchy)</h3>
+        <p class="principle-desc">
+          复杂结构由简单结构递归组合而成：边缘→纹理→部件→物体。
+          深度网络的每一层是一个"施工楼层"，逐层建造从像素到语义的抽象阶梯。
+        </p>
+      </div>
+
+      <div class="principle-card">
+        <div class="principle-number">04</div>
+        <div class="principle-icon" style="background: rgba(139,92,246,0.12); color: var(--accent-violet);">⊞</div>
+        <h3 class="principle-title">空间降维 (Downsampling)</h3>
+        <p class="principle-desc">
+          通过池化或步长卷积压缩空间维度，既降低了计算量，又扩大了后续层的等效感受野。
+          相当于建筑师从平面蓝图切换到鸟瞰总图——牺牲细节换取全局视野。
+        </p>
+      </div>
+
+      <div class="principle-card">
+        <div class="principle-number">05</div>
+        <div class="principle-icon" style="background: rgba(244,63,94,0.12); color: var(--accent-rose);">↻</div>
+        <h3 class="principle-title">通道扩展 (Channel Expansion)</h3>
+        <p class="principle-desc">
+          空间压缩的同时通道数扩展（如 64→128→256），形成"窄而深"的特征表示。
+          每增加一个通道就是多一组"专业视角"来解读同一空间区域。
+        </p>
+      </div>
+
+      <div class="principle-card">
+        <div class="principle-number">06</div>
+        <div class="principle-icon" style="background: rgba(236,72,153,0.12); color: #ec4899;">⊞</div>
+        <h3 class="principle-title">非线性逼近 (Non-linearity)</h3>
+        <p class="principle-desc">
+          没有激活函数，多层线性变换坍缩为单层。非线性赋予网络拟合任意复杂函数的能力——
+          它是让钢筋混凝土从"堆叠"变成"结构"的化学键。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CORE ARCHITECTURE ========== -->
+<section id="architecture">
+  <div class="container">
+    <div class="section-label">02 · Core Architecture</div>
+    <h2 class="section-title">核心结构体：层层拆解</h2>
+    <p class="body-text">
+      一座 CNN 就像一栋建筑：输入层是地基，卷积层是承重墙，池化层是楼板，
+      全连接层是屋顶。悬停查看每个"构件"的工程细节。
+    </p>
+
+    <div class="arch-canvas">
+      <div class="cnn-layers-visual" id="cnnVisual">
+        <div class="cnn-layer-block" data-layer="input">
+          <div class="layer-tooltip">
+            <div class="tooltip-title">输入层 Input</div>
+            <div class="tooltip-desc">原始图像矩阵，典型尺寸 224×224×3 (RGB)。每个像素值在 [0, 255] 或归一化到 [0, 1]。</div>
+            <span class="tooltip-param">参数量: 0</span>
+          </div>
+          <div class="layer-cube" style="width: 70px; height: 70px; background: linear-gradient(135deg, #1e3a5f, #2563eb);">Input<br>224²</div>
+          <span class="layer-label">输入</span>
+        </div>
+
+        <span class="arrow-connector">→</span>
+
+        <div class="cnn-layer-block" data-layer="conv1">
+          <div class="layer-tooltip">
+            <div class="tooltip-title">卷积层 Conv</div>
+            <div class="tooltip-desc">用 k×k 滑动窗口提取局部特征。每个滤波器检测一种模式（边缘/纹理/形状）。通过填充(Padding)和步长(Stride)控制输出尺寸。</div>
+            <span class="tooltip-param">参数量: k² × C_in × C_out + C_out</span>
+          </div>
+          <div class="layer-cube" style="width: 58px; height: 58px; background: linear-gradient(135deg, #7c3aed, #a855f7);">Conv<br>3×3</div>
+          <span class="layer-label">卷积</span>
+        </div>
+
+        <span class="arrow-connector">→</span>
+
+        <div class="cnn-layer-block" data-layer="bn1">
+          <div class="layer-tooltip">
+            <div class="tooltip-title">批归一化 BatchNorm</div>
+            <div class="tooltip-desc">对每个通道做标准化（减均值除标准差），再用可学习参数 γ, β 缩放偏移。加速训练收敛，起到正则化效果。</div>
+            <span class="tooltip-param">参数量: 2 × C (γ, β)</span>
+          </div>
+          <div class="layer-cube" style="width: 46px; height: 46px; background: linear-gradient(135deg, #0891b2, #22d3ee);">BN</div>
+          <span class="layer-label">归一化</span>
+        </div>
+
+        <span class="arrow-connector">→</span>
+
+        <div class="cnn-layer-block" data-layer="relu1">
+          <div class="layer-tooltip">
+            <div class="tooltip-title">激活函数 ReLU</div>
+            <div class="tooltip-desc">f(x) = max(0, x)。引入非线性，同时稀疏化特征图。现代变体包括 GELU、SiLU/Swish、Mish 等。</div>
+            <span class="tooltip-param">参数量: 0</span>
+          </div>
+          <div class="layer-cube" style="width: 46px; height: 46px; background: linear-gradient(135deg, #dc2626, #f87171);">ReLU</div>
+          <span class="layer-label">激活</span>
+        </div>
+
+        <span class="arrow-connector">→</span>
+
+        <div class="cnn-layer-block" data-layer="pool1">
+          <div class="layer-tooltip">
+            <div class="tooltip-title">池化层 Pooling</div>
+            <div class="tooltip-desc">Max Pool 或 Avg Pool，典型 2×2 stride=2。将空间尺寸减半，扩大感受野。现代网络倾向用步长卷积替代池化。</div>
+            <span class="tooltip-param">参数量: 0</span>
+          </div>
+          <div class="layer-cube" style="width: 46px; height: 46px; background: linear-gradient(135deg, #059669, #34d399);">Pool<br>2×2</div>
+          <span class="layer-label">池化</span>
+        </div>
+
+        <span class="arrow-connector">→</span>
+
+        <div class="cnn-layer-block" style="opacity: 0.4;">
+          <div class="layer-cube" style="width: 38px; height: 38px; background: linear-gradient(135deg, #4b5563, #6b7280);">···</div>
+          <span class="layer-label">重复</span>
+        </div>
+
+        <span class="arrow-connector">→</span>
+
+        <div class="cnn-layer-block" data-layer="gap">
+          <div class="layer-tooltip">
+            <div class="tooltip-title">全局平均池化 GAP</div>
+            <div class="tooltip-desc">对每个通道取全局均值，将 H×W×C 压缩为 1×1×C。大幅减少参数，是现代网络的标准做法。</div>
+            <span class="tooltip-param">参数量: 0</span>
+          </div>
+          <div class="layer-cube" style="width: 50px; height: 50px; background: linear-gradient(135deg, #d97706, #fbbf24);">GAP</div>
+          <span class="layer-label">全局池化</span>
+        </div>
+
+        <span class="arrow-connector">→</span>
+
+        <div class="cnn-layer-block" data-layer="fc">
+          <div class="layer-tooltip">
+            <div class="tooltip-title">全连接层 FC / 分类头</div>
+            <div class="tooltip-desc">将特征向量映射到类别空间。一个 512→1000 的线性层，配合 Softmax 输出概率分布。</div>
+            <span class="tooltip-param">参数量: C × num_classes</span>
+          </div>
+          <div class="layer-cube" style="width: 62px; height: 62px; background: linear-gradient(135deg, #be185d, #f472b6);">FC<br>→ C</div>
+          <span class="layer-label">分类</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CONVOLUTION DEMO ========== -->
+<section id="convolution">
+  <div class="container">
+    <div class="section-label">03 · Interactive Convolution</div>
+    <h2 class="section-title">卷积操作：亲手推动每一格运算</h2>
+    <p class="body-text">
+      卷积是CNN的核心原子操作。选择不同的卷积核，观察它如何在输入矩阵上滑动并生成特征图。
+    </p>
+
+    <div class="conv-demo">
+      <div style="text-align: center; margin-bottom: 8px;">
+        <span style="font-size: 12px; color: var(--text-muted); letter-spacing: 0.1em;">选择卷积核</span>
+      </div>
+      <div class="filter-visual">
+        <div class="filter-card selected" onclick="selectFilter(0, this)">
+          <div class="filter-grid">
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#1a2035"></div>
+            <div class="filter-pixel" style="background:#1a2035"></div>
+            <div class="filter-pixel" style="background:#1a2035"></div>
+            <div class="filter-pixel" style="background:#f87171"></div>
+            <div class="filter-pixel" style="background:#f87171"></div>
+            <div class="filter-pixel" style="background:#f87171"></div>
+          </div>
+          <div class="filter-name">Sobel-X 边缘检测</div>
+          <div class="filter-desc">检测水平边缘</div>
+        </div>
+        <div class="filter-card" onclick="selectFilter(1, this)">
+          <div class="filter-grid">
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#1a2035"></div>
+            <div class="filter-pixel" style="background:#f87171"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#1a2035"></div>
+            <div class="filter-pixel" style="background:#f87171"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#1a2035"></div>
+            <div class="filter-pixel" style="background:#f87171"></div>
+          </div>
+          <div class="filter-name">Sobel-Y 边缘检测</div>
+          <div class="filter-desc">检测垂直边缘</div>
+        </div>
+        <div class="filter-card" onclick="selectFilter(2, this)">
+          <div class="filter-grid">
+            <div class="filter-pixel" style="background:#1a2035"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#1a2035"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#fbbf24"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#1a2035"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#1a2035"></div>
+          </div>
+          <div class="filter-name">锐化核</div>
+          <div class="filter-desc">增强图像细节</div>
+        </div>
+        <div class="filter-card" onclick="selectFilter(3, this)">
+          <div class="filter-grid">
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+            <div class="filter-pixel" style="background:#38bdf8"></div>
+          </div>
+          <div class="filter-name">均值模糊</div>
+          <div class="filter-desc">平滑降噪</div>
+        </div>
+      </div>
+
+      <div class="conv-grid-container">
+        <div>
+          <div class="matrix-label">输入 5×5</div>
+          <div class="conv-matrix" id="inputMatrix" style="grid-template-columns: repeat(5, 44px);"></div>
+        </div>
+        <div class="conv-operators">
+          <span>⊛</span>
+          <span style="font-size: 11px; color: var(--accent);">卷积</span>
+        </div>
+        <div>
+          <div class="matrix-label">卷积核 3×3</div>
+          <div class="conv-matrix" id="kernelMatrix" style="grid-template-columns: repeat(3, 44px);"></div>
+        </div>
+        <div class="conv-operators">
+          <span>=</span>
+        </div>
+        <div>
+          <div class="matrix-label">输出 3×3</div>
+          <div class="conv-matrix" id="outputMatrix" style="grid-template-columns: repeat(3, 44px);"></div>
+        </div>
+      </div>
+
+      <div class="demo-controls">
+        <button class="btn" onclick="stepConvolution()">单步卷积 ▶</button>
+        <button class="btn" onclick="runFullConvolution()">完整运行 ▶▶</button>
+        <button class="btn" onclick="resetConvolution()">重置 ↺</button>
+        <span id="convInfo" style="font-size: 12px; color: var(--text-muted); align-self: center; margin-left: 12px;">
+          点击"单步卷积"观察滑动过程
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== EVOLUTION TIMELINE ========== -->
+<section id="evolution">
+  <div class="container">
+    <div class="section-label">04 · Evolution Timeline</div>
+    <h2 class="section-title">架构演进：从 LeNet 到 ConvNeXt</h2>
+    <p class="body-text">
+      每一代经典架构都回答了一个核心问题。以下是一部CNN的建筑编年史——
+      看每一代"建筑师"如何在继承中突破。
+    </p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-year">1998</div>
+        <h3 class="timeline-name">LeNet-5 · LeCun</h3>
+        <p class="timeline-detail">
+          开山之作。确立了 Conv→Pool→Conv→Pool→FC 的基本骨架。手写数字识别的工业化应用证明了卷积的可行性。
+          核心贡献：<strong>定义了CNN的建筑语法</strong>。
+        </p>
+        <div class="timeline-tags">
+          <span class="tag tag-blue">奠基</span>
+          <span class="tag tag-amber">60K 参数</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2012</div>
+        <h3 class="timeline-name">AlexNet · Krizhevsky</h3>
+        <p class="timeline-detail">
+          ImageNet 竞赛的分水岭。首次大规模使用 ReLU（替代 Sigmoid）、Dropout 正则化、GPU 并行训练。
+          Top-5 错误率从 26% 骤降至 16.4%。核心贡献：<strong>证明深度+规模+GPU = 暴力美学</strong>。
+        </p>
+        <div class="timeline-tags">
+          <span class="tag tag-rose">突破</span>
+          <span class="tag tag-amber">60M 参数</span>
+          <span class="tag tag-emerald">ReLU + Dropout</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2014</div>
+        <h3 class="timeline-name">VGGNet · Simonyan & Zisserman</h3>
+        <p class="timeline-detail">
+          用纯粹的 3×3 卷积堆叠到 16-19 层。证明小卷积核+深度 > 大卷积核+浅度。
+          两个 3×3 卷积的感受野等价于一个 5×5，但参数更少、非线性更强。
+          核心贡献：<strong>确立了"小核深堆"的设计范式</strong>。
+        </p>
+        <div class="timeline-tags">
+          <span class="tag tag-blue">范式</span>
+          <span class="tag tag-amber">138M 参数</span>
+          <span class="tag tag-violet">3×3 通用核</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2014</div>
+        <h3 class="timeline-name">GoogLeNet / Inception · Szegedy</h3>
+        <p class="timeline-detail">
+          引入 Inception 模块：在同一层并行使用 1×1、3×3、5×5 卷积 + MaxPool，再拼接。
+          1×1 卷积用于通道降维，大幅降低计算量。核心贡献：<strong>多尺度并行 + 瓶颈设计</strong>。
+        </p>
+        <div class="timeline-tags">
+          <span class="tag tag-emerald">并行多尺度</span>
+          <span class="tag tag-amber">6.8M 参数</span>
+          <span class="tag tag-blue">1×1 瓶颈</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2015</div>
+        <h3 class="timeline-name">ResNet · He</h3>
+        <p class="timeline-detail">
+          残差连接：y = F(x) + x。让梯度可以通过"快捷通道"直传，解决了深层网络的退化问题。
+          152 层网络首次可行。核心贡献：<strong>用恒等映射让深度不再是瓶颈</strong>，深度学习的里程碑。
+        </p>
+        <div class="timeline-tags">
+          <span class="tag tag-rose">里程碑</span>
+          <span class="tag tag-amber">25.6M (ResNet-50)</span>
+          <span class="tag tag-violet">Skip Connection</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2017</div>
+        <h3 class="timeline-name">DenseNet · Huang</h3>
+        <p class="timeline-detail">
+          每层与之前所有层密集连接：x_l = H_l([x_0, x_1, ..., x_{l-1}])。极致的特征复用和梯度流动。
+          核心贡献：<strong>用连接密度换参数效率</strong>。
+        </p>
+        <div class="timeline-tags">
+          <span class="tag tag-emerald">密集连接</span>
+          <span class="tag tag-blue">特征复用</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2019</div>
+        <h3 class="timeline-name">EfficientNet · Tan & Le</h3>
+        <p class="timeline-detail">
+          提出复合缩放 (Compound Scaling)：同时按比例缩放深度、宽度和分辨率。
+          用 NAS 搜索基础架构，再统一放大。核心贡献：<strong>系统化的维度缩放理论</strong>。
+        </p>
+        <div class="timeline-tags">
+          <span class="tag tag-violet">NAS 搜索</span>
+          <span class="tag tag-amber">复合缩放</span>
+          <span class="tag tag-emerald">效率 SOTA</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-year">2022</div>
+        <h3 class="timeline-name">ConvNeXt · Liu</h3>
+        <p class="timeline-detail">
+          "为 CNN 正名"。从 ViT 中反向借鉴设计（大卷积核、GELU、LayerNorm、更少的激活函数），
+          纯 CNN 架构达到与 Transformer 可比的性能。核心贡献：<strong>证明了架构设计 > 注意力机制本身</strong>。
+        </p>
+        <div class="timeline-tags">
+          <span class="tag tag-rose">逆袭 Transformer</span>
+          <span class="tag tag-blue">7×7 大核</span>
+          <span class="tag tag-violet">现代化改造</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== PROBLEMS & SOLUTIONS ========== -->
+<section id="problems">
+  <div class="container">
+    <div class="section-label">05 · Problem → Solution</div>
+    <h2 class="section-title">关键问题域：建筑师的诊断书</h2>
+    <p class="body-text">
+      每一个经典架构创新，都是对一个深层问题的回应。以下是四个核心问题及其解决方案。
+    </p>
+
+    <div class="ps-grid">
+      <!-- Problem 1 -->
+      <div class="ps-card" onclick="toggleCard(this)">
+        <div class="ps-header">
+          <span class="ps-arrow">▶</span>
+          <div class="ps-problem">
+            <div class="ps-problem-label">问题 01</div>
+            <div class="ps-problem-title">梯度消失/爆炸：网络越深，训练越崩溃</div>
+          </div>
+        </div>
+        <div class="ps-body">
+          <div class="ps-content">
+            <div class="solution-block">
+              <h4>解决方案矩阵</h4>
+              <p>
+                <strong>残差连接 (ResNet)</strong>：y = F(x) + x，梯度直传通道<br>
+                <strong>批归一化 (BN)</strong>：稳定每层输入分布<br>
+                <strong>合理初始化</strong>：He初始化（fan_out）适配ReLU<br>
+                <strong>梯度裁剪</strong>：限制梯度范数上界
+              </p>
+            </div>
+            <div class="insight-block">
+              <h4>建筑师洞察</h4>
+              <p>
+                这就像建筑中的"抗震缝"——不是消除应力，而是给应力一条安全的释放通道。
+                残差连接的本质是告诉网络："至少不要比浅层更差"，将优化目标从 H(x) 变为 F(x) = H(x) - x（残差）。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Problem 2 -->
+      <div class="ps-card" onclick="toggleCard(this)">
+        <div class="ps-header">
+          <span class="ps-arrow">▶</span>
+          <div class="ps-problem">
+            <div class="ps-problem-label">问题 02</div>
+            <div class="ps-problem-title">感受野受限：小卷积核看不远，大卷积核算不起</div>
+          </div>
+        </div>
+        <div class="ps-body">
+          <div class="ps-content">
+            <div class="solution-block">
+              <h4>解决方案矩阵</h4>
+              <p>
+                <strong>空洞卷积 (Dilated Conv)</strong>：在不增加参数的情况下扩大感受野<br>
+                <strong>深度可分离卷积</strong>：Depthwise + Pointwise 解耦空间和通道<br>
+                <strong>多尺度融合 (FPN/U-Net)</strong>：跨层特征金字塔<br>
+                <strong>注意力机制</strong>：SE/ECA/Non-local 动态调整关注范围
+              </p>
+            </div>
+            <div class="insight-block">
+              <h4>建筑师洞察</h4>
+              <p>
+                感受野 = 建筑师的视野范围。空洞卷积就像用望远镜——
+                不需要走过去（增加参数），只需调整焦距（扩张率）就能看得更远。
+                而注意力机制则像一个灵活的项目经理，可以瞬间聚焦到任何需要关注的区域。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Problem 3 -->
+      <div class="ps-card" onclick="toggleCard(this)">
+        <div class="ps-header">
+          <span class="ps-arrow">▶</span>
+          <div class="ps-problem">
+            <div class="ps-problem-label">问题 03</div>
+            <div class="ps-problem-title">计算量与精度的矛盾：想要又快又准</div>
+          </div>
+        </div>
+        <div class="ps-body">
+          <div class="ps-content">
+            <div class="solution-block">
+              <h4>解决方案矩阵</h4>
+              <p>
+                <strong>深度可分离卷积 (MobileNet)</strong>：计算量降低 k² 倍<br>
+                <strong>通道洗牌 (ShuffleNet)</strong>：组卷积 + Channel Shuffle<br>
+                <strong>知识蒸馏</strong>：大模型（教师）→ 小模型（学生）<br>
+                <strong>量化/剪枝</strong>：INT8推理、结构化通道裁剪
+              </p>
+            </div>
+            <div class="insight-block">
+              <h4>建筑师洞察</h4>
+              <p>
+                这是"建筑预算"问题。不是每面墙都需要是承重墙。
+                深度可分离卷积的思路是：先让每个通道独立处理空间信息（Depthwise），
+                再用 1×1 卷积混合通道（Pointwise），将 "空间×通道" 的联合计算拆开——
+                就像先做精装修设计，再做色彩搭配，而不是同时做两件事。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Problem 4 -->
+      <div class="ps-card" onclick="toggleCard(this)">
+        <div class="ps-header">
+          <span class="ps-arrow">▶</span>
+          <div class="ps-problem">
+            <div class="ps-problem-label">问题 04</div>
+            <div class="ps-problem-title">CNN vs Transformer：卷积的未来在哪里？</div>
+          </div>
+        </div>
+        <div class="ps-body">
+          <div class="ps-content">
+            <div class="solution-block">
+              <h4>解决方案矩阵</h4>
+              <p>
+                <strong>ConvNeXt</strong>：纯CNN现代化，吸收Transformer设计（大核、LN、GELU）<br>
+                <strong>ConvFormer / CoAtNet</strong>：CNN提取局部特征 + Transformer建模全局关系<br>
+                <strong>大核卷积 (7×7, 11×11)</strong>：部分替代Self-Attention的全局建模能力<br>
+                <strong>动态卷积 / 条件计算</strong>：输入自适应的卷积核
+              </p>
+            </div>
+            <div class="insight-block">
+              <h4>建筑师洞察</h4>
+              <p>
+                CNN 和 Transformer 不是对立面，而是两种"结构体系"。
+                卷积是预制件——高效、确定性强；注意力是参数化空间——灵活但计算量大。
+                未来的方向是混合架构：用CNN的局部效率+Transformer的全局视野，
+                就像现代建筑中钢结构+混凝土的组合——取各家之长。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== COMPARISON ========== -->
+<section id="comparison">
+  <div class="container">
+    <div class="section-label">06 · Performance Analysis</div>
+    <h2 class="section-title">性能对比：架构竞赛的量化图谱</h2>
+    <p class="body-text">
+      用数据说话——从参数量、计算量、精度三个维度审视各代"建筑"的性价比。
+    </p>
+
+    <div class="comparison-wrapper">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>模型</th>
+            <th>年份</th>
+            <th>深度</th>
+            <th>参数量</th>
+            <th>FLOPs</th>
+            <th>ImageNet Top-1</th>
+            <th>核心创新</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="model-name">AlexNet</td>
+            <td>2012</td>
+            <td>8</td>
+            <td>60M</td>
+            <td>0.7G</td>
+            <td>63.3%</td>
+            <td style="color: var(--accent-rose);">ReLU, Dropout, GPU</td>
+          </tr>
+          <tr>
+            <td class="model-name">VGG-16</td>
+            <td>2014</td>
+            <td>16</td>
+            <td>138M</td>
+            <td>15.5G</td>
+            <td>74.4%</td>
+            <td style="color: var(--accent);">3×3 统一小核</td>
+          </tr>
+          <tr>
+            <td class="model-name">Inception V1</td>
+            <td>2014</td>
+            <td>22</td>
+            <td>6.8M</td>
+            <td>1.5G</td>
+            <td>74.8%</td>
+            <td style="color: var(--accent-emerald);">多尺度并行模块</td>
+          </tr>
+          <tr>
+            <td class="model-name">ResNet-50</td>
+            <td>2015</td>
+            <td>50</td>
+            <td>25.6M</td>
+            <td>4.1G</td>
+            <td>76.0%</td>
+            <td style="color: var(--accent-rose);">残差连接</td>
+          </tr>
+          <tr>
+            <td class="model-name">ResNet-152</td>
+            <td>2015</td>
+            <td>152</td>
+            <td>60M</td>
+            <td>11.6G</td>
+            <td>78.3%</td>
+            <td style="color: var(--accent-rose);">超深残差网络</td>
+          </tr>
+          <tr>
+            <td class="model-name">DenseNet-121</td>
+            <td>2017</td>
+            <td>121</td>
+            <td>8M</td>
+            <td>2.9G</td>
+            <td>74.9%</td>
+            <td style="color: var(--accent-emerald);">密集连接</td>
+          </tr>
+          <tr>
+            <td class="model-name">EfficientNet-B4</td>
+            <td>2019</td>
+            <td>—</td>
+            <td>19M</td>
+            <td>4.2G</td>
+            <td>82.9%</td>
+            <td style="color: var(--accent-violet);">复合缩放 + NAS</td>
+          </tr>
+          <tr>
+            <td class="model-name">ConvNeXt-T</td>
+            <td>2022</td>
+            <td>—</td>
+            <td>29M</td>
+            <td>4.5G</td>
+            <td>82.1%</td>
+            <td style="color: var(--accent-rose);">CNN现代化</td>
+          </tr>
+          <tr>
+            <td class="model-name">ConvNeXt-B</td>
+            <td>2022</td>
+            <td>—</td>
+            <td>89M</td>
+            <td>15.4G</td>
+            <td>83.8%</td>
+            <td style="color: var(--accent-rose);">7×7大核 + LN</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; margin: 48px 0 12px;">
+      Top-1 准确率演进
+    </h3>
+    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">悬停查看具体数值</p>
+
+    <div class="bar-chart" id="perfChart">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- ========== FUTURE ========== -->
+<section id="future">
+  <div class="container">
+    <div class="section-label">07 · Future Directions</div>
+    <h2 class="section-title">未来方向：下一代视觉架构</h2>
+    <p class="body-text">
+      作为建筑师，我们不只是回顾过去，更要勾勒蓝图。以下四个方向将定义CNN的下一个十年。
+    </p>
+
+    <div class="future-grid">
+      <div class="future-card">
+        <div class="future-icon">🧪</div>
+        <h3 class="future-title">混合架构</h3>
+        <p class="future-desc">
+          CNN 的局部效率 + Transformer 的全局建模能力将走向深度融合。
+          CoAtNet、EfficientFormer 等已经证明：混血比纯种更强。
+          关键在于找到最优的"局部-全局"计算分配比。
+        </p>
+      </div>
+
+      <div class="future-card">
+        <div class="future-icon">📐</div>
+        <h3 class="future-title">神经架构搜索 (NAS)</h3>
+        <p class="future-desc">
+          让算法设计算法。Once-for-All、BigNAS 等方法可以在数千种候选结构中找到帕累托最优解。
+          未来的CNN可能不再是人类手工设计的，而是搜索出来的。
+        </p>
+      </div>
+
+      <div class="future-card">
+        <div class="future-icon">⚡</div>
+        <h3 class="future-title">高效推理</h3>
+        <p class="future-desc">
+          端侧部署 (手机/IoT) 要求极致效率。量化 (INT4/INT2)、知识蒸馏、动态推理（早退出机制）
+          将让CNN在 1W 功耗下完成过去需要 300W 的任务。
+        </p>
+      </div>
+
+      <div class="future-card">
+        <div class="future-icon">🌊</div>
+        <h3 class="future-title">多模态融合</h3>
+        <p class="future-desc">
+          CNN 不再只看图像——音频频谱图、3D点云、医学影像、卫星遥感……
+          通用视觉编码器（如 InternImage、SAM）正在成为多模态AI的视觉底座。
+        </p>
+      </div>
+    </div>
+
+    <div class="highlight-box" style="margin-top: 48px;">
+      <strong style="color: var(--accent-warm);">建筑师寄语：</strong>
+      CNN 的故事告诉我们，伟大的结构往往不是发明了新零件，而是以新的方式组合旧零件。
+      残差连接没有发明新运算，只是加了一条恒等映射。ConvNeXt 没有发明新模块，
+      只是从对手那里学来了好的设计习惯。第一性原理的本质是：
+      <strong>永远追问"为什么需要这根柱子"，直到只剩下不可再删的结构。</strong>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="report-footer">
+  <div class="container">
+    <p class="footer-line">CNN Architecture Research Report · 建筑师视角 · 第一性原理</p>
+    <p class="footer-line">Built with structural thinking · <a href="#">Interactive Edition</a></p>
+  </div>
+</footer>
+
+<script>
+// === SCROLL PROGRESS ===
+window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = (scrollTop / docHeight) * 100;
+  document.getElementById('scrollProgress').style.width = progress + '%';
+});
+
+// === SECTION VISIBILITY (Intersection Observer) ===
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('section:not(.hero)').forEach(s => observer.observe(s));
+
+// Timeline items
+const tlObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.2 });
+
+document.querySelectorAll('.timeline-item').forEach(item => tlObserver.observe(item));
+
+// === NAV DOTS ===
+const navDots = document.querySelectorAll('.nav-dot');
+const sections = document.querySelectorAll('section[id], section.hero');
+
+navDots.forEach(dot => {
+  dot.addEventListener('click', () => {
+    const target = document.getElementById(dot.dataset.target);
+    if (target) target.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+const navObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navDots.forEach(d => d.classList.remove('active'));
+      const id = entry.target.id || 'hero';
+      const activeDot = document.querySelector(`.nav-dot[data-target="${id}"]`);
+      if (activeDot) activeDot.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+
+sections.forEach(s => navObserver.observe(s));
+
+// === PROBLEM CARDS ACCORDION ===
+function toggleCard(card) {
+  const wasOpen = card.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.ps-card').forEach(c => c.classList.remove('open'));
+  if (!wasOpen) card.classList.add('open');
+}
+
+// === CONVOLUTION DEMO ===
+const kernels = [
+  { name: 'Sobel-X',  values: [[-1,-2,-1],[0,0,0],[1,2,1]] },
+  { name: 'Sobel-Y',  values: [[-1,0,1],[-2,0,2],[-1,0,1]] },
+  { name: 'Sharpen',  values: [[0,-1,0],[-1,5,-1],[0,-1,0]] },
+  { name: 'Mean',     values: [[1/9,1/9,1/9],[1/9,1/9,1/9],[1/9,1/9,1/9]] },
+];
+
+const inputData = [
+  [10, 20, 30, 40, 50],
+  [15, 25, 35, 45, 55],
+  [20, 30, 40, 50, 60],
+  [25, 35, 45, 55, 65],
+  [30, 40, 50, 60, 70],
+];
+
+let currentKernel = kernels[0].values;
+let convStep = 0;
+let convRunning = false;
+
+function createInputMatrix() {
+  const el = document.getElementById('inputMatrix');
+  el.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    for (let j = 0; j < 5; j++) {
+      const cell = document.createElement('div');
+      cell.className = 'conv-cell input-cell';
+      cell.textContent = inputData[i][j];
+      cell.dataset.row = i;
+      cell.dataset.col = j;
+      el.appendChild(cell);
+    }
+  }
+}
+
+function createKernelMatrix(kernel) {
+  const el = document.getElementById('kernelMatrix');
+  el.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      const cell = document.createElement('div');
+      cell.className = 'conv-cell kernel-cell';
+      const v = kernel[i][j];
+      cell.textContent = Number.isInteger(v) ? v : v.toFixed(2);
+      el.appendChild(cell);
+    }
+  }
+}
+
+function createOutputMatrix() {
+  const el = document.getElementById('outputMatrix');
+  el.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      const cell = document.createElement('div');
+      cell.className = 'conv-cell output-cell';
+      cell.textContent = '—';
+      cell.dataset.row = i;
+      cell.dataset.col = j;
+      el.appendChild(cell);
+    }
+  }
+}
+
+function highlightInputRegion(r, c) {
+  document.querySelectorAll('#inputMatrix .conv-cell').forEach(cell => {
+    cell.classList.remove('active');
+    const cr = parseInt(cell.dataset.row);
+    const cc = parseInt(cell.dataset.col);
+    if (cr >= r && cr < r + 3 && cc >= c && cc < c + 3) {
+      cell.classList.add('active');
+    }
+  });
+}
+
+function computeConvAt(r, c) {
+  let sum = 0;
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      sum += inputData[r + i][c + j] * currentKernel[i][j];
+    }
+  }
+  return Math.round(sum * 100) / 100;
+}
+
+function stepConvolution() {
+  if (convStep >= 9) {
+    convStep = 0;
+    createOutputMatrix();
+  }
+  const r = Math.floor(convStep / 3);
+  const c = convStep % 3;
+  const val = computeConvAt(r, c);
+
+  highlightInputRegion(r, c);
+
+  const outputs = document.querySelectorAll('#outputMatrix .conv-cell');
+  outputs.forEach(cell => cell.classList.remove('highlight'));
+  const target = outputs[convStep];
+  target.textContent = val;
+  target.classList.add('highlight');
+
+  document.getElementById('convInfo').textContent =
+    `步骤 ${convStep + 1}/9: 输出[${r},${c}] = ${val}`;
+
+  convStep++;
+}
+
+function runFullConvolution() {
+  if (convRunning) return;
+  convRunning = true;
+  convStep = 0;
+  createOutputMatrix();
+
+  function doStep() {
+    if (convStep >= 9) {
+      convRunning = false;
+      document.querySelectorAll('#inputMatrix .conv-cell').forEach(c => c.classList.remove('active'));
+      document.getElementById('convInfo').textContent = '卷积完成！尝试选择不同卷积核';
+      return;
+    }
+    stepConvolution();
+    setTimeout(doStep, 300);
+  }
+  doStep();
+}
+
+function resetConvolution() {
+  convStep = 0;
+  convRunning = false;
+  createInputMatrix();
+  createOutputMatrix();
+  document.querySelectorAll('#inputMatrix .conv-cell').forEach(c => c.classList.remove('active'));
+  document.getElementById('convInfo').textContent = '点击"单步卷积"观察滑动过程';
+}
+
+function selectFilter(idx, el) {
+  currentKernel = kernels[idx].values;
+  document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  createKernelMatrix(currentKernel);
+  resetConvolution();
+}
+
+// Init convolution demo
+createInputMatrix();
+createKernelMatrix(currentKernel);
+createOutputMatrix();
+
+// === PERFORMANCE BAR CHART ===
+const chartData = [
+  { name: 'AlexNet',    value: 63.3, color: 'var(--accent-rose)' },
+  { name: 'VGG-16',     value: 74.4, color: 'var(--accent)' },
+  { name: 'Inception',  value: 74.8, color: 'var(--accent-emerald)' },
+  { name: 'ResNet-50',  value: 76.0, color: 'var(--accent-rose)' },
+  { name: 'Res-152',    value: 78.3, color: 'var(--accent-rose)' },
+  { name: 'Dense-121',  value: 74.9, color: 'var(--accent-emerald)' },
+  { name: 'Efficient',  value: 82.9, color: 'var(--accent-violet)' },
+  { name: 'ConvNeXt-T', value: 82.1, color: 'var(--accent-warm)' },
+  { name: 'ConvNeXt-B', value: 83.8, color: 'var(--accent-warm)' },
+];
+
+const chartContainer = document.getElementById('perfChart');
+chartData.forEach(d => {
+  const group = document.createElement('div');
+  group.className = 'bar-group';
+
+  const value = document.createElement('div');
+  value.className = 'bar-value';
+  value.textContent = d.value + '%';
+
+  const bar = document.createElement('div');
+  bar.className = 'bar';
+  bar.style.background = d.color;
+  bar.style.height = '0px';
+  bar.title = `${d.name}: ${d.value}%`;
+
+  const label = document.createElement('div');
+  label.className = 'bar-label';
+  label.textContent = d.name;
+
+  group.appendChild(value);
+  group.appendChild(bar);
+  group.appendChild(label);
+  chartContainer.appendChild(group);
+
+  // Animate on scroll
+  const barObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const pct = ((d.value - 55) / 35) * 100;
+        setTimeout(() => {
+          bar.style.height = Math.max(pct, 10) + '%';
+        }, 100);
+        barObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+  barObserver.observe(group);
+});
+
+// Auto-open first problem card
+setTimeout(() => {
+  const firstCard = document.querySelector('.ps-card');
+  if (firstCard) firstCard.classList.add('open');
+}, 500);
+</script>
+</body>
+</html>

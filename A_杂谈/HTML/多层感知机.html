@@ -1,0 +1,2174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多层感知机 · 第一性原理深度研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070b12;
+  --surface: #0c1120;
+  --surface-2: #111828;
+  --surface-3: #172035;
+  --border: #1a2540;
+  --border-light: #243050;
+  --cyan: #00d4ff;
+  --cyan-mid: #0098b8;
+  --cyan-dim: rgba(0, 212, 255, 0.08);
+  --cyan-glow: rgba(0, 212, 255, 0.25);
+  --amber: #ffb347;
+  --amber-dim: rgba(255, 179, 71, 0.1);
+  --amber-glow: rgba(255, 179, 71, 0.3);
+  --rose: #ff6b8a;
+  --green: #4ade80;
+  --text: #d8d4cc;
+  --text-bright: #f0ece4;
+  --text-muted: #5a6580;
+  --text-subtle: #3a4560;
+  --font-display: 'Cormorant Garamond', 'Noto Serif SC', serif;
+  --font-body: 'Noto Serif SC', 'Cormorant Garamond', serif;
+  --font-mono: 'DM Mono', 'Courier New', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+/* Blueprint grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(0,212,255,0.03) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 70%, rgba(255,179,71,0.02) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════ HERO ═══════ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  padding: 4rem 0;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 1rem;
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  width: fit-content;
+  margin-bottom: 2.5rem;
+  animation: fadeIn 0.8s ease;
+}
+
+.hero-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--cyan);
+  border-radius: 50%;
+  animation: pulse 2s ease infinite;
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 700;
+  color: var(--text-bright);
+  line-height: 1.15;
+  margin-bottom: 1.5rem;
+  animation: fadeUp 0.8s ease;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--cyan);
+}
+
+.hero-sub {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  max-width: 640px;
+  line-height: 1.9;
+  animation: fadeUp 0.8s ease 0.15s both;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 2.5rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  animation: fadeUp 0.8s ease 0.3s both;
+}
+
+.hero-meta-item {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.hero-meta-item span {
+  display: block;
+  font-size: 1.1rem;
+  color: var(--text-bright);
+  margin-top: 0.25rem;
+  font-family: var(--font-display);
+  letter-spacing: 0;
+}
+
+/* ═══════ SECTIONS ═══════ */
+.section {
+  padding: 6rem 0;
+  position: relative;
+}
+
+.section + .section {
+  border-top: 1px solid var(--border);
+}
+
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 1.5rem;
+}
+
+.section-label::before {
+  content: '';
+  width: 32px;
+  height: 1px;
+  background: var(--cyan);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 700;
+  color: var(--text-bright);
+  line-height: 1.25;
+  margin-bottom: 1rem;
+}
+
+.section-desc {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  max-width: 700px;
+  margin-bottom: 3rem;
+}
+
+/* ═══════ PRINCIPLE CARDS ═══════ */
+.principle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin: 3rem 0;
+}
+
+.principle-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.principle-card:hover {
+  border-color: var(--cyan-mid);
+  transform: translateY(-4px);
+}
+
+.principle-card::before {
+  content: attr(data-index);
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-subtle);
+  letter-spacing: 0.1em;
+}
+
+.principle-icon {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  color: var(--cyan);
+  font-size: 1.2rem;
+}
+
+.principle-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--text-bright);
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.principle-card p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+/* ═══════ ARCHITECTURE DIAGRAM ═══════ */
+.arch-canvas-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2rem;
+  margin: 2.5rem 0;
+  position: relative;
+}
+
+.arch-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+}
+
+.canvas-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+  margin-top: 1rem;
+  text-align: right;
+  letter-spacing: 0.05em;
+}
+
+/* ═══════ MATH BLOCKS ═══════ */
+.math-block {
+  background: var(--surface);
+  border-left: 3px solid var(--amber);
+  padding: 1.5rem 2rem;
+  margin: 2rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  line-height: 2;
+  color: var(--text);
+  overflow-x: auto;
+}
+
+.math-block .highlight {
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.math-block .cyan {
+  color: var(--cyan);
+}
+
+.math-note {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+  line-height: 1.7;
+  padding-left: 1rem;
+  border-left: 1px solid var(--border);
+}
+
+/* ═══════ ACTIVATION FUNCTION EXPLORER ═══════ */
+.activation-explorer {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin: 2.5rem 0;
+  overflow: hidden;
+}
+
+.activation-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.activation-tab {
+  flex: 1;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  letter-spacing: 0.03em;
+}
+
+.activation-tab:hover { color: var(--text); background: var(--cyan-dim); }
+
+.activation-tab.active {
+  color: var(--cyan);
+  background: var(--cyan-dim);
+}
+
+.activation-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--cyan);
+}
+
+.activation-body {
+  display: flex;
+  min-height: 360px;
+}
+
+.activation-canvas {
+  flex: 1;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activation-canvas canvas {
+  display: block;
+}
+
+.activation-info {
+  width: 300px;
+  padding: 1.5rem;
+  border-left: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.activation-info h4 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--text-bright);
+  margin-bottom: 0.75rem;
+}
+
+.activation-info .formula {
+  background: var(--bg);
+  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--amber);
+  margin-bottom: 1rem;
+  border-left: 2px solid var(--amber);
+  line-height: 1.8;
+}
+
+.activation-info p {
+  color: var(--text-muted);
+  line-height: 1.75;
+  margin-bottom: 0.75rem;
+}
+
+.tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid;
+  letter-spacing: 0.05em;
+  margin-right: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.tag-pro { color: var(--green); border-color: rgba(74,222,128,0.3); }
+.tag-con { color: var(--rose); border-color: rgba(255,107,138,0.3); }
+.tag-use { color: var(--cyan); border-color: rgba(0,212,255,0.3); }
+
+/* ═══════ XOR DEMO ═══════ */
+.xor-demo {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin: 2.5rem 0;
+}
+
+.xor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.xor-header h3 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--text-bright);
+}
+
+.xor-body {
+  display: flex;
+  min-height: 420px;
+}
+
+.xor-canvas-wrap {
+  flex: 1;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xor-controls {
+  width: 300px;
+  padding: 1.5rem;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.control-group label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.control-group input[type="range"] {
+  width: 100%;
+  accent-color: var(--cyan);
+}
+
+.control-group .value {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--cyan);
+  float: right;
+  margin-top: -1.3rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  background: transparent;
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+
+.btn:hover {
+  background: var(--cyan);
+  color: var(--bg);
+  letter-spacing: 0.12em;
+}
+
+.btn-amber {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.btn-amber:hover {
+  background: var(--amber);
+  color: var(--bg);
+}
+
+.xor-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.stat-box {
+  background: var(--bg);
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.stat-box .stat-val {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  color: var(--cyan);
+}
+
+.stat-box .stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-subtle);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 0.25rem;
+}
+
+/* ═══════ BACKPROP VISUALIZATION ═══════ */
+.backprop-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin: 2.5rem 0;
+}
+
+.bp-step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  position: relative;
+  transition: border-color 0.3s;
+}
+
+.bp-step:hover { border-color: var(--cyan-mid); }
+
+.bp-step-num {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--cyan);
+  letter-spacing: 0.15em;
+  margin-bottom: 0.75rem;
+}
+
+.bp-step h4 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--text-bright);
+  margin-bottom: 0.5rem;
+}
+
+.bp-step p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.bp-arrow {
+  position: absolute;
+  right: -0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-subtle);
+  font-size: 1rem;
+  z-index: 2;
+}
+
+/* ═══════ GRADIENT DESCENT ═══════ */
+.gd-visual {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin: 2.5rem 0;
+  overflow: hidden;
+}
+
+.gd-top {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.gd-canvas-area {
+  flex: 1;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gd-side {
+  width: 280px;
+  padding: 1.5rem;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gd-variants {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.gd-variant-btn {
+  padding: 0.4rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gd-variant-btn:hover { border-color: var(--cyan-mid); color: var(--text); }
+.gd-variant-btn.active { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+
+/* ═══════ BEST PRACTICES ═══════ */
+.practice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 2.5rem 0;
+}
+
+.practice-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  transition: border-color 0.3s;
+}
+
+.practice-item:hover { border-color: var(--cyan-mid); }
+
+.practice-num {
+  font-family: var(--font-mono);
+  font-size: 1.8rem;
+  font-weight: 500;
+  color: var(--cyan);
+  line-height: 1;
+  min-width: 40px;
+}
+
+.practice-item h4 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--text-bright);
+  margin-bottom: 0.35rem;
+}
+
+.practice-item p {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* ═══════ CODE BLOCK ═══════ */
+.code-block {
+  background: #0a0f1a;
+  border: 1px solid var(--border);
+  margin: 2rem 0;
+  overflow: hidden;
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1.25rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.code-header span {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+  letter-spacing: 0.08em;
+}
+
+.code-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.code-dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-light);
+}
+
+.code-body {
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.85;
+  color: var(--text);
+}
+
+.code-body .kw { color: var(--rose); }
+.code-body .fn { color: var(--cyan); }
+.code-body .str { color: var(--green); }
+.code-body .cm { color: var(--text-subtle); font-style: italic; }
+.code-body .num { color: var(--amber); }
+
+/* ═══════ INSIGHT CARDS ═══════ */
+.insight-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin: 2.5rem 0;
+}
+
+.insight-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2rem;
+  position: relative;
+}
+
+.insight-card.warn {
+  border-left: 3px solid var(--amber);
+}
+
+.insight-card.info {
+  border-left: 3px solid var(--cyan);
+}
+
+.insight-card h4 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--text-bright);
+  margin-bottom: 0.75rem;
+}
+
+.insight-card p {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+/* ═══════ FOOTER ═══════ */
+.footer {
+  padding: 4rem 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.footer p {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  letter-spacing: 0.08em;
+}
+
+.footer .divider {
+  width: 40px;
+  height: 1px;
+  background: var(--border-light);
+  margin: 1rem auto;
+}
+
+/* ═══════ ANIMATIONS ═══════ */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-in {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.animate-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ═══════ RESPONSIVE ═══════ */
+@media (max-width: 900px) {
+  .principle-grid { grid-template-columns: 1fr; }
+  .backprop-steps { grid-template-columns: 1fr 1fr; }
+  .activation-body, .xor-body, .gd-top { flex-direction: column; }
+  .activation-info, .xor-controls, .gd-side {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+  .insight-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .container { padding: 0 1rem; }
+  .backprop-steps { grid-template-columns: 1fr; }
+  .hero-meta { flex-direction: column; gap: 1rem; }
+}
+
+/* ═══════ SCROLLBAR ═══════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-light); }
+::-webkit-scrollbar-thumb:hover { background: var(--cyan-mid); }
+
+/* ═══════ TOC NAV ═══════ */
+.toc {
+  position: fixed;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.toc a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.toc a .dot {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--text-subtle);
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.toc a .label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: transparent;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.toc a:hover .label { color: var(--text-muted); }
+.toc a.active .dot { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
+.toc a.active .label { color: var(--cyan); }
+
+@media (max-width: 1300px) { .toc { display: none; } }
+
+/* ═══════ TABLE ═══════ */
+.comp-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  font-size: 0.88rem;
+}
+
+.comp-table th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.comp-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.comp-table tr:hover td { background: var(--cyan-dim); }
+
+.comp-table td:first-child {
+  font-family: var(--font-mono);
+  color: var(--cyan);
+  font-size: 0.85rem;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ TABLE OF CONTENTS ═══════ -->
+<nav class="toc" id="toc">
+  <a href="#hero"><span class="dot"></span><span class="label">INTRO</span></a>
+  <a href="#principles"><span class="dot"></span><span class="label">PRINCIPLES</span></a>
+  <a href="#architecture"><span class="dot"></span><span class="label">ARCH</span></a>
+  <a href="#math"><span class="dot"></span><span class="label">MATH</span></a>
+  <a href="#activation"><span class="dot"></span><span class="label">ACTIVATE</span></a>
+  <a href="#backprop"><span class="dot"></span><span class="label">BACKPROP</span></a>
+  <a href="#gradient"><span class="dot"></span><span class="label">GRADIENT</span></a>
+  <a href="#xor"><span class="dot"></span><span class="label">XOR DEMO</span></a>
+  <a href="#practice"><span class="dot"></span><span class="label">PRACTICE</span></a>
+</nav>
+
+<!-- ═══════ HERO ═══════ -->
+<header class="hero" id="hero">
+  <div class="container">
+    <div class="hero-badge">ARCHITECT'S REPORT · 建筑师研究报告</div>
+    <h1>多层感知机<br><em>第一性原理</em>深度解析</h1>
+    <p class="hero-sub">
+      从最基本的「感知」出发，拆解神经网络的本质结构。不依赖类比，不依赖直觉——用第一性原理重建对多层感知机的理解，从数学根基到工程实践，从静态结构到动态学习。
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">方法论<span>第一性原理拆解</span></div>
+      <div class="hero-meta-item">交互模块<span>5 个可视化实验</span></div>
+      <div class="hero-meta-item">深度<span>原理 → 架构 → 实践</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════ SECTION 1: FIRST PRINCIPLES ═══════ -->
+<section class="section" id="principles">
+  <div class="container">
+    <div class="section-label">01 · FIRST PRINCIPLES</div>
+    <h2 class="section-title">第一性原理拆解</h2>
+    <p class="section-desc">
+      在建造一座大厦之前，建筑师必须理解每一块砖、每一根梁的力学本质。同样，理解多层感知机，必须从最底层的单元逻辑开始，逐层搭建认知结构。
+    </p>
+
+    <div class="principle-grid animate-in">
+      <div class="principle-card" data-index="AXIOM 01">
+        <div class="principle-icon">⊕</div>
+        <h3>线性加权聚合</h3>
+        <p>一切始于加权求和。每个输入乘以一个可调节的权重，加上偏置，这是信息处理的第一步：<strong>Σ(wᵢxᵢ) + b</strong>。它表达了"每个输入信号的重要程度不同"这一核心观点。这是可学习的基础——通过调整权重来改变系统的行为。</p>
+      </div>
+      <div class="principle-card" data-index="AXIOM 02">
+        <div class="principle-icon">⌇</div>
+        <h3>非线性激活</h3>
+        <p>仅有线性变换，多层网络等价于单层——因为线性函数的复合仍是线性。必须引入非线性，网络才能逼近任意复杂函数。这是从"简单叠加"到"复杂表达"的质变点。没有非线性，就没有深度学习。</p>
+      </div>
+      <div class="principle-card" data-index="AXIOM 03">
+        <div class="principle-icon">∇</div>
+        <h3>梯度驱动学习</h3>
+        <p>网络的"智能"不来自预设规则，来自对误差的响应。计算损失对每个权重的偏导数（梯度），沿梯度反方向更新权重——这就是反向传播。误差信号从输出层回传，每层权重都做出相应调整，系统逐渐趋向最优。</p>
+      </div>
+    </div>
+
+    <div class="math-block animate-in">
+      <div>三层拆解 → 一个系统：</div>
+      <div><span class="cyan">聚合</span> + <span class="highlight">非线性</span> + <span class="cyan">梯度学习</span> = <span class="highlight">多层感知机</span></div>
+      <div class="math-note">
+        用建筑师的语言：聚合是力学结构，非线性是材料特性，梯度学习是自适应调节机制。三者缺一不可。移除任何一块，大厦就会坍塌。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 2: ARCHITECTURE ═══════ -->
+<section class="section" id="architecture">
+  <div class="container">
+    <div class="section-label">02 · ARCHITECTURE</div>
+    <h2 class="section-title">架构解剖：从神经元到网络</h2>
+    <p class="section-desc">
+      点击下方图表中的任意神经元，观察信号如何在网络中流动。每一根连接线都承载着一个可学习的权重，每一个节点都执行着"聚合-激活"的两步运算。
+    </p>
+
+    <div class="arch-canvas-wrap animate-in">
+      <canvas id="archCanvas" width="900" height="420"></canvas>
+      <div class="canvas-label">CLICK ANY NEURON TO HIGHLIGHT SIGNAL PATH · 点击任意神经元查看信号路径</div>
+    </div>
+
+    <div class="insight-grid animate-in">
+      <div class="insight-card info">
+        <h4>输入层：忠实的传令兵</h4>
+        <p>输入层不做任何计算，它只是将原始特征向量分配给下一层。节点数等于特征维度。这不是"设计选择"而是"定义"——输入层是数据进入网络结构的门户。</p>
+      </div>
+      <div class="insight-card info">
+        <h4>隐藏层：特征的炼金术</h4>
+        <p>每一层隐藏层都在对输入进行一次特征变换。第一层可能学到"边缘"，第二层可能学到"纹理"，更深层学到更抽象的概念。层数和宽度决定了网络的表达能力上限。</p>
+      </div>
+      <div class="insight-card warn">
+        <h4>万能逼近定理</h4>
+        <p>一个具有足够多隐藏神经元的单隐藏层MLP，可以在任意精度下逼近任意连续函数。但这只保证"存在性"，不保证"可学习性"——深层窄网络通常比浅层宽网络更容易训练。</p>
+      </div>
+      <div class="insight-card warn">
+        <h4>深度 vs 宽度的博弈</h4>
+        <p>增加深度可以指数级提升表达效率，但会带来梯度消失/爆炸的风险。增加宽度更"安全"但参数量爆炸。最佳策略：从较浅较宽开始，逐步增加深度并配合归一化技术。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 3: MATH ═══════ -->
+<section class="section" id="math">
+  <div class="container">
+    <div class="section-label">03 · MATHEMATICAL FOUNDATION</div>
+    <h2 class="section-title">数学本质：前向传播的精确语言</h2>
+    <p class="section-desc">
+      数学不是装饰，而是建筑师的蓝图。以下是MLP前向传播的精确表达——每一个符号都有物理意义。
+    </p>
+
+    <div class="math-block animate-in">
+      <div><span class="cm">// 第 l 层的前向传播（向量形式）</span></div>
+      <div><span class="highlight">z⁽ˡ⁾</span> = <span class="cyan">W⁽ˡ⁾</span> · <span class="cyan">a⁽ˡ⁻¹⁾</span> + <span class="highlight">b⁽ˡ⁾</span></div>
+      <div><span class="highlight">a⁽ˡ⁾</span> = σ(<span class="highlight">z⁽ˡ⁾</span>)</div>
+      <div class="math-note">
+        z⁽ˡ⁾: 第 l 层的加权输入（线性组合）<br>
+        W⁽ˡ⁾: 权重矩阵，shape = (当前层神经元数 × 上一层神经元数)<br>
+        a⁽ˡ⁻¹⁾: 上一层的激活输出，即当前层的输入<br>
+        b⁽ˡ⁾: 偏置向量，每个神经元一个<br>
+        σ(·): 非线性激活函数
+      </div>
+    </div>
+
+    <div class="math-block animate-in">
+      <div><span class="cm">// 完整网络展开（以 3 层 MLP 为例）</span></div>
+      <div>输入: <span class="cyan">x</span> ∈ ℝⁿ</div>
+      <div>隐藏层1: <span class="highlight">h₁</span> = σ(<span class="cyan">W₁</span>x + <span class="highlight">b₁</span>)</div>
+      <div>隐藏层2: <span class="highlight">h₂</span> = σ(<span class="cyan">W₂</span>h₁ + <span class="highlight">b₂</span>)</div>
+      <div>输出层: <span class="highlight">ŷ</span> = σ_out(<span class="cyan">W₃</span>h₂ + <span class="highlight">b₃</span>)</div>
+      <div class="math-note">
+        关键洞察：整个网络本质上是一个复合函数 ŷ = f(x; θ)，其中 θ = {W₁,b₁,W₂,b₂,W₃,b₃} 包含所有可学习参数。"训练"就是找到使损失函数 L(ŷ, y) 最小的 θ*。
+      </div>
+    </div>
+
+    <table class="comp-table animate-in">
+      <thead>
+        <tr>
+          <th>维度</th>
+          <th>数学意义</th>
+          <th>物理直觉</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>W 的形状</td><td>(n_out × n_in) 的矩阵</td><td>每一行代表目标层一个神经元的"接收天线"</td></tr>
+        <tr><td>W 的值</td><td>实数，可正可负</td><td>正权重=兴奋连接，负权重=抑制连接</td></tr>
+        <tr><td>b 的作用</td><td>平移激活阈值</td><td>决定神经元"多容易被激活"</td></tr>
+        <tr><td>σ 的角色</td><td>逐元素非线性映射</td><td>决定信号是否通过以及通过多少</td></tr>
+        <tr><td>参数总量</td><td>Σ(n_l × n_{l-1} + n_l)</td><td>网络的"自由度"，越多越灵活但也越容易过拟合</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 4: ACTIVATION FUNCTIONS ═══════ -->
+<section class="section" id="activation">
+  <div class="container">
+    <div class="section-label">04 · ACTIVATION FUNCTIONS</div>
+    <h2 class="section-title">激活函数：非线性的力量</h2>
+    <p class="section-desc">
+      激活函数是网络的"材料特性"。不同的激活函数决定了信息在网络中的流动方式。切换下方标签，观察每种激活函数的形状、梯度和适用场景。
+    </p>
+
+    <div class="activation-explorer animate-in">
+      <div class="activation-tabs" id="actTabs">
+        <button class="activation-tab active" data-fn="sigmoid">Sigmoid</button>
+        <button class="activation-tab" data-fn="tanh">Tanh</button>
+        <button class="activation-tab" data-fn="relu">ReLU</button>
+        <button class="activation-tab" data-fn="leaky">Leaky ReLU</button>
+        <button class="activation-tab" data-fn="gelu">GELU</button>
+      </div>
+      <div class="activation-body">
+        <div class="activation-canvas">
+          <canvas id="actCanvas" width="480" height="320"></canvas>
+        </div>
+        <div class="activation-info" id="actInfo">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 5: BACKPROPAGATION ═══════ -->
+<section class="section" id="backprop">
+  <div class="container">
+    <div class="section-label">05 · BACKPROPAGATION</div>
+    <h2 class="section-title">反向传播：误差的建筑师</h2>
+    <p class="section-desc">
+      反向传播不是一个算法，而是一个利用链式法则高效计算梯度的系统性方法。以下四步揭示了它的工作本质。
+    </p>
+
+    <div class="backprop-steps animate-in">
+      <div class="bp-step">
+        <div class="bp-step-num">STEP 01</div>
+        <h4>前向传播</h4>
+        <p>输入数据逐层计算，得到预测输出 ŷ。所有中间值（z⁽ˡ⁾, a⁽ˡ⁾）都被缓存，因为反向传播需要用到它们。</p>
+        <span class="bp-arrow">→</span>
+      </div>
+      <div class="bp-step">
+        <div class="bp-step-num">STEP 02</div>
+        <h4>计算损失</h4>
+        <p>用损失函数 L(ŷ, y) 度量预测与真实值的差距。回归用MSE，分类用交叉熵。损失值是一个标量，这是我们优化的唯一目标。</p>
+        <span class="bp-arrow">→</span>
+      </div>
+      <div class="bp-step">
+        <div class="bp-step-num">STEP 03</div>
+        <h4>反向传播梯度</h4>
+        <p>利用链式法则，从输出层开始逐层向后计算 ∂L/∂W⁽ˡ⁾ 和 ∂L/∂b⁽ˡ⁾。每一层的梯度都依赖于后一层的梯度——这就是"反向"的含义。</p>
+        <span class="bp-arrow">→</span>
+      </div>
+      <div class="bp-step">
+        <div class="bp-step-num">STEP 04</div>
+        <h4>更新权重</h4>
+        <p>W⁽ˡ⁾ ← W⁽ˡ⁾ − η · ∂L/∂W⁽ˡ⁾。学习率 η 控制步长。太大则震荡发散，太小则收敛极慢。自适应优化器（Adam等）自动调节每个参数的有效学习率。</p>
+      </div>
+    </div>
+
+    <div class="math-block animate-in">
+      <div><span class="cm">// 链式法则展开（单神经元示例）</span></div>
+      <div>∂L/∂w = <span class="cyan">∂L/∂ŷ</span> · <span class="highlight">∂ŷ/∂z</span> · <span style="color:var(--green)">∂z/∂w</span></div>
+      <div>其中: <span style="color:var(--green)">∂z/∂w = a⁽ˡ⁻¹⁾</span> (上一层的激活值)</div>
+      <div>      <span class="highlight">∂ŷ/∂z = σ'(z)</span> (激活函数的导数)</div>
+      <div>      <span class="cyan">∂L/∂ŷ</span> (损失函数对预测值的导数)</div>
+      <div class="math-note">
+        这就是为什么激活函数的导数如此重要：如果 σ'(z) ≈ 0（如sigmoid的饱和区），梯度将趋近于零，权重停止更新——这就是梯度消失问题的根源。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 6: GRADIENT DESCENT ═══════ -->
+<section class="section" id="gradient">
+  <div class="container">
+    <div class="section-label">06 · OPTIMIZATION LANDSCAPE</div>
+    <h2 class="section-title">梯度下降：在损失地形中导航</h2>
+    <p class="section-desc">
+      想象一个起伏的地形，高度代表损失值，水平坐标代表参数值。训练就是在地形上放置一个球，让它沿最陡的下坡方向滚动。右侧选择不同的优化策略，观察它们的行为差异。
+    </p>
+
+    <div class="gd-visual animate-in">
+      <div class="gd-top">
+        <div class="gd-canvas-area">
+          <canvas id="gdCanvas" width="520" height="380"></canvas>
+        </div>
+        <div class="gd-side">
+          <div>
+            <div class="control-group">
+              <label>优化策略</label>
+            </div>
+            <div class="gd-variants" id="gdVariants">
+              <button class="gd-variant-btn active" data-variant="sgd">SGD</button>
+              <button class="gd-variant-btn" data-variant="momentum">Momentum</button>
+              <button class="gd-variant-btn" data-variant="adam">Adam</button>
+            </div>
+          </div>
+          <div class="control-group">
+            <label>学习率 <span class="value" id="lrVal">0.05</span></label>
+            <input type="range" id="lrSlider" min="0.005" max="0.15" step="0.005" value="0.05">
+          </div>
+          <div class="control-group">
+            <label>迭代次数 <span class="value" id="iterVal">50</span></label>
+            <input type="range" id="iterSlider" min="10" max="200" step="10" value="50">
+          </div>
+          <button class="btn" id="gdRun">▶ 开始优化</button>
+          <button class="btn btn-amber" id="gdReset">↻ 重置</button>
+          <div class="xor-stats" id="gdStats">
+            <div class="stat-box">
+              <div class="stat-val" id="gdEpoch">0</div>
+              <div class="stat-label">Epoch</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="gdLoss">—</div>
+              <div class="stat-label">Loss</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 7: XOR DEMO ═══════ -->
+<section class="section" id="xor">
+  <div class="container">
+    <div class="section-label">07 · INTERACTIVE DEMO</div>
+    <h2 class="section-title">实战：MLP 求解 XOR 问题</h2>
+    <p class="section-desc">
+      XOR是经典的线性不可分问题——单层感知机无法解决它，但一个具有隐藏层的MLP可以。这是一个从"不可能"到"可能"的范例。点击训练，观察决策边界如何逐步形成。
+    </p>
+
+    <div class="xor-demo animate-in">
+      <div class="xor-header">
+        <h3>XOR 分类器训练场</h3>
+      </div>
+      <div class="xor-body">
+        <div class="xor-canvas-wrap">
+          <canvas id="xorCanvas" width="440" height="400"></canvas>
+        </div>
+        <div class="xor-controls">
+          <div class="control-group">
+            <label>隐藏层神经元 <span class="value" id="neuronVal">4</span></label>
+            <input type="range" id="neuronSlider" min="2" max="8" step="1" value="4">
+          </div>
+          <div class="control-group">
+            <label>学习率 <span class="value" id="xorLrVal">0.5</span></label>
+            <input type="range" id="xorLrSlider" min="0.1" max="2.0" step="0.1" value="0.5">
+          </div>
+          <button class="btn" id="xorTrain">▶ 开始训练</button>
+          <button class="btn btn-amber" id="xorReset">↻ 重置网络</button>
+          <div class="xor-stats">
+            <div class="stat-box">
+              <div class="stat-val" id="xorEpoch">0</div>
+              <div class="stat-label">Epoch</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="xorLoss">—</div>
+              <div class="stat-label">Loss</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="xorAcc">0%</div>
+              <div class="stat-label">Accuracy</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="xorStatus">IDLE</div>
+              <div class="stat-label">Status</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 8: BEST PRACTICES ═══════ -->
+<section class="section" id="practice">
+  <div class="container">
+    <div class="section-label">08 · ARCHITECT'S GUIDANCE</div>
+    <h2 class="section-title">建筑师的指导原则</h2>
+    <p class="section-desc">
+      以下是经过实践验证的MLP设计与训练原则。它们不是教条，而是在"第一性原理"推导出的约束条件下的最优策略。
+    </p>
+
+    <div class="practice-list animate-in">
+      <div class="practice-item">
+        <div class="practice-num">01</div>
+        <div>
+          <h4>从简单开始，逐步增加复杂度</h4>
+          <p>先用单隐藏层、少量神经元建立基线。如果欠拟合，增加宽度或深度。如果过拟合，先尝试正则化而非减少容量。这是一个有方向的搜索过程，不是猜测。</p>
+        </div>
+      </div>
+      <div class="practice-item">
+        <div class="practice-num">02</div>
+        <div>
+          <h4>隐藏层激活函数选 ReLU 家族</h4>
+          <p>ReLU计算简单、梯度恒定（正区间）、不会饱和。如果遇到"神经元死亡"问题，使用Leaky ReLU或ELU。输出层根据任务选择：回归用线性，二分类用sigmoid，多分类用softmax。</p>
+        </div>
+      </div>
+      <div class="practice-item">
+        <div class="practice-num">03</div>
+        <div>
+          <h4>权重初始化不是随机就行</h4>
+          <p>使用与激活函数匹配的初始化方案：ReLU用He初始化（方差=2/n_in），Sigmoid/Tanh用Xavier初始化（方差=1/n_in）。错误的初始化会导致信号在前向传播中爆炸或消失。</p>
+        </div>
+      </div>
+      <div class="practice-item">
+        <div class="practice-num">04</div>
+        <div>
+          <h4>正则化是必需品，不是可选项</h4>
+          <p>Dropout（训练时随机丢弃神经元）是最常用的正则化手段，典型值0.1~0.5。L2正则化（权重衰减）防止权重过大。Batch Normalization既加速训练又有正则化效果。</p>
+        </div>
+      </div>
+      <div class="practice-item">
+        <div class="practice-num">05</div>
+        <div>
+          <h4>监控训练曲线，诊断问题</h4>
+          <p>训练损失不降→学习率太小或梯度消失。训练损失骤降但验证损失上升→过拟合。两者都很高→模型容量不足。训练曲线是你的"体检报告"，每个拐点都有含义。</p>
+        </div>
+      </div>
+      <div class="practice-item">
+        <div class="practice-num">06</div>
+        <div>
+          <h4>记住：MLP不是万能的</h4>
+          <p>MLP假设输入特征之间没有空间或时序结构。处理图像用CNN，处理序列用RNN/Transformer。MLP的价值在于它的简洁性——作为基线模型、作为更大架构的组件（Transformer中的FFN层就是MLP），以及理解深度学习的基础。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block animate-in">
+      <div class="code-header">
+        <div class="code-dots"><i></i><i></i><i></i></div>
+        <span>mlp_implementation.py — 从零实现MLP</span>
+      </div>
+      <div class="code-body">
+<pre><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">class</span> <span class="fn">MLP</span>:
+    <span class="str">"""一个极简但完整的多层感知机实现"""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, layer_sizes, lr=<span class="num">0.01</span>):
+        self.weights = []
+        self.biases = []
+        <span class="kw">for</span> i <span class="kw">in</span> range(len(layer_sizes) - <span class="num">1</span>):
+            <span class="cm"># He 初始化（适配ReLU）</span>
+            w = np.random.randn(
+                layer_sizes[i+<span class="num">1</span>], layer_sizes[i]
+            ) * np.sqrt(<span class="num">2</span> / layer_sizes[i])
+            b = np.zeros((layer_sizes[i+<span class="num">1</span>], <span class="num">1</span>))
+            self.weights.append(w)
+            self.biases.append(b)
+        self.lr = lr
+
+    <span class="kw">def</span> <span class="fn">relu</span>(self, z):
+        <span class="kw">return</span> np.maximum(<span class="num">0</span>, z)
+
+    <span class="kw">def</span> <span class="fn">relu_deriv</span>(self, z):
+        <span class="kw">return</span> (z > <span class="num">0</span>).astype(float)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        self.zs, self.activations = [], [x]
+        a = x
+        <span class="kw">for</span> i, (w, b) <span class="kw">in</span> enumerate(zip(self.weights, self.biases)):
+            z = w @ a + b
+            self.zs.append(z)
+            <span class="kw">if</span> i < len(self.weights) - <span class="num">1</span>:
+                a = self.relu(z)    <span class="cm"># 隐藏层: ReLU</span>
+            <span class="kw">else</span>:
+                a = <span class="num">1</span>/(<span class="num">1</span>+np.exp(-z)) <span class="cm"># 输出层: Sigmoid</span>
+            self.activations.append(a)
+        <span class="kw">return</span> a
+
+    <span class="kw">def</span> <span class="fn">backward</span>(self, y):
+        m = y.shape[<span class="num">1</span>]
+        <span class="cm"># 输出层梯度 (BCE loss + sigmoid)</span>
+        dz = self.activations[-<span class="num">1</span>] - y
+        <span class="kw">for</span> i <span class="kw">in</span> range(len(self.weights)-<span class="num">1</span>, -<span class="num">1</span>, -<span class="num">1</span>):
+            dw = (<span class="num">1</span>/m) * dz @ self.activations[i].T
+            db = (<span class="num">1</span>/m) * np.sum(dz, axis=<span class="num">1</span>, keepdims=True)
+            <span class="kw">if</span> i > <span class="num">0</span>:
+                dz = (self.weights[i].T @ dz) * self.relu_deriv(self.zs[i-<span class="num">1</span>])
+            self.weights[i] -= self.lr * dw
+            self.biases[i]  -= self.lr * db</pre>
+      </div>
+    </div>
+
+    <div class="insight-grid animate-in">
+      <div class="insight-card info">
+        <h4>架构师的总结</h4>
+        <p>MLP是深度学习的"承重墙"——它定义了神经网络的基本范式：前向计算、损失函数、反向传播、梯度更新。理解MLP，就是理解了深度学习80%的核心机制。所有后来的架构创新，都是在这个基础上的延伸和改良。</p>
+      </div>
+      <div class="insight-card warn">
+        <h4>下一步探索方向</h4>
+        <p>当你完全掌握了MLP，下一步是理解它的"失效模式"——梯度消失/爆炸（催生了ResNet）、位置无关性（催生了Attention）、全连接冗余（催生了CNN）。每一次架构革命，都是对MLP局限性的一次回应。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer class="footer">
+  <div class="container">
+    <p>MULTI-LAYER PERCEPTRON · ARCHITECT'S RESEARCH REPORT</p>
+    <div class="divider"></div>
+    <p>第一性原理 · 深度拆解 · 交互式学习</p>
+  </div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════
+// SCROLL ANIMATION
+// ═══════════════════════════════════════
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+// TOC active state
+const sections = document.querySelectorAll('.section, .hero');
+const tocLinks = document.querySelectorAll('.toc a');
+const secObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      tocLinks.forEach(l => l.classList.remove('active'));
+      const id = e.target.id;
+      const link = document.querySelector(`.toc a[href="#${id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => secObs.observe(s));
+
+// ═══════════════════════════════════════
+// ARCHITECTURE CANVAS
+// ═══════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('archCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 900 * dpr;
+  canvas.height = 420 * dpr;
+  canvas.style.width = '900px';
+  canvas.style.height = '420px';
+  ctx.scale(dpr, dpr);
+
+  const layers = [
+    { name: 'INPUT', neurons: 3, color: '#00d4ff' },
+    { name: 'HIDDEN 1', neurons: 5, color: '#ffb347' },
+    { name: 'HIDDEN 2', neurons: 5, color: '#ffb347' },
+    { name: 'OUTPUT', neurons: 2, color: '#ff6b8a' }
+  ];
+
+  const W = 900, H = 420;
+  const padX = 100, padY = 50;
+  const layerGap = (W - 2 * padX) / (layers.length - 1);
+  let highlightLayer = -1;
+  let animPhase = 0;
+
+  function getPositions() {
+    const positions = [];
+    layers.forEach((layer, li) => {
+      const x = padX + li * layerGap;
+      const neurons = [];
+      const totalH = (layer.neurons - 1) * 55;
+      const startY = (H - totalH) / 2;
+      for (let ni = 0; ni < layer.neurons; ni++) {
+        neurons.push({ x, y: startY + ni * 55 });
+      }
+      positions.push(neurons);
+    });
+    return positions;
+  }
+
+  const pos = getPositions();
+
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    highlightLayer = -1;
+    for (let li = 0; li < pos.length; li++) {
+      for (const n of pos[li]) {
+        if (Math.hypot(mx - n.x, my - n.y) < 18) {
+          highlightLayer = li;
+          return;
+        }
+      }
+    }
+  });
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    animPhase += 0.015;
+
+    // Draw connections
+    for (let li = 0; li < pos.length - 1; li++) {
+      for (const n1 of pos[li]) {
+        for (const n2 of pos[li + 1]) {
+          const isHL = highlightLayer >= 0 && (li === highlightLayer || li + 1 === highlightLayer);
+          ctx.beginPath();
+          ctx.moveTo(n1.x, n1.y);
+          ctx.lineTo(n2.x, n2.y);
+          ctx.strokeStyle = isHL ? 'rgba(0,212,255,0.35)' : 'rgba(26,37,64,0.8)';
+          ctx.lineWidth = isHL ? 1.5 : 0.8;
+          ctx.stroke();
+
+          // Animated signal
+          if (isHL) {
+            const t = (animPhase * 1.5 + n1.y * 0.01) % 1;
+            const sx = n1.x + (n2.x - n1.x) * t;
+            const sy = n1.y + (n2.y - n1.y) * t;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,212,255,0.9)';
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    // Draw neurons
+    for (let li = 0; li < pos.length; li++) {
+      const layer = layers[li];
+      for (let ni = 0; ni < pos[li].length; ni++) {
+        const n = pos[li][ni];
+        const isHL = highlightLayer === li;
+        const r = isHL ? 15 : 12;
+
+        // Glow
+        if (isHL) {
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r + 8, 0, Math.PI * 2);
+          ctx.fillStyle = layer.color + '15';
+          ctx.fill();
+        }
+
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = isHL ? layer.color + '30' : '#0c1120';
+        ctx.fill();
+        ctx.strokeStyle = isHL ? layer.color : layer.color + '60';
+        ctx.lineWidth = isHL ? 2 : 1.2;
+        ctx.stroke();
+      }
+
+      // Layer label
+      const labelY = H - 15;
+      ctx.fillStyle = '#5a6580';
+      ctx.font = '10px "DM Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(layer.name, pos[li][0].x, labelY);
+    }
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ═══════════════════════════════════════
+// ACTIVATION FUNCTION EXPLORER
+// ═══════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('actCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 480 * dpr;
+  canvas.height = 320 * dpr;
+  canvas.style.width = '480px';
+  canvas.style.height = '320px';
+  ctx.scale(dpr, dpr);
+
+  const fns = {
+    sigmoid: {
+      fn: x => 1 / (1 + Math.exp(-x)),
+      deriv: x => { const s = 1/(1+Math.exp(-x)); return s*(1-s); },
+      name: 'Sigmoid',
+      formula: 'σ(x) = 1 / (1 + e^(-x))',
+      desc: '将任意实数压缩到(0,1)区间。曾经是最常用的激活函数。',
+      pros: ['输出有概率意义', '处处可微'],
+      cons: ['梯度消失（饱和区）', '输出非零中心', '计算exp较慢'],
+      use: '二分类输出层'
+    },
+    tanh: {
+      fn: x => Math.tanh(x),
+      deriv: x => 1 - Math.tanh(x)**2,
+      name: 'Tanh',
+      formula: 'tanh(x) = (e^x - e^(-x)) / (e^x + e^(-x))',
+      desc: 'Sigmoid的"零中心"版本，输出范围(-1,1)。在RNN中仍然常用。',
+      pros: ['零中心输出', '比Sigmoid梯度更强'],
+      cons: ['仍有梯度消失', '计算exp较慢'],
+      use: 'RNN/LSTM门控'
+    },
+    relu: {
+      fn: x => Math.max(0, x),
+      deriv: x => x > 0 ? 1 : 0,
+      name: 'ReLU',
+      formula: 'ReLU(x) = max(0, x)',
+      desc: '现代深度学习的默认选择。简单、高效、有效。',
+      pros: ['计算极快', '缓解梯度消失', '稀疏激活'],
+      cons: ['Dead ReLU问题', '输出非零中心'],
+      use: '隐藏层默认选择'
+    },
+    leaky: {
+      fn: x => x > 0 ? x : 0.01 * x,
+      deriv: x => x > 0 ? 1 : 0.01,
+      name: 'Leaky ReLU',
+      formula: 'LReLU(x) = max(0.01x, x)',
+      desc: 'ReLU的改良版，负区间有微小斜率，避免神经元"死亡"。',
+      pros: ['无Dead ReLU问题', '计算仍然很快'],
+      cons: ['超参数α需要设定', '效果提升不总是显著'],
+      use: '替代ReLU的选择'
+    },
+    gelu: {
+      fn: x => 0.5*x*(1+Math.tanh(Math.sqrt(2/Math.PI)*(x+0.044715*x*x*x))),
+      deriv: x => {
+        const t = Math.tanh(Math.sqrt(2/Math.PI)*(x+0.044715*x*x*x));
+        return 0.5*(1+t)+0.5*x*(1-t*t)*Math.sqrt(2/Math.PI)*(1+3*0.044715*x*x);
+      },
+      name: 'GELU',
+      formula: 'GELU(x) = x · Φ(x)',
+      desc: 'Transformer的标配激活函数，平滑且有随机正则化效果。',
+      pros: ['平滑可微', '自适应非线性', 'Transformer标配'],
+      cons: ['计算相对复杂', '需要近似计算'],
+      use: 'Transformer/BERT/GPT'
+    }
+  };
+
+  let currentFn = 'sigmoid';
+
+  function drawActivation(key) {
+    const info = fns[key];
+    ctx.clearRect(0, 0, 480, 320);
+
+    const cx = 240, cy = 160;
+    const scaleX = 40, scaleY = 40;
+
+    // Grid
+    ctx.strokeStyle = '#1a2540';
+    ctx.lineWidth = 0.5;
+    for (let i = -6; i <= 6; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + i * scaleX, 0);
+      ctx.lineTo(cx + i * scaleX, 320);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, cy + i * scaleY);
+      ctx.lineTo(480, cy + i * scaleY);
+      ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = '#2a3a5a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, cy); ctx.lineTo(480, cy); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, 320); ctx.stroke();
+
+    // Axis labels
+    ctx.fillStyle = '#5a6580';
+    ctx.font = '9px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    for (let i = -5; i <= 5; i++) {
+      if (i === 0) continue;
+      ctx.fillText(i, cx + i * scaleX, cy + 14);
+    }
+    ctx.textAlign = 'right';
+    for (let i = -3; i <= 3; i++) {
+      if (i === 0) continue;
+      ctx.fillText(i, cx - 6, cy - i * scaleY + 3);
+    }
+
+    // Derivative curve
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,179,71,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    for (let px = 0; px < 480; px++) {
+      const x = (px - cx) / scaleX;
+      const y = info.deriv(x);
+      const py = cy - y * scaleY;
+      if (px === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Function curve
+    ctx.beginPath();
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(0,212,255,0.3)';
+    ctx.shadowBlur = 8;
+    for (let px = 0; px < 480; px++) {
+      const x = (px - cx) / scaleX;
+      const y = info.fn(x);
+      const py = cy - y * scaleY;
+      if (px === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Legend
+    ctx.font = '10px "DM Mono", monospace';
+    ctx.fillStyle = '#00d4ff';
+    ctx.textAlign = 'left';
+    ctx.fillRect(360, 12, 12, 2);
+    ctx.fillText('f(x)', 376, 16);
+    ctx.fillStyle = 'rgba(255,179,71,0.7)';
+    ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(360,28); ctx.lineTo(372,28); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText("f'(x)", 376, 32);
+
+    // Update info panel
+    const panel = document.getElementById('actInfo');
+    panel.innerHTML = `
+      <h4>${info.name}</h4>
+      <div class="formula">${info.formula}</div>
+      <p>${info.desc}</p>
+      <p style="margin-top:0.75rem"><strong style="color:var(--text-bright);font-size:0.8rem">优势</strong></p>
+      <div>${info.pros.map(p => '<span class="tag tag-pro">'+p+'</span>').join('')}</div>
+      <p style="margin-top:0.5rem"><strong style="color:var(--text-bright);font-size:0.8rem">劣势</strong></p>
+      <div>${info.cons.map(p => '<span class="tag tag-con">'+p+'</span>').join('')}</div>
+      <p style="margin-top:0.5rem"><strong style="color:var(--text-bright);font-size:0.8rem">典型用途</strong></p>
+      <div><span class="tag tag-use">${info.use}</span></div>
+    `;
+  }
+
+  document.querySelectorAll('.activation-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.activation-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFn = tab.dataset.fn;
+      drawActivation(currentFn);
+    });
+  });
+
+  drawActivation('sigmoid');
+})();
+
+// ═══════════════════════════════════════
+// GRADIENT DESCENT VISUALIZER
+// ═══════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('gdCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 520 * dpr;
+  canvas.height = 380 * dpr;
+  canvas.style.width = '520px';
+  canvas.style.height = '380px';
+  ctx.scale(dpr, dpr);
+
+  const W = 520, H = 380;
+  let variant = 'sgd';
+  let lr = 0.05;
+  let iters = 50;
+  let running = false;
+  let path = [];
+  let currentStep = 0;
+
+  // Loss landscape: Rosenbrock-like
+  function loss(x, y) {
+    return 0.5 * (1 - x)**2 + 2 * (y - x**2)**2;
+  }
+
+  function grad(x, y) {
+    const dx = -(1 - x) - 8 * x * (y - x**2);
+    const dy = 4 * (y - x**2);
+    return [dx, dy];
+  }
+
+  function mapToCanvas(x, y) {
+    const px = 100 + (x + 1.5) / 4.0 * (W - 140);
+    const py = H - 40 - (y + 1.5) / 4.0 * (H - 80);
+    return [px, py];
+  }
+
+  function drawLandscape() {
+    // Heatmap
+    const imgData = ctx.createImageData(W, H);
+    for (let py = 0; py < H; py++) {
+      for (let px = 0; px < W; px++) {
+        const x = (px - 100) / (W - 140) * 4.0 - 1.5;
+        const y = (H - 40 - py) / (H - 80) * 4.0 - 1.5;
+        const v = Math.min(loss(x, y), 8);
+        const t = v / 8;
+        const idx = (py * W + px) * 4;
+        imgData.data[idx] = Math.round(8 + t * 10);
+        imgData.data[idx+1] = Math.round(14 + (1-t) * 30);
+        imgData.data[idx+2] = Math.round(28 + (1-t) * 60);
+        imgData.data[idx+3] = 255;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // Contour lines
+    ctx.strokeStyle = 'rgba(0,212,255,0.08)';
+    ctx.lineWidth = 0.5;
+    for (let level = 0.2; level < 6; level += 0.4) {
+      ctx.beginPath();
+      for (let angle = 0; angle < Math.PI * 2; angle += 0.02) {
+        for (let r = 0.01; r < 3; r += 0.01) {
+          const x = 0.5 + r * Math.cos(angle);
+          const y = 0.5 + r * Math.sin(angle);
+          if (Math.abs(loss(x, y) - level) < 0.05) {
+            const [px, py] = mapToCanvas(x, y);
+            if (angle === 0 && r < 0.02) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+            break;
+          }
+        }
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawPath() {
+    if (path.length < 2) return;
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,179,71,0.9)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(255,179,71,0.4)';
+    ctx.shadowBlur = 4;
+    for (let i = 0; i < Math.min(currentStep + 1, path.length); i++) {
+      const [px, py] = mapToCanvas(path[i][0], path[i][1]);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Current position
+    const step = Math.min(currentStep, path.length - 1);
+    const [cx, cy] = mapToCanvas(path[step][0], path[step][1]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffb347';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  function drawAll() {
+    drawLandscape();
+    drawPath();
+
+    // Axis labels
+    ctx.fillStyle = '#5a6580';
+    ctx.font = '9px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('w₁', W / 2, H - 8);
+    ctx.save();
+    ctx.translate(14, H / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('w₂', 0, 0);
+    ctx.restore();
+  }
+
+  function runOptimization() {
+    path = [];
+    let x = -0.8, y = -0.8;
+    path.push([x, y]);
+
+    let vx = 0, vy = 0;
+    const beta1 = 0.9, beta2 = 0.999, eps = 1e-8;
+    let m1x = 0, m1y = 0, m2x = 0, m2y = 0;
+
+    for (let i = 1; i <= iters; i++) {
+      const [gx, gy] = grad(x, y);
+
+      if (variant === 'sgd') {
+        x -= lr * gx;
+        y -= lr * gy;
+      } else if (variant === 'momentum') {
+        vx = 0.9 * vx - lr * gx;
+        vy = 0.9 * vy - lr * gy;
+        x += vx;
+        y += vy;
+      } else if (variant === 'adam') {
+        m1x = beta1*m1x + (1-beta1)*gx;
+        m1y = beta1*m1y + (1-beta1)*gy;
+        m2x = beta2*m2x + (1-beta2)*gx*gx;
+        m2y = beta2*m2y + (1-beta2)*gy*gy;
+        const m1xc = m1x/(1-beta1**i), m1yc = m1y/(1-beta1**i);
+        const m2xc = m2x/(1-beta2**i), m2yc = m2y/(1-beta2**i);
+        x -= lr * m1xc / (Math.sqrt(m2xc) + eps);
+        y -= lr * m1yc / (Math.sqrt(m2yc) + eps);
+      }
+      x = Math.max(-1.5, Math.min(2.5, x));
+      y = Math.max(-1.5, Math.min(2.5, y));
+      path.push([x, y]);
+    }
+  }
+
+  function animate() {
+    if (currentStep < path.length) {
+      currentStep += 2;
+      drawAll();
+      document.getElementById('gdEpoch').textContent = Math.min(currentStep, path.length - 1);
+      document.getElementById('gdLoss').textContent = loss(path[Math.min(currentStep, path.length-1)][0], path[Math.min(currentStep, path.length-1)][1]).toFixed(4);
+      requestAnimationFrame(animate);
+    } else {
+      running = false;
+    }
+  }
+
+  drawAll();
+
+  document.getElementById('gdRun').onclick = () => {
+    if (running) return;
+    running = true;
+    currentStep = 0;
+    lr = parseFloat(document.getElementById('lrSlider').value);
+    iters = parseInt(document.getElementById('iterSlider').value);
+    runOptimization();
+    animate();
+  };
+
+  document.getElementById('gdReset').onclick = () => {
+    running = false;
+    currentStep = 0;
+    path = [];
+    document.getElementById('gdEpoch').textContent = '0';
+    document.getElementById('gdLoss').textContent = '—';
+    drawAll();
+  };
+
+  document.getElementById('lrSlider').oninput = function() {
+    document.getElementById('lrVal').textContent = this.value;
+  };
+  document.getElementById('iterSlider').oninput = function() {
+    document.getElementById('iterVal').textContent = this.value;
+  };
+
+  document.querySelectorAll('.gd-variant-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.gd-variant-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      variant = btn.dataset.variant;
+    });
+  });
+})();
+
+// ═══════════════════════════════════════
+// XOR CLASSIFIER
+// ═══════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('xorCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 440 * dpr;
+  canvas.height = 400 * dpr;
+  canvas.style.width = '440px';
+  canvas.style.height = '400px';
+  ctx.scale(dpr, dpr);
+
+  const W = 440, H = 400;
+  const xorData = [[0,0,0],[0,1,1],[1,0,1],[1,1,0]];
+  let network = null;
+  let training = false;
+  let epoch = 0;
+  let trainTimer = null;
+
+  function sigmoid(x) { return 1/(1+Math.exp(-Math.max(-500, Math.min(500, x)))); }
+  function sigmoid_d(x) { const s=sigmoid(x); return s*(1-s); }
+
+  function initNetwork(nHidden) {
+    const net = {
+      W1: [], b1: [], W2: [], b2: [],
+      nHidden: nHidden,
+      lr: parseFloat(document.getElementById('xorLrSlider').value)
+    };
+    for (let i = 0; i < nHidden; i++) {
+      net.W1.push([(Math.random()-0.5)*2, (Math.random()-0.5)*2]);
+      net.b1.push((Math.random()-0.5)*0.5);
+    }
+    net.W2 = [];
+    net.b2 = 0;
+    for (let i = 0; i < nHidden; i++) {
+      net.W2.push((Math.random()-0.5)*2);
+    }
+    net.b2 = (Math.random()-0.5)*0.5;
+    return net;
+  }
+
+  function forward(net, x1, x2) {
+    const hidden = [];
+    const hz = [];
+    for (let i = 0; i < net.nHidden; i++) {
+      const z = net.W1[i][0]*x1 + net.W1[i][1]*x2 + net.b1[i];
+      hz.push(z);
+      hidden.push(sigmoid(z));
+    }
+    let oz = net.b2;
+    for (let i = 0; i < net.nHidden; i++) oz += net.W2[i] * hidden[i];
+    const out = sigmoid(oz);
+    return { hidden, hz, oz, out };
+  }
+
+  function trainStep(net) {
+    let totalLoss = 0;
+    for (const [x1, x2, target] of xorData) {
+      const { hidden, hz, oz, out } = forward(net, x1, x2);
+      const err = out - target;
+      totalLoss += err * err;
+
+      const dO = err * sigmoid_d(oz);
+      const dW2 = hidden.map(h => dO * h);
+      const db2 = dO;
+
+      const dH = net.W2.map(w => dO * w);
+      const dW1 = [], db1 = [];
+      for (let i = 0; i < net.nHidden; i++) {
+        const dh = dH[i] * sigmoid_d(hz[i]);
+        dW1.push([dh * x1, dh * x2]);
+        db1.push(dh);
+      }
+
+      for (let i = 0; i < net.nHidden; i++) {
+        net.W2[i] -= net.lr * dW2[i];
+        net.W1[i][0] -= net.lr * dW1[i][0];
+        net.W1[i][1] -= net.lr * dW1[i][1];
+        net.b1[i] -= net.lr * db1[i];
+      }
+      net.b2 -= net.lr * db2;
+    }
+    return totalLoss / 4;
+  }
+
+  function drawXOR() {
+    ctx.clearRect(0, 0, W, H);
+    if (!network) {
+      ctx.fillStyle = '#3a4560';
+      ctx.font = '13px "DM Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('点击"开始训练"启动', W/2, H/2);
+      return;
+    }
+
+    const margin = 40;
+    const plotW = W - margin * 2;
+    const plotH = H - margin * 2;
+
+    // Decision boundary heatmap
+    const res = 4;
+    for (let px = 0; px < plotW; px += res) {
+      for (let py = 0; py < plotH; py += res) {
+        const x1 = px / plotW;
+        const x2 = 1 - py / plotH;
+        const { out } = forward(network, x1, x2);
+        const r = Math.round(0 + out * 255);
+        const g = Math.round(12 + out * 12);
+        const b = Math.round(32 + (1-out) * 30);
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillRect(margin + px, margin + py, res, res);
+      }
+    }
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0,212,255,0.1)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) {
+      const x = margin + i * plotW / 4;
+      ctx.beginPath(); ctx.moveTo(x, margin); ctx.lineTo(x, margin + plotH); ctx.stroke();
+      const y = margin + i * plotH / 4;
+      ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(margin + plotW, y); ctx.stroke();
+    }
+
+    // Data points
+    for (const [x1, x2, label] of xorData) {
+      const px = margin + x1 * plotW;
+      const py = margin + (1 - x2) * plotH;
+      ctx.beginPath();
+      ctx.arc(px, py, 10, 0, Math.PI * 2);
+      ctx.fillStyle = label ? '#00d4ff' : '#ff6b8a';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px "DM Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, px, py);
+    }
+
+    // Axes labels
+    ctx.fillStyle = '#5a6580';
+    ctx.font = '10px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('x₁', W/2, H - 15);
+    ctx.save();
+    ctx.translate(14, H/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('x₂', 0, 0);
+    ctx.restore();
+
+    // Border
+    ctx.strokeStyle = 'var(--border-light)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(margin, margin, plotW, plotH);
+  }
+
+  function startTraining() {
+    if (training) return;
+    if (!network) resetNetwork();
+    training = true;
+    epoch = 0;
+    document.getElementById('xorStatus').textContent = 'TRAINING';
+    document.getElementById('xorStatus').style.color = 'var(--green)';
+
+    const batchSize = 20;
+    trainTimer = setInterval(() => {
+      for (let i = 0; i < batchSize; i++) {
+        trainStep(network);
+        epoch++;
+      }
+      const loss = computeLoss();
+      const acc = computeAcc();
+      document.getElementById('xorEpoch').textContent = epoch;
+      document.getElementById('xorLoss').textContent = loss.toFixed(4);
+      document.getElementById('xorAcc').textContent = Math.round(acc * 100) + '%';
+      drawXOR();
+
+      if (acc >= 1 || epoch > 50000) {
+        clearInterval(trainTimer);
+        training = false;
+        document.getElementById('xorStatus').textContent = acc >= 1 ? 'DONE' : 'MAX';
+        document.getElementById('xorStatus').style.color = acc >= 1 ? 'var(--green)' : 'var(--amber)';
+      }
+    }, 16);
+  }
+
+  function computeLoss() {
+    let loss = 0;
+    for (const [x1,x2,t] of xorData) {
+      const {out} = forward(network, x1, x2);
+      loss += (out-t)**2;
+    }
+    return loss/4;
+  }
+
+  function computeAcc() {
+    let correct = 0;
+    for (const [x1,x2,t] of xorData) {
+      const {out} = forward(network, x1, x2);
+      if (Math.round(out) === t) correct++;
+    }
+    return correct/4;
+  }
+
+  function resetNetwork() {
+    if (trainTimer) clearInterval(trainTimer);
+    training = false;
+    epoch = 0;
+    const nH = parseInt(document.getElementById('neuronSlider').value);
+    network = initNetwork(nH);
+    document.getElementById('xorEpoch').textContent = '0';
+    document.getElementById('xorLoss').textContent = '—';
+    document.getElementById('xorAcc').textContent = '0%';
+    document.getElementById('xorStatus').textContent = 'IDLE';
+    document.getElementById('xorStatus').style.color = 'var(--text-muted)';
+    drawXOR();
+  }
+
+  document.getElementById('xorTrain').onclick = startTraining;
+  document.getElementById('xorReset').onclick = resetNetwork;
+  document.getElementById('neuronSlider').oninput = function() {
+    document.getElementById('neuronVal').textContent = this.value;
+    resetNetwork();
+  };
+  document.getElementById('xorLrSlider').oninput = function() {
+    document.getElementById('xorLrVal').textContent = this.value;
+    if (network) network.lr = parseFloat(this.value);
+  };
+
+  drawXOR();
+})();
+</script>
+</body>
+</html>

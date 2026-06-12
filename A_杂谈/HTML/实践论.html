@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>《实践论》第一性原理研究报告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0e1a;
+    --bg-primary: #0f1524;
+    --bg-surface: #161d30;
+    --bg-elevated: #1c2540;
+    --bg-hover: #222d4a;
+    --accent-gold: #d4a24e;
+    --accent-gold-dim: #a07830;
+    --accent-gold-glow: rgba(212, 162, 78, 0.15);
+    --accent-blue: #4a8fd4;
+    --accent-blue-dim: #2a5f9a;
+    --accent-teal: #3abfa8;
+    --accent-rose: #d45a6a;
+    --accent-violet: #8a6ad4;
+    --text-primary: #e8e4dc;
+    --text-secondary: #a09888;
+    --text-muted: #605848;
+    --border: rgba(212, 162, 78, 0.12);
+    --border-active: rgba(212, 162, 78, 0.35);
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --radius: 6px;
+    --transition: 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-gold-dim) var(--bg-deep);
+  }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    line-height: 1.8;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* === GRID BACKGROUND === */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(212,162,78,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(212,162,78,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 15% 20%, rgba(212,162,78,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 80%, rgba(74,143,212,0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* === SCROLL PROGRESS === */
+  #progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-gold), var(--accent-teal));
+    z-index: 1000;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 12px rgba(212,162,78,0.5);
+  }
+
+  /* === NAVIGATION === */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(10, 14, 26, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    transform: translateY(-100%);
+    transition: transform 0.4s ease;
+  }
+
+  nav.visible { transform: translateY(0); }
+
+  nav .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    gap: 2rem;
+    overflow-x: auto;
+  }
+
+  nav a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    transition: color var(--transition);
+    position: relative;
+  }
+
+  nav a:hover, nav a.active { color: var(--accent-gold); }
+
+  nav a.active::after {
+    content: '';
+    position: absolute;
+    bottom: -18px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-gold);
+  }
+
+  /* === MAIN CONTAINER === */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* === HERO === */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    padding: 6rem 0 4rem;
+  }
+
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.2s forwards;
+  }
+
+  .hero-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    font-size: clamp(2.8rem, 6vw, 5rem);
+    line-height: 1.15;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.4s forwards;
+  }
+
+  .hero-title .gold { color: var(--accent-gold); }
+
+  .hero-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    max-width: 640px;
+    line-height: 2;
+    margin-bottom: 3rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.6s forwards;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.8s forwards;
+  }
+
+  .hero-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .hero-meta-item .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .hero-meta-item .value {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 1.2s forwards;
+  }
+
+  .scroll-hint span {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+  }
+
+  .scroll-hint .arrow {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--accent-gold), transparent);
+    animation: scrollPulse 2s ease infinite;
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
+    50% { opacity: 1; transform: scaleY(1); }
+  }
+
+  /* === SECTIONS === */
+  section {
+    padding: 6rem 0;
+    position: relative;
+  }
+
+  .section-header {
+    margin-bottom: 3.5rem;
+    position: relative;
+  }
+
+  .section-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    color: var(--accent-gold-dim);
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  .section-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 700;
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+
+  .section-title .gold { color: var(--accent-gold); }
+
+  .section-line {
+    width: 60px;
+    height: 2px;
+    background: var(--accent-gold);
+    margin-top: 1.25rem;
+  }
+
+  /* === DIVIDER === */
+  .divider {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-active), transparent);
+    margin: 0;
+  }
+
+  /* === FIRST PRINCIPLES GRID === */
+  .principles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .principle-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+  }
+
+  .principle-card:hover {
+    border-color: var(--border-active);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .principle-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-gold);
+    transform: scaleX(0);
+    transition: transform var(--transition);
+    transform-origin: left;
+  }
+
+  .principle-card:hover::before { transform: scaleX(1); }
+
+  .principle-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .principle-card h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+  }
+
+  .principle-card p {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* === HIGHLIGHT BOX === */
+  .highlight-box {
+    background: var(--accent-gold-glow);
+    border-left: 3px solid var(--accent-gold);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.5rem 2rem;
+    margin: 2rem 0;
+  }
+
+  .highlight-box .quote {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    line-height: 2;
+    font-style: italic;
+  }
+
+  .highlight-box .source {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent-gold-dim);
+    margin-top: 0.75rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* === CYCLE DIAGRAM === */
+  .cycle-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem 0;
+    position: relative;
+  }
+
+  .cycle-svg {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+  }
+
+  .cycle-stage {
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+  }
+
+  .cycle-stage:hover { opacity: 0.85; }
+
+  .cycle-stage text {
+    font-family: 'Noto Sans SC', sans-serif;
+    fill: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .cycle-stage .sub-text {
+    font-family: 'Noto Sans SC', sans-serif;
+    fill: var(--text-secondary);
+    font-weight: 300;
+  }
+
+  /* === CYCLE DETAIL PANEL === */
+  .cycle-detail {
+    max-width: 700px;
+    margin: 0 auto;
+    min-height: 180px;
+  }
+
+  .cycle-detail-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    position: absolute;
+    width: 100%;
+  }
+
+  .cycle-detail-card.active {
+    opacity: 1;
+    transform: translateY(0);
+    position: relative;
+  }
+
+  .cycle-detail-card h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.2rem;
+    color: var(--accent-gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .cycle-detail-card p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.9;
+  }
+
+  /* === ACCORDION === */
+  .accordion { margin-top: 2rem; }
+
+  .accordion-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    transition: border-color var(--transition);
+  }
+
+  .accordion-item.open {
+    border-color: var(--border-active);
+  }
+
+  .accordion-trigger {
+    width: 100%;
+    background: var(--bg-surface);
+    border: none;
+    color: var(--text-primary);
+    padding: 1.25rem 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-align: left;
+    transition: background var(--transition);
+  }
+
+  .accordion-trigger:hover {
+    background: var(--bg-elevated);
+  }
+
+  .accordion-trigger .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent-gold);
+    min-width: 24px;
+  }
+
+  .accordion-trigger .chevron {
+    margin-left: auto;
+    width: 20px;
+    height: 20px;
+    transition: transform var(--transition);
+    flex-shrink: 0;
+  }
+
+  .accordion-item.open .accordion-trigger .chevron {
+    transform: rotate(180deg);
+  }
+
+  .accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .accordion-inner {
+    padding: 0 1.75rem 1.5rem 3.5rem;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 2;
+  }
+
+  /* === EXAMPLE BLOCKS === */
+  .example-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .example-block {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color var(--transition), transform var(--transition);
+  }
+
+  .example-block:hover {
+    border-color: var(--border-active);
+    transform: translateY(-3px);
+  }
+
+  .example-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .example-header .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .example-header h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .example-body {
+    padding: 1.5rem;
+  }
+
+  .example-body .step {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: flex-start;
+  }
+
+  .example-body .step:last-child { margin-bottom: 0; }
+
+  .step-marker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent-gold);
+    background: var(--accent-gold-glow);
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    white-space: nowrap;
+    margin-top: 0.25rem;
+  }
+
+  .step-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  /* === THOUGHT EXPERIMENT === */
+  .experiment-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 2rem;
+  }
+
+  .experiment-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .experiment-header h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+  }
+
+  .experiment-body {
+    padding: 2rem;
+  }
+
+  .experiment-question {
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    line-height: 1.8;
+  }
+
+  .experiment-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .experiment-option {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .experiment-option:hover {
+    border-color: var(--border-active);
+    background: var(--bg-hover);
+  }
+
+  .experiment-option.selected {
+    border-color: var(--accent-gold);
+    background: var(--accent-gold-glow);
+  }
+
+  .experiment-option .radio {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
+    flex-shrink: 0;
+    position: relative;
+    transition: border-color var(--transition);
+  }
+
+  .experiment-option.selected .radio {
+    border-color: var(--accent-gold);
+  }
+
+  .experiment-option.selected .radio::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-gold);
+  }
+
+  .experiment-option .opt-text {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  .experiment-result {
+    display: none;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-top: 0.5rem;
+    border-left: 3px solid var(--accent-teal);
+  }
+
+  .experiment-result.visible { display: block; }
+
+  .experiment-result h4 {
+    font-size: 0.9rem;
+    color: var(--accent-teal);
+    margin-bottom: 0.5rem;
+  }
+
+  .experiment-result p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* === GUIDE CARDS === */
+  .guide-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+
+  .guide-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.75rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color var(--transition), transform var(--transition);
+  }
+
+  .guide-card:hover {
+    border-color: var(--border-active);
+    transform: translateY(-3px);
+  }
+
+  .guide-card .guide-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 3rem;
+    font-weight: 700;
+    color: rgba(212,162,78,0.08);
+    position: absolute;
+    top: -0.5rem;
+    right: 0.75rem;
+    line-height: 1;
+  }
+
+  .guide-card h4 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+  }
+
+  .guide-card p {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  /* === FOOTER === */
+  footer {
+    padding: 4rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  footer p {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  footer .footer-line {
+    width: 40px;
+    height: 1px;
+    background: var(--accent-gold-dim);
+    margin: 1rem auto;
+  }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Staggered children */
+  .stagger-children > * {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .stagger-children.visible > *:nth-child(1) { transition-delay: 0s; opacity: 1; transform: translateY(0); }
+  .stagger-children.visible > *:nth-child(2) { transition-delay: 0.1s; opacity: 1; transform: translateY(0); }
+  .stagger-children.visible > *:nth-child(3) { transition-delay: 0.2s; opacity: 1; transform: translateY(0); }
+  .stagger-children.visible > *:nth-child(4) { transition-delay: 0.3s; opacity: 1; transform: translateY(0); }
+  .stagger-children.visible > *:nth-child(5) { transition-delay: 0.4s; opacity: 1; transform: translateY(0); }
+  .stagger-children.visible > *:nth-child(6) { transition-delay: 0.5s; opacity: 1; transform: translateY(0); }
+
+  /* === PULSING NODES ON CYCLE === */
+  @keyframes pulse {
+    0%, 100% { r: 6; opacity: 0.8; }
+    50% { r: 9; opacity: 1; }
+  }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .container { padding: 0 1.25rem; }
+    section { padding: 4rem 0; }
+    .principles-grid { grid-template-columns: 1fr; }
+    .example-grid { grid-template-columns: 1fr; }
+    .hero { padding: 4rem 0 3rem; }
+    .cycle-container { padding: 2rem 0; }
+    nav .nav-inner { gap: 1rem; padding: 0 1rem; }
+  }
+
+  /* === TAG === */
+  .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 3px;
+    background: var(--accent-gold-glow);
+    color: var(--accent-gold);
+    margin-right: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .tag.blue { background: rgba(74,143,212,0.12); color: var(--accent-blue); }
+  .tag.teal { background: rgba(58,191,168,0.12); color: var(--accent-teal); }
+  .tag.rose { background: rgba(212,90,106,0.12); color: var(--accent-rose); }
+  .tag.violet { background: rgba(138,106,212,0.12); color: var(--accent-violet); }
+
+  /* === COMPARISON TABLE === */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 2rem;
+    font-size: 0.88rem;
+  }
+
+  .comparison-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--accent-gold);
+    text-align: left;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-active);
+    background: var(--bg-surface);
+  }
+
+  .comparison-table td {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: top;
+    line-height: 1.7;
+  }
+
+  .comparison-table tr:hover td {
+    background: rgba(212,162,78,0.03);
+  }
+
+  /* === BACK TO TOP === */
+  #back-to-top {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--accent-gold);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all var(--transition);
+    z-index: 50;
+    font-size: 1.2rem;
+  }
+
+  #back-to-top.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #back-to-top:hover {
+    background: var(--accent-gold);
+    color: var(--bg-deep);
+  }
+
+  /* === FLOATING SIDE INDEX === */
+  .side-index {
+    position: fixed;
+    right: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .side-index.visible { opacity: 1; }
+
+  .side-index-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .side-index-dot:hover,
+  .side-index-dot.active {
+    background: var(--accent-gold);
+    transform: scale(1.5);
+  }
+
+  .side-index-dot::after {
+    content: attr(data-label);
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .side-index-dot:hover::after { opacity: 1; }
+
+  @media (max-width: 1200px) {
+    .side-index { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div id="progress-bar" style="width:0%"></div>
+
+<!-- Navigation -->
+<nav id="main-nav">
+  <div class="nav-inner">
+    <a href="#core">核心命题</a>
+    <a href="#deconstruct">第一性拆解</a>
+    <a href="#cycle">认识循环</a>
+    <a href="#examples">案例推演</a>
+    <a href="#experiment">思想实验</a>
+    <a href="#guide">行动指南</a>
+  </div>
+</nav>
+
+<!-- Side Index -->
+<div class="side-index" id="side-index">
+  <div class="side-index-dot" data-label="核心命题" data-target="core"></div>
+  <div class="side-index-dot" data-label="第一性拆解" data-target="deconstruct"></div>
+  <div class="side-index-dot" data-label="认识循环" data-target="cycle"></div>
+  <div class="side-index-dot" data-label="层级解构" data-target="levels"></div>
+  <div class="side-index-dot" data-label="案例推演" data-target="examples"></div>
+  <div class="side-index-dot" data-label="思想实验" data-target="experiment"></div>
+  <div class="side-index-dot" data-label="行动指南" data-target="guide"></div>
+</div>
+
+<!-- Back to Top -->
+<button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<!-- ========== HERO ========== -->
+<div class="container">
+  <div class="hero">
+    <span class="hero-label">Research Report · 第一性原理分析</span>
+    <h1 class="hero-title">《实践论》<br><span class="gold">认识与实践的深度架构</span></h1>
+    <p class="hero-subtitle">
+      以建筑师人格的第一性原理视角，对毛泽东《实践论》进行结构性拆解。
+      从最基本的公理出发，重建「认识—实践—再认识」的完整逻辑链条，
+      提炼出可迁移的思维框架与行动方法论。
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="label">分析方法</span>
+        <span class="value">第一性原理 · 结构化拆解</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">研究维度</span>
+        <span class="value">认识论 · 实践论 · 方法论</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">人格视角</span>
+        <span class="value">建筑师（INTJ）· 系统思维</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">核心主张</span>
+        <span class="value">实践是检验真理的唯一标准</span>
+      </div>
+    </div>
+    <div class="scroll-hint">
+      <span>SCROLL</span>
+      <div class="arrow"></div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ========== 核心命题 ========== -->
+<section id="core">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-number">01 / CORE PROPOSITION</span>
+      <h2 class="section-title">核心命题：<span class="gold">何为「实践论」的第一性原理？</span></h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="highlight-box reveal">
+      <p class="quote">「人的认识，主要地依赖于物质的生产活动，逐渐地了解自然的现象、自然的性质、自然的规律性、人和自然的关系。」</p>
+      <p class="source">—— 毛泽东《实践论》</p>
+    </div>
+
+    <p class="reveal" style="color:var(--text-secondary);font-size:0.92rem;line-height:2;margin:1.5rem 0;">
+      建筑师的核心工作方法：在纷繁复杂中找到<strong style="color:var(--text-primary)">不可再分解的基本公理</strong>，然后从此出发向上构建整个体系。
+      对《实践论》的分析，我们不从文本表面入手，而是追问一个根本性问题——
+    </p>
+
+    <div class="highlight-box reveal" style="border-left-color:var(--accent-blue);background:rgba(74,143,212,0.08);">
+      <p class="quote" style="color:var(--accent-blue);">如果只能留下一条不可辩驳的公理，那条公理是什么？</p>
+    </div>
+
+    <p class="reveal" style="color:var(--text-secondary);font-size:0.92rem;line-height:2;margin:1.5rem 0;">
+      <strong style="color:var(--accent-gold)">答案：认识来源于实践，又必须回到实践中去检验。</strong>这是整个《实践论》的公理内核。
+      一切判断、一切理论、一切路线的正确与否，最终都必须在实践的土壤中生根、开花、结果。
+      抛开这一公理，所有认识论都将成为无源之水、无本之木。
+    </p>
+
+    <div class="principles-grid stagger-children reveal">
+      <div class="principle-card">
+        <span class="principle-icon">◇</span>
+        <h3>公理一：实践先于认识</h3>
+        <p>人类的一切知识都从直接经验中来。没有实践，就没有认识的原材料。感性认识是理性认识的唯一起点。</p>
+      </div>
+      <div class="principle-card">
+        <span class="principle-icon">◈</span>
+        <h3>公理二：认识必须回到实践</h3>
+        <p>理论的价值不在于自身完美，而在于能否指导实践、改造世界。认识的最终目的是实践，而非认识本身。</p>
+      </div>
+      <div class="principle-card">
+        <span class="principle-icon">◆</span>
+        <h3>公理三：实践检验真理</h3>
+        <p>一切理论的真理性判定标准，不在于逻辑自洽，不在于权威背书，而在于实践的结果是否与预期一致。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ========== 第一性原理拆解 ========== -->
+<section id="deconstruct">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-number">02 / FIRST PRINCIPLES DECONSTRUCTION</span>
+      <h2 class="section-title">第一性原理<span class="gold">深度拆解</span></h2>
+      <div class="section-line"></div>
+    </div>
+
+    <p class="reveal" style="color:var(--text-secondary);font-size:0.92rem;line-height:2;margin-bottom:2rem;">
+      建筑师人格的典型做法：不接受任何「习以为常」的假设。我们要把《实践论》的核心论证链条彻底拆解到最底层，
+      然后从地基开始逐层搭建，验证每一层逻辑是否坚固。
+    </p>
+
+    <div class="accordion reveal" id="deconstruct-accordion">
+      <!-- 1 -->
+      <div class="accordion-item">
+        <button class="accordion-trigger" onclick="toggleAccordion(this)">
+          <span class="num">01</span>
+          <span>感性认识 → 理性认识：认识的第一次飞跃</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="accordion-content">
+          <div class="accordion-inner">
+            <p><strong>底层逻辑：</strong>人通过感官接触外界事物（看、听、触），获得感觉和印象——这是认识的<strong>感性阶段</strong>。
+            感觉材料积累多了，大脑便会产生一个飞跃，形成概念、判断和推理——进入<strong>理性阶段</strong>。</p>
+            <br>
+            <p><strong>关键洞察：</strong>这个飞跃不是自动发生的。它需要「去粗取精、去伪存真、由此及彼、由表及里」的思维加工。
+            没有这个加工过程，感性材料永远只是碎片，无法构成对事物本质的理解。</p>
+            <br>
+            <p><strong>建筑师类比：</strong>这如同从一块原始地块到完成建筑蓝图——你不能跳过现场勘测（感性）直接画图（理性），
+            也不能只勘测不画图。勘测数据需要经过结构分析、环境评估等加工，才能转化为可用的设计方案。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="accordion-item">
+        <button class="accordion-trigger" onclick="toggleAccordion(this)">
+          <span class="num">02</span>
+          <span>理性认识 → 实践：认识的第二次飞跃</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="accordion-content">
+          <div class="accordion-inner">
+            <p><strong>底层逻辑：</strong>理性认识（理论）产生后，必须回到实践中去——用于指导实践、改造客观世界。
+            这是更重要的一个飞跃，因为它是认识的目的所在。</p>
+            <br>
+            <p><strong>关键洞察：</strong>许多理论在逻辑上是自洽的，但在实践中却行不通。
+            这恰恰说明：逻辑自洽不等于真理，实践才是检验真理的唯一标准。
+            一个理论无论多么优美，如果不能指导实践取得预期结果，它就不是真理。</p>
+            <br>
+            <p><strong>建筑师类比：</strong>蓝图画得再精美，如果在实际施工中地基无法承受、材料不达标、造价远超预算——
+            那这个设计就是失败的。最终决定设计成败的，不是图纸本身，而是建成后的实际效果。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="accordion-item">
+        <button class="accordion-trigger" onclick="toggleAccordion(this)">
+          <span class="num">03</span>
+          <span>循环往复，螺旋上升：认识的无限发展</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="accordion-content">
+          <div class="accordion-inner">
+            <p><strong>底层逻辑：</strong>「实践→认识→再实践→再认识」——这个循环永远不会终止。
+            每一次循环，认识都比前一次更深刻、更全面、更接近事物的本质。
+            这就是辩证唯物论的全部认识论。</p>
+            <br>
+            <p><strong>关键洞察：</strong>认识不是一条直线，而是一个螺旋。
+            人们常常犯两种错误：一是「教条主义」——拿到一个理论就以为是终极真理，拒绝在实践中修正；
+            二是「经验主义」——沉溺于零散经验，拒绝将经验上升为理论。</p>
+            <br>
+            <p><strong>建筑师类比：</strong>伟大的建筑从来不是一次设计完成的。
+            从概念草图→方案深化→施工图→现场调整→使用反馈→改建优化——每一轮迭代都比上一轮更好。
+            巴塞罗那圣家堂历经百年仍在「实践→认识→再实践」。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="accordion-item">
+        <button class="accordion-trigger" onclick="toggleAccordion(this)">
+          <span class="num">04</span>
+          <span>两种错误倾向：教条主义与经验主义</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="accordion-content">
+          <div class="accordion-inner">
+            <p><strong>教条主义：</strong>只重视理论，不重视实践。
+            他们把前人的理论当作万能公式，不管具体情况如何都生搬硬套。
+            这等于是只取了「认识循环」的理论一端，切断了与实践的联系。</p>
+            <br>
+            <p><strong>经验主义：</strong>只重视个人零散经验，拒绝将其上升为系统理论。
+            他们满足于「我知道这样做能行」，却不知道「为什么能行」。
+            这等于是停留在感性认识阶段，拒绝了向理性认识的飞跃。</p>
+            <br>
+            <p><strong>核心诊断：</strong>这两种错误的本质相同——都破坏了「实践↔认识」的完整循环。
+            教条主义切断了认识的来源和检验标准；经验主义切断了认识的升华和迁移能力。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 -->
+      <div class="accordion-item">
+        <button class="accordion-trigger" onclick="toggleAccordion(this)">
+          <span class="num">05</span>
+          <span>绝对真理与相对真理的辩证关系</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="accordion-content">
+          <div class="accordion-inner">
+            <p><strong>底层逻辑：</strong>人类对真理的认识是一个从相对走向绝对的过程。
+            任何一个具体阶段的认识都是相对真理——它包含着绝对真理的颗粒，但不是绝对真理本身。</p>
+            <br>
+            <p><strong>关键洞察：</strong>承认相对真理的存在，不等于走向相对主义。
+            每一次实践检验都在修正和充实我们对真理的理解。
+            牛顿力学在宏观低速领域仍然是「有效真理」，但它被爱因斯坦相对论所「包含」和「超越」——这正是螺旋上升的实证。</p>
+            <br>
+            <p><strong>建筑师类比：</strong>建筑规范（如抗震标准）随着工程实践不断更新。
+            旧规范不是「错误的」，而是在当时条件下「接近正确」的。
+            每一次地震数据都推动规范向更接近绝对安全的方向演进。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ========== 认识循环图 ========== -->
+<section id="cycle">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-number">03 / THE EPISTEMOLOGICAL CYCLE</span>
+      <h2 class="section-title">「实践—认识—再实践」<span class="gold">螺旋模型</span></h2>
+      <div class="section-line"></div>
+    </div>
+
+    <p class="reveal" style="color:var(--text-secondary);font-size:0.92rem;line-height:2;margin-bottom:1rem;">
+      点击下方循环图中的各阶段节点，查看该阶段的详细分析。
+    </p>
+
+    <div class="cycle-container reveal">
+      <svg class="cycle-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background circle -->
+        <circle cx="250" cy="250" r="180" fill="none" stroke="rgba(212,162,78,0.08)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="130" fill="none" stroke="rgba(212,162,78,0.05)" stroke-width="1"/>
+
+        <!-- Arrows -->
+        <defs>
+          <marker id="arrowGold" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+            <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--accent-gold)"/>
+          </marker>
+        </defs>
+
+        <!-- Curved arrows between stages -->
+        <path d="M 340 140 Q 400 200 370 280" fill="none" stroke="rgba(212,162,78,0.3)" stroke-width="1.5" marker-end="url(#arrowGold)"/>
+        <path d="M 340 340 Q 300 410 210 370" fill="none" stroke="rgba(212,162,78,0.3)" stroke-width="1.5" marker-end="url(#arrowGold)"/>
+        <path d="M 150 330 Q 90 260 130 180" fill="none" stroke="rgba(212,162,78,0.3)" stroke-width="1.5" marker-end="url(#arrowGold)"/>
+        <path d="M 170 140 Q 220 80 300 120" fill="none" stroke="rgba(212,162,78,0.3)" stroke-width="1.5" marker-end="url(#arrowGold)"/>
+
+        <!-- Stage 1: 感性认识 -->
+        <g class="cycle-stage" data-stage="0" onclick="selectCycleStage(0)">
+          <circle cx="250" cy="100" r="42" fill="var(--bg-surface)" stroke="var(--accent-gold)" stroke-width="2"/>
+          <circle cx="250" cy="100" r="6" fill="var(--accent-gold)">
+            <animate attributeName="r" values="5;8;5" dur="3s" repeatCount="indefinite"/>
+          </circle>
+          <text x="250" y="100" text-anchor="middle" dominant-baseline="middle" font-size="13" dy="-8">感性认识</text>
+          <text x="250" y="100" text-anchor="middle" dominant-baseline="middle" font-size="9" class="sub-text" dy="10">感觉·印象</text>
+        </g>
+
+        <!-- Stage 2: 理性认识 -->
+        <g class="cycle-stage" data-stage="1" onclick="selectCycleStage(1)">
+          <circle cx="400" cy="250" r="42" fill="var(--bg-surface)" stroke="var(--accent-blue)" stroke-width="2"/>
+          <circle cx="400" cy="250" r="6" fill="var(--accent-blue)">
+            <animate attributeName="r" values="5;8;5" dur="3s" begin="0.75s" repeatCount="indefinite"/>
+          </circle>
+          <text x="400" y="250" text-anchor="middle" dominant-baseline="middle" font-size="13" dy="-8">理性认识</text>
+          <text x="400" y="250" text-anchor="middle" dominant-baseline="middle" font-size="9" class="sub-text" dy="10">概念·判断</text>
+        </g>
+
+        <!-- Stage 3: 实践检验 -->
+        <g class="cycle-stage" data-stage="2" onclick="selectCycleStage(2)">
+          <circle cx="250" cy="400" r="42" fill="var(--bg-surface)" stroke="var(--accent-teal)" stroke-width="2"/>
+          <circle cx="250" cy="400" r="6" fill="var(--accent-teal)">
+            <animate attributeName="r" values="5;8;5" dur="3s" begin="1.5s" repeatCount="indefinite"/>
+          </circle>
+          <text x="250" y="400" text-anchor="middle" dominant-baseline="middle" font-size="13" dy="-8">实践检验</text>
+          <text x="250" y="400" text-anchor="middle" dominant-baseline="middle" font-size="9" class="sub-text" dy="10">验证·反馈</text>
+        </g>
+
+        <!-- Stage 4: 认识深化 -->
+        <g class="cycle-stage" data-stage="3" onclick="selectCycleStage(3)">
+          <circle cx="100" cy="250" r="42" fill="var(--bg-surface)" stroke="var(--accent-rose)" stroke-width="2"/>
+          <circle cx="100" cy="250" r="6" fill="var(--accent-rose)">
+            <animate attributeName="r" values="5;8;5" dur="3s" begin="2.25s" repeatCount="indefinite"/>
+          </circle>
+          <text x="100" y="250" text-anchor="middle" dominant-baseline="middle" font-size="13" dy="-8">认识深化</text>
+          <text x="100" y="250" text-anchor="middle" dominant-baseline="middle" font-size="9" class="sub-text" dy="10">修正·迭代</text>
+        </g>
+
+        <!-- Center text -->
+        <text x="250" y="240" text-anchor="middle" font-family="'Noto Serif SC', serif" font-size="14" fill="var(--accent-gold)" font-weight="700">螺旋上升</text>
+        <text x="250" y="262" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="9" fill="var(--text-muted)" letter-spacing="0.1em">SPIRAL ASCENSION</text>
+      </svg>
+    </div>
+
+    <div class="cycle-detail reveal" style="position:relative;">
+      <div class="cycle-detail-card active" id="cycle-stage-0">
+        <h4>第一阶段：感性认识（实践 → 感觉）</h4>
+        <p>人在实践中通过感官与外部世界接触，获得关于事物现象的、片段的、表面的认识。
+        这是认识的起点——没有感性材料，理性便是空中楼阁。但感性认识的局限在于：它只反映事物的外部联系，
+        还不能揭示事物的本质规律。</p>
+      </div>
+      <div class="cycle-detail-card" id="cycle-stage-1">
+        <h4>第二阶段：理性认识（概念 → 判断 → 推理）</h4>
+        <p>将丰富的感性材料加以整理和改造，形成概念、判断和推理——这是认识的第一次飞跃。
+        理性认识抓住了事物的本质、全体和内部联系，但它是否正确，还需要回到实践中去检验。
+        这一阶段的关键词是「抽象」和「概括」。</p>
+      </div>
+      <div class="cycle-detail-card" id="cycle-stage-2">
+        <h4>第三阶段：实践检验（理论 → 应用 → 反馈）</h4>
+        <p>将理性认识应用于实践，看它能否达到预期目的。这是认识过程中最重要的环节——
+        因为它是对理性认识是否为真理的最终裁判。实践成功，说明认识正确；实践失败，
+        则需要反思和修正理论。这也是认识的第二次飞跃。</p>
+      </div>
+      <div class="cycle-detail-card" id="cycle-stage-3">
+        <h4>第四阶段：认识深化（修正 → 迭代 → 新知）</h4>
+        <p>根据实践反馈，对原有认识进行修正、补充和深化。
+        每经过一次「实践→认识→再实践」的循环，人们对事物的认识就向真理更近一步。
+        这个过程永无止境——因为客观世界是不断运动变化的，认识也必须随之发展。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ========== 层级解构 ========== -->
+<section id="levels">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-number">04 / HIERARCHICAL ANALYSIS</span>
+      <h2 class="section-title">「实践论」<span class="gold">对比层级解构</span></h2>
+      <div class="section-line"></div>
+    </div>
+
+    <p class="reveal" style="color:var(--text-secondary);font-size:0.92rem;line-height:2;margin-bottom:1.5rem;">
+      从第一性原理出发，《实践论》实际上建立了如下层级结构。每层都以前一层为地基，
+      形成了严密的逻辑金字塔。
+    </p>
+
+    <div style="overflow-x:auto;" class="reveal">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th style="width:15%">层级</th>
+            <th style="width:25%">认识阶段</th>
+            <th style="width:30%">核心任务</th>
+            <th style="width:30%">典型错误</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag">L1</span></td>
+            <td><strong style="color:var(--text-primary)">直接经验</strong><br>（感性材料收集）</td>
+            <td>通过实践获得关于事物的感性印象和表象</td>
+            <td>闭门造车，拒绝接触实际；或仅凭他人间接经验行事</td>
+          </tr>
+          <tr>
+            <td><span class="tag blue">L2</span></td>
+            <td><strong style="color:var(--text-primary)">概念形成</strong><br>（抽象与概括）</td>
+            <td>对感性材料进行去粗取精的加工，形成理性概念</td>
+            <td>停留在感觉经验层面（经验主义）；或概念脱离实际（教条主义）</td>
+          </tr>
+          <tr>
+            <td><span class="tag teal">L3</span></td>
+            <td><strong style="color:var(--text-primary)">理论体系</strong><br>（系统化认识）</td>
+            <td>将概念通过逻辑推理组织成系统的理论框架</td>
+            <td>追求逻辑自洽而忽视实践适用性；理论僵化不更新</td>
+          </tr>
+          <tr>
+            <td><span class="tag rose">L4</span></td>
+            <td><strong style="color:var(--text-primary)">实践检验</strong><br>（回到实践中去）</td>
+            <td>将理论应用于实践，以实践结果作为真理判据</td>
+            <td>选择性忽视不利实践结果；用理论辩护代替实践验证</td>
+          </tr>
+          <tr>
+            <td><span class="tag violet">L5</span></td>
+            <td><strong style="color:var(--text-primary)">螺旋上升</strong><br>（认识的持续发展）</td>
+            <td>根据实践反馈修正理论，在更高层次上重新开始</td>
+            <td>以为一次循环就能到达终极真理；拒绝承认已有认识的局限</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ========== 案例推演 ========== -->
+<section id="examples">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-number">05 / CASE STUDIES</span>
+      <h2 class="section-title">案例推演：<span class="gold">从理论到现实</span></h2>
+      <div class="section-line"></div>
+    </div>
+
+    <p class="reveal" style="color:var(--text-secondary);font-size:0.92rem;line-height:2;margin-bottom:1rem;">
+      以下三个案例展示了「实践论」框架在不同领域的迁移应用。每一个都遵循「感性→理性→实践→深化」的完整循环。
+    </p>
+
+    <div class="example-grid stagger-children reveal">
+      <!-- Example 1 -->
+      <div class="example-block">
+        <div class="example-header">
+          <div class="dot" style="background:var(--accent-gold);"></div>
+          <h4>案例一：科学发现——青霉素的发现</h4>
+        </div>
+        <div class="example-body">
+          <div class="step">
+            <span class="step-marker">感性</span>
+            <span class="step-text">弗莱明偶然观察到培养皿中青霉菌周围细菌死亡的现象——这是直接经验。</span>
+          </div>
+          <div class="step">
+            <span class="step-marker">理性</span>
+            <span class="step-text">他推断青霉菌可能分泌了某种抗菌物质，形成假说——这是理性认识。</span>
+          </div>
+          <div class="step">
+            <span class="step-marker">实践</span>
+            <span class="step-text">经过反复实验提取、动物试验和临床验证——这是实践检验。</span>
+          </div>
+          <div class="step">
+            <span class="step-marker">深化</span>
+            <span class="step-text">青霉素量产、抗菌谱研究、耐药性应对——认识在更高层次上持续螺旋。</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Example 2 -->
+      <div class="example-block">
+        <div class="example-header">
+          <div class="dot" style="background:var(--accent-blue);"></div>
+          <h4>案例二：商业创新——精益创业方法论</h4>
+        </div>
+        <div class="example-body">
+          <div class="step">
+            <span class="step-marker">感性</span>
+            <span class="step-text">创业者观察到市场中的某个痛点或未被满足的需求——这是感性材料。</span>
+          </div>
+          <div class="step">
+            <span class="step-marker">理性</span>
+            <span class="step-text">形成商业假设和MVP（最小可行产品）方案——这是理性认识。</span>
+          </div>
+          <div class="step">
+            <span class="step-marker">实践</span>
+            <span class="step-text">快速推出MVP，获取真实用户反馈和数据——这是实践检验。</span>
+          </div>
+          <div class="step">
+            <span class="step-marker">深化</span>
+            <span class="step-text">根据反馈「坚持或转型」（pivot），迭代产品——这就是螺旋上升。</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Example 3 -->
+      <div class="example-block">
+        <div class="example-header">
+          <div class="dot" style="background:var(--accent-teal);"></div>
+          <h4>案例三：个人成长——学习一门新技能</h4>
+        </div>
+        <div class="example-body">
+          <div class="step">
+            <span class="step-marker">感性</span>
+            <span class="step-text">看别人弹吉他，自己试着拨弦，手指疼、声音难听——直接体验。</span>
+          </div>
+          <div class="step">
+            <span class="step-marker">理性</span>
+            <span class="step-text">学习乐理、指法图谱、和弦原理——形成理性认识体系。</span>
+          </div>
+          <div class="step">
+            <span class="step-marker">实践</span>
+            <span class="step-text">每天练习，在真实演出中检验——发现理论与实际的差距。</span>
+          </div>
+          <div class="step">
+            <span class="step-marker">深化</span>
+            <span class="step-text">根据演出反馈调整练习重点，理解更深层的音乐表达——螺旋上升。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ========== 思想实验 ========== -->
+<section id="experiment">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-number">06 / THOUGHT EXPERIMENT</span>
+      <h2 class="section-title">交互思想实验：<span class="gold">你的认识论倾向</span></h2>
+      <div class="section-line"></div>
+    </div>
+
+    <p class="reveal" style="color:var(--text-secondary);font-size:0.92rem;line-height:2;margin-bottom:1rem;">
+      下面的场景测试你面对「理论与实践冲突」时的反应模式。请认真思考后做出选择。
+    </p>
+
+    <!-- Question 1 -->
+    <div class="experiment-container reveal">
+      <div class="experiment-header">
+        <span class="tag">Q1</span>
+        <h3>场景一：你精心设计了一个自认为完美的方案</h3>
+      </div>
+      <div class="experiment-body">
+        <p class="experiment-question">
+          你花了三个月研究一个项目方案，查阅了大量文献，逻辑严谨、数据充分。
+          但在实际执行的第一周，就遇到了严重的数据不符合预期的情况。你会怎么做？
+        </p>
+        <div class="experiment-options" id="q1-options">
+          <div class="experiment-option" onclick="selectOption('q1', this, 0)">
+            <div class="radio"></div>
+            <span class="opt-text">方案逻辑没有问题，一定是执行环节出了偏差，需要加大执行力度</span>
+          </div>
+          <div class="experiment-option" onclick="selectOption('q1', this, 1)">
+            <div class="radio"></div>
+            <span class="opt-text">放弃方案，既然和预期不符，说明根本方向就是错的</span>
+          </div>
+          <div class="experiment-option" onclick="selectOption('q1', this, 2)">
+            <div class="radio"></div>
+            <span class="opt-text">认真分析偏差原因，在保留方案核心框架的基础上进行修正和调整</span>
+          </div>
+        </div>
+        <div class="experiment-result" id="q1-result">
+          <h4>诊断分析</h4>
+          <p id="q1-feedback"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Question 2 -->
+    <div class="experiment-container reveal" style="margin-top:1.5rem;">
+      <div class="experiment-header">
+        <span class="tag">Q2</span>
+        <h3>场景二：面对一个完全陌生的领域</h3>
+      </div>
+      <div class="experiment-body">
+        <p class="experiment-question">
+          你需要在三个月内进入一个你从未接触过的行业。时间紧迫，你会如何安排学习路径？
+        </p>
+        <div class="experiment-options" id="q2-options">
+          <div class="experiment-option" onclick="selectOption('q2', this, 0)">
+            <div class="radio"></div>
+            <span class="opt-text">先系统阅读该领域的经典著作和研究报告，建立完整的理论框架</span>
+          </div>
+          <div class="experiment-option" onclick="selectOption('q2', this, 1)">
+            <div class="radio"></div>
+            <span class="opt-text">直接找一份该领域的工作，边干边学，实践出真知</span>
+          </div>
+          <div class="experiment-option" onclick="selectOption('q2', this, 2)">
+            <div class="radio"></div>
+            <span class="opt-text">先做基础调研获取框架认知（感性→理性），然后立即开始实际项目（实践检验），在实践中不断修正和深化认识</span>
+          </div>
+        </div>
+        <div class="experiment-result" id="q2-result">
+          <h4>诊断分析</h4>
+          <p id="q2-feedback"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ========== 行动指南 ========== -->
+<section id="guide">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-number">07 / ACTIONABLE GUIDANCE</span>
+      <h2 class="section-title">指导性意见：<span class="gold">六条行动原则</span></h2>
+      <div class="section-line"></div>
+    </div>
+
+    <p class="reveal" style="color:var(--text-secondary);font-size:0.92rem;line-height:2;margin-bottom:1rem;">
+      基于以上全部分析，从第一性原理出发，我们提炼出以下六条可立即落地的行动原则。
+      它们不是抽象的口号，而是可以融入日常工作流程的具体方法论。
+    </p>
+
+    <div class="guide-grid stagger-children reveal">
+      <div class="guide-card">
+        <span class="guide-num">01</span>
+        <h4>先动手，再完美</h4>
+        <p>不要等到一切想清楚再行动。先用最小成本获得直接经验，再用理性去加工和提升。
+        完美方案不来自头脑风暴，来自实践迭代。</p>
+      </div>
+      <div class="guide-card">
+        <span class="guide-num">02</span>
+        <h4>建立反馈回路</h4>
+        <p>任何行动都要有明确的反馈机制。没有反馈的实践是盲目的实践。
+        设计清晰的指标、定期回顾、快速纠偏——让循环真正运转起来。</p>
+      </div>
+      <div class="guide-card">
+        <span class="guide-num">03</span>
+        <h4>警惕两种极端</h4>
+        <p>定期自检：我是否陷入了教条主义（死守理论不放）？
+        还是经验主义（拒绝系统化总结）？保持两者的动态平衡。</p>
+      </div>
+      <div class="guide-card">
+        <span class="guide-num">04</span>
+        <h4>从相对真理中前进</h4>
+        <p>接受当前认识的不完美，但不因此停止追求。每个版本的「正确」都是通往更深层正确的阶梯。
+        重要的不是一次做对，而是每次比上次更好。</p>
+      </div>
+      <div class="guide-card">
+        <span class="guide-num">05</span>
+        <h4>把失败视为信息</h4>
+        <p>实践中遇到的挫折不是终点，而是认识深化的信号。
+        每一次失败都在告诉你：你的理论模型中缺了哪些变量。提取信息，更新模型，再来。</p>
+      </div>
+      <div class="guide-card">
+        <span class="guide-num">06</span>
+        <h4>在具体中检验一般</h4>
+        <p>再好的一般性原则，也必须放到具体的、特殊的场景中去验证。
+        同一个方法论在不同场景下可能需要完全不同的实现方式。具体问题具体分析，这是活的灵魂。</p>
+      </div>
+    </div>
+
+    <div class="highlight-box reveal" style="margin-top:3rem;">
+      <p class="quote">「通过实践而发现真理，又通过实践而证实真理和发展真理。从感性认识而能动地发展到理性认识，
+      又从理性认识而能动地指导革命实践，改造主观世界和客观世界。实践、认识、再实践、再认识，
+      这种形式，循环往复以至无穷，而实践和认识之每一循环的内容，都比较地进到了高一级的程度。
+      这就是辩证唯物论的全部认识论，这就是辩证唯物论的知行统一观。」</p>
+      <p class="source">—— 毛泽东《实践论》</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <div class="container">
+    <p style="font-family:'Noto Serif SC',serif;font-size:0.85rem;color:var(--text-secondary);">
+      《实践论》第一性原理研究报告
+    </p>
+    <div class="footer-line"></div>
+    <p>建筑师视角 · 结构化分析 · 系统思维</p>
+  </div>
+</footer>
+
+<script>
+  // ===== SCROLL PROGRESS =====
+  const progressBar = document.getElementById('progress-bar');
+  const nav = document.getElementById('main-nav');
+  const backToTop = document.getElementById('back-to-top');
+  const sideIndex = document.getElementById('side-index');
+
+  function updateScroll() {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = (scrollTop / docHeight) * 100;
+    progressBar.style.width = progress + '%';
+
+    // Nav visibility
+    if (scrollTop > 400) {
+      nav.classList.add('visible');
+      backToTop.classList.add('visible');
+    } else {
+      nav.classList.remove('visible');
+      backToTop.classList.remove('visible');
+    }
+
+    // Side index
+    if (scrollTop > 500) {
+      sideIndex.classList.add('visible');
+    } else {
+      sideIndex.classList.remove('visible');
+    }
+
+    // Active nav link
+    const sections = document.querySelectorAll('section[id]');
+    let current = '';
+    sections.forEach(section => {
+      const top = section.offsetTop - 200;
+      if (scrollTop >= top) {
+        current = section.id;
+      }
+    });
+
+    document.querySelectorAll('nav a').forEach(link => {
+      link.classList.remove('active');
+      if (link.getAttribute('href') === '#' + current) {
+        link.classList.add('active');
+      }
+    });
+
+    // Active side dot
+    document.querySelectorAll('.side-index-dot').forEach(dot => {
+      dot.classList.remove('active');
+      if (dot.dataset.target === current) {
+        dot.classList.add('active');
+      }
+    });
+  }
+
+  window.addEventListener('scroll', updateScroll);
+
+  // Side index click
+  document.querySelectorAll('.side-index-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      const target = document.getElementById(dot.dataset.target);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // ===== REVEAL ON SCROLL =====
+  const revealElements = document.querySelectorAll('.reveal, .stagger-children');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+  revealElements.forEach(el => revealObserver.observe(el));
+
+  // ===== ACCORDION =====
+  function toggleAccordion(trigger) {
+    const item = trigger.parentElement;
+    const content = trigger.nextElementSibling;
+    const isOpen = item.classList.contains('open');
+
+    // Close all
+    document.querySelectorAll('.accordion-item').forEach(i => {
+      i.classList.remove('open');
+      i.querySelector('.accordion-content').style.maxHeight = '0';
+    });
+
+    // Open clicked (if was closed)
+    if (!isOpen) {
+      item.classList.add('open');
+      content.style.maxHeight = content.scrollHeight + 'px';
+    }
+  }
+
+  // ===== CYCLE STAGE SELECTOR =====
+  function selectCycleStage(index) {
+    // Update detail cards
+    document.querySelectorAll('.cycle-detail-card').forEach(card => {
+      card.classList.remove('active');
+    });
+    const targetCard = document.getElementById('cycle-stage-' + index);
+    if (targetCard) {
+      targetCard.classList.add('active');
+    }
+
+    // Update SVG highlights
+    document.querySelectorAll('.cycle-stage').forEach(stage => {
+      const circle = stage.querySelector('circle:first-child');
+      circle.setAttribute('stroke-width', '2');
+      circle.style.filter = '';
+    });
+
+    const activeStage = document.querySelector(`.cycle-stage[data-stage="${index}"]`);
+    if (activeStage) {
+      const circle = activeStage.querySelector('circle:first-child');
+      circle.setAttribute('stroke-width', '3');
+      circle.style.filter = 'drop-shadow(0 0 8px rgba(212,162,78,0.4))';
+    }
+  }
+
+  // Initialize first stage
+  selectCycleStage(0);
+
+  // Auto-rotate cycle stages
+  let currentStage = 0;
+  let cycleTimer = setInterval(() => {
+    currentStage = (currentStage + 1) % 4;
+    selectCycleStage(currentStage);
+  }, 5000);
+
+  // Stop auto-rotate on click, restart after
+  document.querySelectorAll('.cycle-stage').forEach(stage => {
+    stage.addEventListener('click', () => {
+      clearInterval(cycleTimer);
+      const idx = parseInt(stage.dataset.stage);
+      currentStage = idx;
+      selectCycleStage(idx);
+      // Restart timer after 10s
+      setTimeout(() => {
+        cycleTimer = setInterval(() => {
+          currentStage = (currentStage + 1) % 4;
+          selectCycleStage(currentStage);
+        }, 5000);
+      }, 10000);
+    });
+  });
+
+  // ===== THOUGHT EXPERIMENT =====
+  function selectOption(questionId, element, optionIndex) {
+    const optionsContainer = document.getElementById(questionId + '-options');
+    const options = optionsContainer.querySelectorAll('.experiment-option');
+
+    // Remove previous selection
+    options.forEach(opt => opt.classList.remove('selected'));
+
+    // Add selection
+    element.classList.add('selected');
+
+    // Show result
+    const result = document.getElementById(questionId + '-result');
+    const feedback = document.getElementById(questionId + '-feedback');
+    result.classList.add('visible');
+
+    const feedbacks = {
+      q1: [
+        '<strong>教条主义倾向。</strong>你倾向于维护已有理论的权威性，将问题归因于执行而非理论本身。这是《实践论》中重点批判的「理论脱离实际」的典型表现。建议：设定明确的「假设证伪条件」——如果连续N次出现同类偏差，就勇敢质疑理论本身。',
+        '<strong>激进否定倾向。</strong>虽然你没有教条主义的僵化，但过于快速地放弃方案同样是另一种极端。《实践论》强调「实践是检验真理的标准」，但检验需要足够的时间和多角度的验证。建议：区分「方向性错误」和「参数性偏差」——大多数时候需要的是调整而非推翻。',
+        '<strong>辩证唯物论倾向。</strong>这正是《实践论》倡导的正确方法论——既尊重理论的指导作用，又以实践为最终判据，在两者之间保持动态平衡。你能够在「坚守」和「修正」之间找到合理的张力。持续强化这一能力的方法是：每次实践后刻意复盘「理论与实际的差距」。'
+      ],
+      q2: [
+        '<strong>教条主义风险较高。</strong>理论先行是重要的，但在时间紧迫的情况下，过长的理论准备期可能让你错过实践窗口。《实践论》指出：「你要知道梨子的滋味，你就得变革梨子，亲口吃一吃。」建议：限定理论学习时间（如两周），之后立即开始小规模实践，让实践来指导后续学习方向。',
+        '<strong>经验主义风险较高。</strong>直接跳入实践能获得丰富的感性材料，但缺乏理论框架的指导，你可能在低水平重复而不自知。《实践论》指出感性认识必须上升到理性认识。建议：边做边学的同时，每周留出固定时间进行系统化理论输入和反思总结。',
+        '<strong>最接近「实践论」完整循环。</strong>你自然地遵循了「感性→理性→实践→深化」的完整路径。先建立基本框架避免盲目，再用实践检验和深化理论。这是《实践论》所倡导的「知行统一观」在个人学习中的最佳实践。保持这个习惯，并确保每一轮循环都在更高的层次上进行。'
+      ]
+    };
+
+    feedback.innerHTML = feedbacks[questionId][optionIndex];
+  }
+</script>
+</body>
+</html>
