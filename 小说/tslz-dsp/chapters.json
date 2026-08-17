@@ -1,0 +1,386 @@
+[
+  {
+    "chapter": 1,
+    "title": "天师法器现世",
+    "original_title": false,
+    "start_line": 1,
+    "end_line": 23,
+    "file": "_src/ch01.txt"
+  },
+  {
+    "chapter": 2,
+    "title": "误入晚唐",
+    "original_title": false,
+    "start_line": 24,
+    "end_line": 45,
+    "file": "_src/ch02.txt"
+  },
+  {
+    "chapter": 3,
+    "title": "猎人石霸与火药",
+    "original_title": false,
+    "start_line": 46,
+    "end_line": 57,
+    "file": "_src/ch03.txt"
+  },
+  {
+    "chapter": 4,
+    "title": "斩巨蛇救云豹",
+    "original_title": false,
+    "start_line": 58,
+    "end_line": 78,
+    "file": "_src/ch04.txt"
+  },
+  {
+    "chapter": 5,
+    "title": "羌寨行",
+    "original_title": false,
+    "start_line": 79,
+    "end_line": 93,
+    "file": "_src/ch05.txt"
+  },
+  {
+    "chapter": 6,
+    "title": "汶川除妖",
+    "original_title": false,
+    "start_line": 94,
+    "end_line": 116,
+    "file": "_src/ch06.txt"
+  },
+  {
+    "chapter": 7,
+    "title": "收云豹·入成都",
+    "original_title": false,
+    "start_line": 117,
+    "end_line": 130,
+    "file": "_src/ch07.txt"
+  },
+  {
+    "chapter": 8,
+    "title": "卖皮遇公孙凤",
+    "original_title": false,
+    "start_line": 131,
+    "end_line": 158,
+    "file": "_src/ch08.txt"
+  },
+  {
+    "chapter": 9,
+    "title": "薛涛与方大娘",
+    "original_title": false,
+    "start_line": 159,
+    "end_line": 203,
+    "file": "_src/ch09.txt"
+  },
+  {
+    "chapter": 10,
+    "title": "巫山袁天启",
+    "original_title": false,
+    "start_line": 204,
+    "end_line": 235,
+    "file": "_src/ch10.txt"
+  },
+  {
+    "chapter": 11,
+    "title": "武汉捞石兽",
+    "original_title": false,
+    "start_line": 236,
+    "end_line": 269,
+    "file": "_src/ch11.txt"
+  },
+  {
+    "chapter": 12,
+    "title": "彝陵会元稹",
+    "original_title": false,
+    "start_line": 270,
+    "end_line": 315,
+    "file": "_src/ch12.txt"
+  },
+  {
+    "chapter": 13,
+    "title": "收服公孙凤",
+    "original_title": false,
+    "start_line": 316,
+    "end_line": 376,
+    "file": "_src/ch13.txt"
+  },
+  {
+    "chapter": 14,
+    "title": "太行八寨",
+    "original_title": false,
+    "start_line": 377,
+    "end_line": 408,
+    "file": "_src/ch14.txt"
+  },
+  {
+    "chapter": 15,
+    "title": "连弩箭阵",
+    "original_title": true,
+    "start_line": 409,
+    "end_line": 448,
+    "file": "_src/ch15.txt"
+  },
+  {
+    "chapter": 16,
+    "title": "初战·袭营·布阵",
+    "original_title": true,
+    "start_line": 449,
+    "end_line": 465,
+    "file": "_src/ch16.txt"
+  },
+  {
+    "chapter": 17,
+    "title": "夜袭敌营",
+    "original_title": false,
+    "start_line": 466,
+    "end_line": 476,
+    "file": "_src/ch17.txt"
+  },
+  {
+    "chapter": 18,
+    "title": "布阵歼敌",
+    "original_title": false,
+    "start_line": 477,
+    "end_line": 518,
+    "file": "_src/ch18.txt"
+  },
+  {
+    "chapter": 19,
+    "title": "初克貂骑",
+    "original_title": true,
+    "start_line": 519,
+    "end_line": 564,
+    "file": "_src/ch19.txt"
+  },
+  {
+    "chapter": 20,
+    "title": "险遭袭营",
+    "original_title": true,
+    "start_line": 565,
+    "end_line": 624,
+    "file": "_src/ch20.txt"
+  },
+  {
+    "chapter": 21,
+    "title": "超级毒气弹",
+    "original_title": true,
+    "start_line": 625,
+    "end_line": 663,
+    "file": "_src/ch21.txt"
+  },
+  {
+    "chapter": 22,
+    "title": "归寨之行",
+    "original_title": true,
+    "start_line": 664,
+    "end_line": 715,
+    "file": "_src/ch22.txt"
+  },
+  {
+    "chapter": 23,
+    "title": "庆功宴饯别酒",
+    "original_title": true,
+    "start_line": 716,
+    "end_line": 780,
+    "file": "_src/ch23.txt"
+  },
+  {
+    "chapter": 24,
+    "title": "终南寻仙",
+    "original_title": true,
+    "start_line": 781,
+    "end_line": 792,
+    "file": "_src/ch24.txt"
+  },
+  {
+    "chapter": 25,
+    "title": "终南遇韩湘子",
+    "original_title": false,
+    "start_line": 793,
+    "end_line": 847,
+    "file": "_src/ch25.txt"
+  },
+  {
+    "chapter": 26,
+    "title": "韩湘子传剑道",
+    "original_title": false,
+    "start_line": 848,
+    "end_line": 932,
+    "file": "_src/ch26.txt"
+  },
+  {
+    "chapter": 27,
+    "title": "赴天师府",
+    "original_title": false,
+    "start_line": 933,
+    "end_line": 946,
+    "file": "_src/ch27.txt"
+  },
+  {
+    "chapter": 28,
+    "title": "迷魂阵·见大天师",
+    "original_title": false,
+    "start_line": 947,
+    "end_line": 988,
+    "file": "_src/ch28.txt"
+  },
+  {
+    "chapter": 29,
+    "title": "法宝真解",
+    "original_title": false,
+    "start_line": 989,
+    "end_line": 1031,
+    "file": "_src/ch29.txt"
+  },
+  {
+    "chapter": 30,
+    "title": "神之遁之秘",
+    "original_title": false,
+    "start_line": 1032,
+    "end_line": 1131,
+    "file": "_src/ch30.txt"
+  },
+  {
+    "chapter": 31,
+    "title": "夜泛秦淮",
+    "original_title": true,
+    "start_line": 1132,
+    "end_line": 1187,
+    "file": "_src/ch31.txt"
+  },
+  {
+    "chapter": 32,
+    "title": "鲁班嫡传",
+    "original_title": true,
+    "start_line": 1188,
+    "end_line": 1244,
+    "file": "_src/ch32.txt"
+  },
+  {
+    "chapter": 33,
+    "title": "玄冰离火枪",
+    "original_title": true,
+    "start_line": 1245,
+    "end_line": 1303,
+    "file": "_src/ch33.txt"
+  },
+  {
+    "chapter": 34,
+    "title": "红线盗画",
+    "original_title": true,
+    "start_line": 1304,
+    "end_line": 1330,
+    "file": "_src/ch34.txt"
+  },
+  {
+    "chapter": 35,
+    "title": "盗画赴苗疆",
+    "original_title": false,
+    "start_line": 1331,
+    "end_line": 1387,
+    "file": "_src/ch35.txt"
+  },
+  {
+    "chapter": 36,
+    "title": "布雨·草海收蟒",
+    "original_title": false,
+    "start_line": 1388,
+    "end_line": 1504,
+    "file": "_src/ch36.txt"
+  },
+  {
+    "chapter": 37,
+    "title": "自创洞天",
+    "original_title": true,
+    "start_line": 1505,
+    "end_line": 1568,
+    "file": "_src/ch37.txt"
+  },
+  {
+    "chapter": 38,
+    "title": "三十六洞天",
+    "original_title": false,
+    "start_line": 1569,
+    "end_line": 1590,
+    "file": "_src/ch38.txt"
+  },
+  {
+    "chapter": 39,
+    "title": "扎卡迁族",
+    "original_title": false,
+    "start_line": 1591,
+    "end_line": 1658,
+    "file": "_src/ch39.txt"
+  },
+  {
+    "chapter": 40,
+    "title": "缅甸翡翠地龙",
+    "original_title": false,
+    "start_line": 1659,
+    "end_line": 1719,
+    "file": "_src/ch40.txt"
+  },
+  {
+    "chapter": 41,
+    "title": "嘎多族归附",
+    "original_title": false,
+    "start_line": 1720,
+    "end_line": 1830,
+    "file": "_src/ch41.txt"
+  },
+  {
+    "chapter": 42,
+    "title": "益州雕天尊",
+    "original_title": false,
+    "start_line": 1831,
+    "end_line": 1970,
+    "file": "_src/ch42.txt"
+  },
+  {
+    "chapter": 43,
+    "title": "太平洋飓风",
+    "original_title": false,
+    "start_line": 1971,
+    "end_line": 2011,
+    "file": "_src/ch43.txt"
+  },
+  {
+    "chapter": 44,
+    "title": "鲸口余生",
+    "original_title": false,
+    "start_line": 2012,
+    "end_line": 2052,
+    "file": "_src/ch44.txt"
+  },
+  {
+    "chapter": 45,
+    "title": "沧海桑田",
+    "original_title": false,
+    "start_line": 2053,
+    "end_line": 2079,
+    "file": "_src/ch45.txt"
+  },
+  {
+    "chapter": 46,
+    "title": "空间创世主",
+    "original_title": true,
+    "start_line": 2080,
+    "end_line": 2130,
+    "file": "_src/ch46.txt"
+  },
+  {
+    "chapter": 47,
+    "title": "西行楼兰",
+    "original_title": false,
+    "start_line": 2131,
+    "end_line": 2280,
+    "file": "_src/ch47.txt"
+  },
+  {
+    "chapter": 48,
+    "title": "西方寻宝(未完)",
+    "original_title": false,
+    "start_line": 2281,
+    "end_line": 2450,
+    "file": "_src/ch48.txt"
+  }
+]
