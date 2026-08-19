@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从规则到智能 · 大模型原理分享</title>
+<style>
+  :root{
+    --bg:#0b0f15; --panel:#121a25; --panel2:#0e141d; --line:#22304400;
+    --stroke:#233248; --ink:#e9eef6; --muted:#94a3b8; --faint:#5d6c81;
+    --acc:#5da9ff; --acc2:#22d3ee; --amber:#f5b04d; --red:#ff7b72; --green:#7ee2a8;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,"PingFang SC",monospace;
+    --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    overflow:hidden; -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none;
+    background:
+      radial-gradient(1200px 700px at 78% -10%, rgba(93,169,255,.10), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(34,211,238,.07), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.014) 0 1px, transparent 1px 44px);
+  }
+  #stage{
+    position:absolute; left:50%; top:50%; width:1280px; height:720px;
+    transform:translate(-50%,-50%); transform-origin:center center;
+  }
+  /* ---------- slides ---------- */
+  .slide{
+    position:absolute; inset:0; padding:52px 64px 64px;
+    display:flex; flex-direction:column;
+    visibility:hidden; opacity:0; transition:opacity .28s ease;
+  }
+  .slide.on{visibility:visible; opacity:1}
+  .kick{
+    display:flex; align-items:center; gap:10px;
+    font-size:14px; letter-spacing:.18em; color:var(--acc); font-weight:600;
+    margin-bottom:14px; white-space:nowrap;
+  }
+  .kick::before{content:""; width:22px; height:2px; background:var(--acc); border-radius:2px}
+  .kick .sub{color:var(--faint); letter-spacing:.08em; font-weight:400}
+  h2{font-size:37px; line-height:1.28; font-weight:700; letter-spacing:.01em; margin-bottom:22px}
+  h2 em{font-style:normal; color:var(--acc)}
+  h2 .star{color:var(--amber)}
+  .body{flex:1; min-height:0; display:flex; flex-direction:column}
+  /* reveal animation */
+  .rv{opacity:0}
+  .slide.on .rv{animation:rise .55s cubic-bezier(.2,.7,.2,1) both; animation-delay:var(--d,0ms)}
+  @keyframes rise{from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none}}
+  /* ---------- shared components ---------- */
+  .take{
+    margin-top:auto; display:flex; align-items:center; gap:14px;
+    background:linear-gradient(90deg, rgba(245,176,77,.10), rgba(245,176,77,.02));
+    border:1px solid rgba(245,176,77,.35); border-left:4px solid var(--amber);
+    border-radius:10px; padding:13px 20px; font-size:19px; line-height:1.5;
+  }
+  .take b{color:var(--amber)}
+  .take .lab{flex:none; font-size:12px; letter-spacing:.2em; color:var(--amber); opacity:.85}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px; flex:1; min-height:0}
+  .card{
+    background:var(--panel); border:1px solid var(--stroke); border-radius:14px;
+    padding:20px 24px; position:relative;
+  }
+  .card h3{font-size:20px; margin-bottom:10px; font-weight:700}
+  .card h3 .tag{font-size:12px; color:var(--acc); border:1px solid rgba(93,169,255,.4);
+    border-radius:99px; padding:2px 10px; margin-left:10px; vertical-align:3px; font-weight:600; letter-spacing:.05em}
+  .card p, .card li{font-size:17.5px; line-height:1.65; color:var(--muted)}
+  .card p b, .card li b{color:var(--ink)}
+  .card ul{list-style:none}
+  .card ul li{padding-left:18px; position:relative; margin-bottom:6px}
+  .card ul li::before{content:"▸"; position:absolute; left:0; color:var(--acc); font-size:14px}
+  .hl{color:var(--ink); font-weight:700}
+  .am{color:var(--amber); font-weight:700}
+  .bl{color:var(--acc); font-weight:700}
+  .gr{color:var(--green); font-weight:700}
+  .rd{color:var(--red); font-weight:700}
+  .chips{display:flex; flex-wrap:wrap; gap:10px}
+  .chip{
+    background:rgba(93,169,255,.10); border:1px solid rgba(93,169,255,.35); color:var(--ink);
+    border-radius:99px; padding:5px 16px; font-size:16px;
+  }
+  .chip.dim{background:rgba(148,163,184,.08); border-color:var(--stroke); color:var(--muted)}
+  .code{
+    font-family:var(--mono); background:#0a0e14; border:1px solid var(--stroke);
+    border-radius:10px; padding:16px 20px; font-size:17px; line-height:1.8; color:#c9d6e8;
+  }
+  .code .cm{color:var(--faint)} .code .kw{color:var(--acc2)} .code .st{color:var(--green)}
+  .arrow{color:var(--acc); font-weight:700}
+  .vsline{display:flex; align-items:center; gap:14px; font-size:16px; color:var(--muted)}
+  .vsline::before,.vsline::after{content:""; flex:1; height:1px; background:var(--stroke)}
+  /* stairs */
+  .stairs{display:flex; align-items:flex-end; gap:10px; flex:1; min-height:0}
+  .st{
+    flex:1; border-radius:10px 10px 0 0; padding:14px 12px;
+    background:linear-gradient(180deg, rgba(93,169,255,.22), rgba(93,169,255,.05));
+    border:1px solid rgba(93,169,255,.30); border-bottom:none;
+    display:flex; flex-direction:column; justify-content:flex-start;
+  }
+  .st .n{font-family:var(--mono); font-size:13px; color:var(--acc2); margin-bottom:6px}
+  .st .t{font-size:19px; font-weight:700; margin-bottom:6px; letter-spacing:.01em}
+  .st .d{font-size:13.5px; color:var(--muted); line-height:1.5}
+  .st.hot{background:linear-gradient(180deg, rgba(245,176,77,.26), rgba(245,176,77,.05)); border-color:rgba(245,176,77,.4)}
+  .note{color:var(--faint); font-size:15.5px; line-height:1.6; margin-top:14px}
+  .note b{color:var(--muted)}
+  /* pyramid */
+  .pyr{display:flex; flex-direction:column-reverse; gap:8px; flex:1; justify-content:flex-end}
+  .pyr .lv{
+    border-radius:9px; padding:10px 18px; font-size:17px; text-align:center;
+    border:1px solid var(--stroke); background:var(--panel2); color:var(--muted);
+  }
+  .pyr .lv b{color:var(--ink)}
+  .pyr .lv.top{border-color:rgba(245,176,77,.5); background:rgba(245,176,77,.10); color:var(--amber); font-weight:700}
+  .pyr .up{ text-align:center; color:var(--acc); font-size:15px; line-height:.8}
+  /* mask grid */
+  .maskwrap{display:grid; grid-template-columns:auto 1fr; gap:26px; align-items:center}
+  #maskGrid{display:grid; gap:5px; font-size:14px}
+  #maskGrid .hd{display:flex; align-items:center; justify-content:center; color:var(--faint); font-size:14px}
+  #maskGrid .lb{display:flex; align-items:center; justify-content:flex-end; padding-right:10px; color:var(--muted)}
+  #maskGrid .c{width:46px; height:40px; border-radius:7px; background:rgba(255,255,255,.03); border:1px solid var(--stroke)}
+  #maskGrid .c.v{background:linear-gradient(135deg, rgba(93,169,255,.45), rgba(34,211,238,.28)); border-color:rgba(93,169,255,.6); box-shadow:0 0 10px rgba(93,169,255,.15)}
+  #maskGrid .tg{display:flex; align-items:center; padding-left:10px; color:var(--amber); font-weight:700}
+  /* flow steps */
+  .flow{display:flex; align-items:stretch; gap:12px}
+  .fstep{flex:1; background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:16px 18px}
+  .fstep .fn{font-family:var(--mono); font-size:12px; color:var(--acc2); margin-bottom:8px; letter-spacing:.1em}
+  .fstep .ft{font-size:18px; font-weight:700; margin-bottom:8px}
+  .fstep .fd{font-size:15px; color:var(--muted); line-height:1.6}
+  .fstep .fd b{color:var(--ink)}
+  .far{align-self:center; color:var(--acc); font-size:24px; font-weight:700; flex:none}
+  /* q cards */
+  .qcard{display:flex; gap:16px; align-items:flex-start; background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:16px 20px}
+  .qcard .qn{font-family:var(--mono); color:var(--acc); font-size:15px; padding-top:3px; flex:none}
+  .qcard .qt{font-size:19.5px; line-height:1.5}
+  /* svg figure */
+  .fig{background:var(--panel2); border:1px solid var(--stroke); border-radius:12px; padding:12px}
+  .fig .cap{font-size:13.5px; color:var(--faint); text-align:center; margin-top:6px}
+  /* nav */
+  #bar{position:fixed; left:0; right:0; bottom:0; height:46px; display:flex; align-items:center;
+    padding:0 20px; gap:18px; z-index:10; background:linear-gradient(180deg, transparent, rgba(11,15,21,.9) 40%)}
+  #dots{display:flex; gap:8px; align-items:center}
+  #dots .d{font-size:11px; color:var(--faint); padding:3px 7px; border-radius:5px; cursor:default; letter-spacing:.05em}
+  #dots .d.on{color:#0b0f15; background:var(--acc); font-weight:700}
+  #cnt{margin-left:auto; font-family:var(--mono); font-size:13px; color:var(--muted)}
+  #navbtns{display:flex; gap:8px}
+  #navbtns button{
+    width:34px; height:30px; border-radius:8px; border:1px solid var(--stroke);
+    background:rgba(18,26,37,.8); color:var(--muted); font-size:15px; cursor:pointer;
+  }
+  #navbtns button:hover{color:var(--ink); border-color:var(--acc)}
+  #prog{position:fixed; top:0; left:0; height:3px; background:linear-gradient(90deg,var(--acc),var(--acc2)); z-index:10; transition:width .25s ease}
+  /* title slide */
+  .tslide{justify-content:center; align-items:flex-start}
+  .tslide .pre{font-size:15px; letter-spacing:.35em; color:var(--acc); margin-bottom:26px; font-weight:600}
+  .tslide h1{font-size:76px; font-weight:800; letter-spacing:.02em; line-height:1.15}
+  .tslide h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .tslide .sub{font-size:26px; color:var(--muted); margin-top:16px}
+  .tslide .qbox{
+    margin-top:42px; border-left:4px solid var(--amber); padding:16px 26px;
+    background:rgba(245,176,77,.06); border-radius:0 12px 12px 0;
+    font-size:22px; line-height:1.7; max-width:900px;
+  }
+  .tslide .meta{margin-top:44px; display:flex; gap:12px}
+  /* misc */
+  .bignum{display:flex; align-items:center; justify-content:center; gap:60px; flex:1}
+  .bn{text-align:center}
+  .bn .v{font-family:var(--mono); font-size:96px; font-weight:800; line-height:1}
+  .bn .l{font-size:17px; color:var(--muted); margin-top:12px}
+  .vs{font-size:30px; color:var(--faint); font-weight:700}
+  table.tb{border-collapse:collapse; width:100%}
+  table.tb th, table.tb td{border:1px solid var(--stroke); padding:13px 18px; font-size:17.5px; text-align:left}
+  table.tb th{color:var(--acc); font-weight:700; background:rgba(93,169,255,.06)}
+  table.tb td{color:var(--muted)} table.tb td b{color:var(--ink)}
+  .looprow{display:flex; align-items:center; gap:10px; justify-content:center}
+  .loopback{height:26px; border:2px dashed rgba(93,169,255,.5); border-top:none; border-radius:0 0 12px 12px; margin:0 60px}
+  .sent{font-size:23px; line-height:1.9}
+  .sent u{text-decoration:none; border-bottom:4px solid var(--amber); font-weight:800; color:var(--amber); padding:0 2px}
+  .sent .ctx{border-bottom:4px solid var(--acc2); color:var(--acc2); font-weight:800; padding:0 2px}
+  .qa{background:var(--panel); border:1px solid var(--stroke); border-radius:10px; padding:13px 16px}
+  .qa .q{font-size:16px; font-weight:700; margin-bottom:5px}
+  .qa .a{font-size:14.5px; color:var(--muted); line-height:1.55}
+  .qa .a b{color:var(--acc2)}
+  @media print{
+    body{overflow:visible} body::before{display:none}
+    #stage{position:static; transform:none !important; width:auto; height:auto}
+    .slide{position:relative; opacity:1; visibility:visible; width:1280px; height:720px; page-break-after:always}
+    #bar,#prog{display:none}
+    .rv{opacity:1; animation:none !important}
+  }
+</style>
+</head>
+<body>
+<div id="prog"></div>
+<div id="stage">
+
+<!-- ============ 1 标题 ============ -->
+<section class="slide tslide">
+  <div class="pre rv" style="--d:0ms">内 部 技 术 分 享</div>
+  <h1 class="rv" style="--d:80ms">从规则到<span>智能</span></h1>
+  <div class="sub rv" style="--d:160ms">一条演化链，看懂大语言模型</div>
+  <div class="qbox rv" style="--d:260ms">
+    整场只回答一个问题：<b>一个只会执行人写好的规则的程序，<br>是怎么一步步变成今天能陪你写代码的助手的？</b>
+  </div>
+  <div class="meta rv" style="--d:380ms">
+    <span class="chip">约 60 分钟</span><span class="chip dim">公式只有一条</span>
+    <span class="chip dim">一个现场演示</span><span class="chip dim">七级台阶</span>
+    <span class="chip dim" style="margin-left:auto">← / → 翻页 · F 全屏</span>
+  </div>
+</section>
+
+<!-- ============ 2 四个问题 ============ -->
+<section class="slide">
+  <div class="kick rv">开场 <span class="sub">建立问题意识</span></div>
+  <h2 class="rv" style="--d:60ms">每天都在用，往下追问一层就开始模糊</h2>
+  <div class="body" style="gap:14px; justify-content:center">
+    <div class="qcard rv" style="--d:120ms"><div class="qn">Q1</div><div class="qt">模型的<b>知识</b>是从哪来的？</div></div>
+    <div class="qcard rv" style="--d:200ms"><div class="qn">Q2</div><div class="qt">为什么它能看懂<b>上下文</b>？</div></div>
+    <div class="qcard rv" style="--d:280ms"><div class="qn">Q3</div><div class="qt">它为什么会<b>听我的指令</b>，而不是自顾自地说话？</div></div>
+    <div class="qcard rv" style="--d:360ms"><div class="qn">Q4</div><div class="qt">按下回车之后，那段回答<b>到底是怎么出来的</b>？</div></div>
+    <div class="take rv" style="--d:460ms"><span class="lab">今天做什么</span><span>不教工具技巧、不盘点新闻——搭一张稳定的认知地图：以后再看到任何 AI 新概念，<b>自己判断它到底改变了什么</b>。</span></div>
+  </div>
+</section>
+
+<!-- ============ 3 七级台阶 ============ -->
+<section class="slide" data-st="map">
+  <div class="kick rv">开场 <span class="sub">全局地图</span></div>
+  <h2 class="rv" style="--d:60ms">答案是七级台阶</h2>
+  <div class="stairs rv" style="--d:140ms">
+    <div class="st" style="height:36%"><div class="n">01</div><div class="t">机器学习</div><div class="d">从数据里找参数</div></div>
+    <div class="st" style="height:46%"><div class="n">02</div><div class="t">深度学习</div><div class="d">连特征也自己学</div></div>
+    <div class="st" style="height:56%"><div class="n">03</div><div class="t">Transformer</div><div class="d">每个词直接看全文</div></div>
+    <div class="st" style="height:66%"><div class="n">04</div><div class="t">预训练</div><div class="d">从海量文本长出能力</div></div>
+    <div class="st" style="height:76%"><div class="n">05</div><div class="t">后训练</div><div class="d">学会当助手</div></div>
+    <div class="st" style="height:86%"><div class="n">06</div><div class="t">生成</div><div class="d">一个 Token 一个 Token 说</div></div>
+    <div class="st hot" style="height:96%"><div class="n">07</div><div class="t">Agent</div><div class="d">从说话到做事</div></div>
+  </div>
+  <div class="note rv" style="--d:260ms">它们<b>不是七代互相淘汰的技术</b>——有的是方法、有的是结构、有的是训练阶段、有的是外部系统。排成一条线，只为看清：<b>能力是怎么一层层长出来的</b>。</div>
+</section>
+
+<!-- ============ 4 传统程序 vs 机器学习 ============ -->
+<section class="slide" data-st="ml">
+  <div class="kick rv">一 · 机器学习</div>
+  <h2 class="rv" style="--d:60ms">有一大类任务：人做得出来，但写不出规则</h2>
+  <div class="grid2" style="flex:1">
+    <div class="card rv" style="--d:120ms">
+      <h3>传统程序</h3>
+      <div class="code" style="margin:8px 0 14px">规则 + 输入 <span class="kw">→</span> 输出</div>
+      <p>算订单价格：金额、优惠、税费、运费，规则写得清清楚楚。<b>对规则写得出来的问题，传统程序就是最好的方案</b>，无可替代。</p>
+    </div>
+    <div class="card rv" style="--d:220ms" style2="">
+      <h3>机器学习<span class="tag">新的分工</span></h3>
+      <p style="margin-bottom:10px"><b>人提供：</b>数据 · 模型形式 · 目标（什么算好）</p>
+      <p><b>机器负责：</b>在这些约束里，把那组参数找出来</p>
+      <p style="margin-top:14px; font-size:15.5px">不是「丢给机器自动发现一切」——人仍然决定喂什么、用什么模型、怎么算好坏。</p>
+    </div>
+  </div>
+  <div class="chips rv" style="--d:320ms; margin:16px 0">
+    <span class="chip dim">垃圾邮件判断</span><span class="chip dim">图片里是不是猫</span><span class="chip dim">客户会不会流失</span>
+    <span class="chip">共性：说不清楚自己是怎么做的</span>
+  </div>
+  <div class="take rv" style="--d:400ms"><span class="lab">带走一句</span><span>机器学到的不是人类可读的规则，是<b>一组让误差变小的数字</b>。</span></div>
+</section>
+
+<!-- ============ 5 线性回归 ============ -->
+<section class="slide" data-st="ml">
+  <div class="kick rv">一 · 机器学习 <span class="sub">全场唯一的数学</span></div>
+  <h2 class="rv" style="--d:60ms">一个闭环：预测 → 误差 → 调整</h2>
+  <div class="grid2" style="grid-template-columns: 1.05fr 1fr">
+    <div style="display:flex; flex-direction:column; gap:16px; min-height:0">
+      <div class="code rv" style="--d:120ms; font-size:22px; text-align:center; padding:20px">
+        预测价格 = <span class="kw">w</span> × 面积 <span class="cm">// 只有一个参数 w</span>
+      </div>
+      <div class="flow rv" style="--d:200ms">
+        <div class="fstep" style="text-align:center"><div class="ft" style="margin:2px 0">给定 w</div></div>
+        <div class="far">→</div>
+        <div class="fstep" style="text-align:center"><div class="ft" style="margin:2px 0">预测</div></div>
+        <div class="far">→</div>
+        <div class="fstep" style="text-align:center"><div class="ft" style="margin:2px 0">算误差</div></div>
+        <div class="far">→</div>
+        <div class="fstep" style="text-align:center"><div class="ft" style="margin:2px 0">微调 w</div></div>
+        <div class="far">↺</div>
+      </div>
+      <div class="card rv" style="--d:280ms; flex:1">
+        <ul>
+          <li><b>损失函数</b>：把所有样本的误差汇总——回答「当前这组参数有多差」</li>
+          <li><b>优化算法</b>：朝让误差变小的方向，微调一下参数，再来</li>
+          <li>循环往复，直线越来越贴合数据点</li>
+        </ul>
+      </div>
+    </div>
+    <div class="fig rv" style="--d:220ms; display:flex; flex-direction:column; justify-content:center">
+      <svg id="svgReg" viewBox="0 0 520 330" style="width:100%"></svg>
+      <div class="cap">面积 → 房价：直线在数据里找参数，虚线 = 单个样本的误差</div>
+    </div>
+  </div>
+  <div class="take rv" style="--d:380ms"><span class="lab">带走一句</span><span>模型学到的是<b>参数</b>，不是规律——这句话适用于今天讲的所有模型，包括最大的那个。</span></div>
+</section>
+
+<!-- ============ 6 泛化 ============ -->
+<section class="slide" data-st="ml">
+  <div class="kick rv">一 · 机器学习 <span class="sub">泛化</span></div>
+  <h2 class="rv" style="--d:60ms">真正要的不是「背下答案」</h2>
+  <div class="grid2">
+    <div class="card rv" style="--d:120ms">
+      <h3>过拟合<span class="tag">假学会</span></h3>
+      <ul>
+        <li>训练数据上误差很低</li>
+        <li>拿到<b>新数据</b>就乱猜</li>
+        <li>本质：容量太大，把数据连同<b>噪声一起背下来</b></li>
+      </ul>
+    </div>
+    <div class="card rv" style="--d:220ms; border-color:rgba(126,226,168,.4)">
+      <h3 style="color:var(--green)">泛化<span class="tag" style="color:var(--green); border-color:rgba(126,226,168,.4)">真学会</span></h3>
+      <ul>
+        <li>在<b>没见过的新数据</b>上依然准</li>
+        <li>这才是训练真正优化的目标</li>
+        <li>所以：<b>别看训练指标，看新数据上的表现</b></li>
+      </ul>
+    </div>
+  </div>
+  <div class="take rv" style="--d:340ms"><span class="lab">但是</span><span>这个例子里「面积」这个特征是<b>人挑的</b>——图片里「猫」的特征是什么？没人写得全。<b>人工挑特征，成了新的瓶颈。</b></span></div>
+</section>
+
+<!-- ============ 7 特征分层 ============ -->
+<section class="slide" data-st="dl">
+  <div class="kick rv">二 · 深度学习 <span class="sub">特征学习</span></div>
+  <h2 class="rv" style="--d:60ms">深度学习的回答：特征也别人挑了，自己学</h2>
+  <div class="grid2" style="grid-template-columns:1fr 1.15fr">
+    <div class="pyr rv" style="--d:140ms">
+      <div class="lv">像素</div><div class="up">▲</div>
+      <div class="lv">边缘 · 方向</div><div class="up">▲</div>
+      <div class="lv">纹理 · 局部形状</div><div class="up">▲</div>
+      <div class="lv">物体部件</div><div class="up">▲</div>
+      <div class="lv top">"是猫"</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:16px">
+      <div class="card rv" style="--d:220ms">
+        <h3>「深」指什么</h3>
+        <p>每往上一层，表示就<b>离原始像素远一点、离任务目标近一点</b>。深度 = 逐层组合。</p>
+      </div>
+      <div class="card rv" style="--d:320ms; border-color:rgba(245,176,77,.4)">
+        <h3 style="color:var(--amber)">没有非线性的深度是假深度</h3>
+        <p>线性套线性，合并起来还是一次线性——<b>叠十层等于一层</b>。</p>
+        <p style="margin-top:8px">所以每层中间加一个<b>激活函数</b>：让不同的输入区域走不同的加工路径，直线才能组合出弯曲的、任意复杂的边界。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8 Playground 演示 ============ -->
+<section class="slide" data-st="dl">
+  <div class="kick rv">二 · 深度学习 <span class="sub">现场演示 · TensorFlow Playground（断网用本页图）</span></div>
+  <h2 class="rv" style="--d:60ms">空口无凭，跑一个</h2>
+  <div class="grid2">
+    <div class="fig rv" style="--d:120ms; display:flex; flex-direction:column">
+      <svg id="svgCircle" viewBox="0 0 260 260" style="width:62%; margin:4px auto"></svg>
+      <div class="cap" style="font-size:14.5px">演示 A · 圆形数据：无隐藏层 → 永远只能画直线；<br>加一层隐藏层 + 激活 → 直线组合出圆</div>
+      <div style="text-align:center; margin-top:8px"><span class="chip">「加隐藏层之前，圆不在它的世界里」</span></div>
+    </div>
+    <div class="fig rv" style="--d:240ms; display:flex; flex-direction:column">
+      <svg id="svgSpiral" viewBox="0 0 260 260" style="width:62%; margin:4px auto"></svg>
+      <div class="cap" style="font-size:14.5px">演示 B · 螺旋数据：两股螺旋缠在一起，<br>要更深、更宽，多级组合才能盘进去</div>
+      <div style="text-align:center; margin-top:8px"><span class="chip">「能表达，不等于一定学得出来」</span></div>
+    </div>
+  </div>
+  <div class="take rv" style="--d:360ms"><span class="lab">冷水</span><span>同一个结构，换个初始化、换个学习率可能就训崩——<b>深度提供可能性，训练是一门工程</b>。这盆冷水讲大模型训练时还会出现。</span></div>
+</section>
+
+<!-- ============ 9 CNN + 序列转折 ============ -->
+<section class="slide" data-st="dl">
+  <div class="kick rv">二 · 深度学习 <span class="sub">顺带定位，然后转向</span></div>
+  <h2 class="rv" style="--d:60ms">图像有一句话解法；文本是另一回事</h2>
+  <div class="card rv" style="--d:120ms; margin-bottom:18px">
+    <h3>CNN 一句话</h3>
+    <p><b>同一种局部模式会出现在图片任何位置</b> → 用一组共享的局部检测器扫全图。这是「把数据结构写进网络」的典型例子。</p>
+  </div>
+  <div class="vsline rv" style="--d:200ms; margin-bottom:18px">但前面的输入都是「一堆特征」，没有顺序——<b>&nbsp;文本是有顺序的&nbsp;</b></div>
+  <div class="sent rv" style="--d:280ms; text-align:center; background:var(--panel2); border:1px solid var(--stroke); border-radius:12px; padding:22px">
+    「我<u>没有</u>说他偷了钱」——是我没说这话<br>
+    「我没有说他偷了<u>钱</u>」——偷的是别的东西<br>
+    「<u>我</u>没有说他偷了钱」——不是我说的，是别人
+  </div>
+  <div class="take rv" style="--d:380ms"><span class="lab">转折</span><span>一个代词指谁要看前文，一个词的含义可能取决于几百字前的伏笔——<b>处理序列，模型必须记住前面发生过什么</b>。</span></div>
+</section>
+
+<!-- ============ 10 RNN ============ -->
+<section class="slide" data-st="tf">
+  <div class="kick rv">三 · 序列与 Transformer <span class="sub">RNN</span></div>
+  <h2 class="rv" style="--d:60ms">RNN：一份随阅读进度更新的「摘要」</h2>
+  <div class="card rv" style="--d:120ms; flex:none; margin-bottom:18px">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:19px">
+      <span class="chip">读「我」</span><span class="arrow">→</span><span class="chip dim">摘要 h₁</span>
+      <span class="arrow">＋</span><span class="chip">「喜欢」</span><span class="arrow">→</span><span class="chip dim">摘要 h₂</span>
+      <span class="arrow">＋</span><span class="chip">「学习」</span><span class="arrow">→</span><span class="chip dim">摘要 h₃</span>
+      <span class="arrow">＋</span><span class="chip">……</span>
+    </div>
+    <p style="margin-top:14px">每读一个词，把「新词 + 旧摘要」压缩成新摘要往下传——<b>同一组参数逐步复用，多长的序列都能处理</b>。LSTM 等改良版统治序列建模多年。</p>
+  </div>
+  <div class="grid2" style="flex:none">
+    <div class="card rv" style="--d:240ms"><h3>思路的价值</h3><p>第一次让「历史」以<b>可更新的状态</b>流过整条序列——顺序结构被写进了网络。</p></div>
+    <div class="card rv" style="--d:320ms; border-color:rgba(255,123,114,.4)"><h3 style="color:var(--red)">但它有三个娘胎里带来的结构问题</h3><p>不是实现缺陷，是「逐步传递」这条路线本身的限制 →</p></div>
+  </div>
+</section>
+
+<!-- ============ 11 RNN 三限制 ============ -->
+<section class="slide" data-st="tf">
+  <div class="kick rv">三 · 序列与 Transformer <span class="sub">接力赛的三个问题</span></div>
+  <h2 class="rv" style="--d:60ms">A 影响 E，必须一步一步穿过去</h2>
+  <div class="fig rv" style="--d:120ms; margin-bottom:18px; padding:6px 16px">
+    <svg viewBox="0 0 660 158" style="width:100%">
+      <defs>
+        <marker id="mr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#ff7b72"/></marker>
+        <marker id="mg" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7ee2a8"/></marker>
+      </defs>
+      <line x1="84" y1="95" x2="164" y2="95" stroke="#ff7b72" stroke-width="2" marker-end="url(#mr)"/>
+      <line x1="214" y1="95" x2="294" y2="95" stroke="#ff7b72" stroke-width="2" marker-end="url(#mr)"/>
+      <line x1="344" y1="95" x2="424" y2="95" stroke="#ff7b72" stroke-width="2" marker-end="url(#mr)"/>
+      <line x1="474" y1="95" x2="554" y2="95" stroke="#ff7b72" stroke-width="2" marker-end="url(#mr)"/>
+      <g fill="#121a25" stroke="#ff7b72" stroke-width="2">
+        <circle cx="60" cy="95" r="22"/><circle cx="190" cy="95" r="22"/><circle cx="320" cy="95" r="22"/><circle cx="450" cy="95" r="22"/><circle cx="580" cy="95" r="22"/>
+      </g>
+      <g fill="#e9eef6" font-size="17" font-weight="700" text-anchor="middle" font-family="ui-monospace,Menlo,monospace">
+        <text x="60" y="101">A</text><text x="190" y="101">B</text><text x="320" y="101">C</text><text x="450" y="101">D</text><text x="580" y="101">E</text>
+      </g>
+      <path d="M 60 68 Q 320 -16 580 68" fill="none" stroke="#7ee2a8" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#mg)"/>
+      <text x="320" y="24" fill="#7ee2a8" font-size="15" text-anchor="middle" font-weight="700">Attention：内容直达 · 路径长度 = 1</text>
+      <text x="320" y="148" fill="#ff7b72" font-size="15" text-anchor="middle">逐步传递：离得越远，路上损耗越大（梯度消失 ·「前面说的后面忘了」）</text>
+    </svg>
+  </div>
+  <div style="display:flex; gap:16px; flex:none">
+    <div class="fstep rv" style="--d:240ms"><div class="fn">问题 ①</div><div class="ft">远距离要走远路</div><div class="fd">A 的信息要影响 E，必须穿过 B、C、D 的更新——<b>路上不断被压缩、损耗</b></div></div>
+    <div class="fstep rv" style="--d:320ms"><div class="fn">问题 ②</div><div class="ft">没法并行</div><div class="fd">算第 100 个词的状态，必须先算完第 99 个——<b>大模型最需要的大规模并行训练上不去</b></div></div>
+    <div class="fstep rv" style="--d:400ms"><div class="fn">问题 ③</div><div class="ft">摘要本子固定大小</div><div class="fd">读十个词还是一万个词，都得<b>压进同一个向量</b></div></div>
+  </div>
+  <div class="take rv" style="--d:500ms"><span class="lab">于是</span><span>一个词，能不能<b>不走接力赛，直接找到它真正需要的那个词</b>？</span></div>
+</section>
+
+<!-- ============ 12 银行例子 ============ -->
+<section class="slide" data-st="tf">
+  <div class="kick rv">三 · 序列与 Transformer <span class="sub">Attention 的动机</span></div>
+  <h2 class="rv" style="--d:60ms">词的含义不在词本身，在它和上下文的关系里</h2>
+  <div style="display:flex; flex-direction:column; gap:18px; justify-content:center; flex:1">
+    <div class="sent rv" style="--d:120ms; background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:24px 30px; display:flex; align-items:center; gap:20px">
+      <span style="flex:1">「<span class="ctx">河</span>边有一条河。<u>银行</u>」</span>
+      <span class="chip" style="border-color:rgba(34,211,238,.5); color:var(--acc2)">= 河岸</span>
+    </div>
+    <div class="sent rv" style="--d:220ms; background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:24px 30px; display:flex; align-items:center; gap:20px">
+      <span style="flex:1">「我去<u>银行</u><span class="ctx">取了钱</span>。」</span>
+      <span class="chip" style="border-color:rgba(245,176,77,.5); color:var(--amber)">= 金融机构</span>
+    </div>
+    <div class="note rv" style="--d:320ms; text-align:center; font-size:17px">查字典查出来一样——你的脑子知道不一样，因为一个旁边站着「河」，一个前面挂着「取钱」。</div>
+  </div>
+  <div class="take rv" style="--d:400ms"><span class="lab">所以需要</span><span>一种机制，让「银行」这个位置能根据当前内容，<b>自己决定从哪些词、取多少信息</b>。</span></div>
+</section>
+
+<!-- ============ 13 QKV ============ -->
+<section class="slide" data-st="tf">
+  <div class="kick rv">三 · 序列与 Transformer <span class="sub">Attention 三动词</span></div>
+  <h2 class="rv" style="--d:60ms">Attention：寻找 · 亮线索 · 递内容</h2>
+  <div class="flow" style="flex:none; margin-bottom:18px">
+    <div class="fstep rv" style="--d:120ms"><div class="fn">Q · Query</div><div class="ft">寻找</div><div class="fd">当前词发出：「我<b>现在需要什么信息</b>」</div></div>
+    <div class="far rv" style="--d:180ms">→</div>
+    <div class="fstep rv" style="--d:220ms"><div class="fn">K · Key</div><div class="ft">线索</div><div class="fd">每个词亮出：「我<b>能提供什么匹配特征</b>」</div></div>
+    <div class="far rv" style="--d:280ms">→</div>
+    <div class="fstep rv" style="--d:320ms"><div class="fn">V · Value</div><div class="ft">内容</div><div class="fd">匹配上的，把内容<b>按相关程度加权</b>递过来</div></div>
+  </div>
+  <div class="card rv" style="--d:400ms; flex:none; margin-bottom:16px; border-color:rgba(126,226,168,.35)">
+    <p style="font-size:18.5px">效果：序列里<b>任意两个词直接建立连接，路径长度永远是 1</b>——远距离直达、全体并行、不用压进一个固定摘要。<span style="color:var(--green)">RNN 的三个结构问题同时解决。</span></p>
+  </div>
+  <div class="chips rv" style="--d:480ms">
+    <span class="chip dim">Q / K / V 是训练出来的向量，不是人写的问题和关键词</span>
+    <span class="chip dim">多头 = 多组视角同时匹配（语法 · 指代 · 位置）</span>
+    <span class="chip dim">位置编码 = 把顺序加回表示（狗咬人 ≠ 人咬狗）</span>
+  </div>
+</section>
+
+<!-- ============ 14 因果掩码 ============ -->
+<section class="slide" data-st="tf">
+  <div class="kick rv">三 · 序列与 Transformer <span class="sub">因果掩码</span> <span class="sub" style="color:var(--amber)">★ 全场最关键的一页</span></div>
+  <h2 class="rv" style="--d:60ms">训练接龙时，不许偷看答案</h2>
+  <div class="maskwrap" style="flex:1; min-height:0">
+    <div class="fig rv" style="--d:120ms; align-self:center">
+      <div id="maskGrid"></div>
+      <div class="cap">每个位置只能看「自己 + 之前」的内容 —— 下三角</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:16px; justify-content:center">
+      <div class="card rv" style="--d:240ms">
+        <h3>训练时<span class="tag">一石二鸟 · 之一</span></h3>
+        <p>整段文本已知，<b>所有位置一次前向同时算</b>——每个位置都在「只看过去」的约束下练习预测下一个词。<b>防偷看，又不牺牲并行。</b></p>
+      </div>
+      <div class="card rv" style="--d:340ms">
+        <h3>生成时<span class="tag">之二</span></h3>
+        <p>本来就只有过去——所以模型<b>天然可以顺着往下写</b>：写一个、追加一个、再写下一个。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 15 Decoder Block ============ -->
+<section class="slide" data-st="tf">
+  <div class="kick rv">三 · 序列与 Transformer <span class="sub">装配</span></div>
+  <h2 class="rv" style="--d:60ms">零件装配，就是 GPT 的骨架</h2>
+  <div class="grid2" style="grid-template-columns:1fr 1.2fr">
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0">
+      <div class="rv" style="--d:120ms; font-size:15px; color:var(--faint); margin-bottom:10px">输入（每个 Token 的向量）</div>
+      <div class="arrow rv" style="--d:140ms">↓</div>
+      <div class="fstep rv" style="--d:180ms; width:76%; text-align:center; border-color:rgba(93,169,255,.5)"><div class="ft">Attention</div><div class="fd">词与词之间<b>通信</b></div></div>
+      <div class="arrow rv" style="--d:240ms">↓</div>
+      <div class="fstep rv" style="--d:280ms; width:76%; text-align:center; border-color:rgba(34,211,238,.5)"><div class="ft">FFN 前馈网络</div><div class="fd">每个位置<b>自己加工</b></div></div>
+      <div class="arrow rv" style="--d:340ms">↓</div>
+      <div class="rv" style="--d:380ms; margin-top:8px; font-family:var(--mono); font-size:16px; color:var(--acc2)">× N 层（几十 ~ 上百）</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:16px; justify-content:center">
+      <div class="card rv" style="--d:220ms"><h3>残差连接</h3><p><b>保底通道</b>：信息只增不减，深层也能训。</p></div>
+      <div class="card rv" style="--d:320ms"><h3>Norm</h3><p><b>稳压器</b>：深层堆叠不发散。</p></div>
+      <div class="card rv" style="--d:420ms; border-color:rgba(245,176,77,.4)"><h3 style="color:var(--amber)">但注意</h3><p>此刻参数还全是随机数，它一个字都不认识——<b>架构 ≠ 能力</b>。能力从哪来？下一级台阶。</p></div>
+    </div>
+  </div>
+  <div class="take rv" style="--d:520ms"><span class="lab">分工</span><span><b>Attention 管通信，FFN 管加工</b>——这样的块堆几十上百层，就是 GPT、LLaMA 的骨架。</span></div>
+</section>
+
+<!-- ============ 16 文本自带答案 ============ -->
+<section class="slide" data-st="pt">
+  <div class="kick rv">四 · 预训练 <span class="sub">监督信号哪来</span></div>
+  <h2 class="rv" style="--d:60ms">洞察：文本自己就是答案</h2>
+  <div class="card rv" style="--d:120ms; flex:none; padding:24px 30px">
+    <div style="display:flex; flex-direction:column; gap:10px; font-size:19px; font-family:var(--mono)">
+      <div><span style="color:var(--muted)">机器</span> <span class="arrow">→</span> <span class="am">学习</span></div>
+      <div><span style="color:var(--muted)">机器 学习</span> <span class="arrow">→</span> <span class="am">可以</span></div>
+      <div><span style="color:var(--muted)">机器 学习 可以</span> <span class="arrow">→</span> <span class="am">从</span></div>
+      <div><span style="color:var(--faint)">……整段文本往左错一位，每个位置自带答案</span></div>
+    </div>
+  </div>
+  <div class="grid2" style="flex:none; margin-top:18px">
+    <div class="card rv" style="--d:260ms"><h3>零人工标注</h3><p>一段文本，天然自带<b>所有位置的练习题和答案</b>——互联网有多大，训练集就有多大。</p></div>
+    <div class="card rv" style="--d:360ms"><h3>这就是预训练</h3><p>把整个互联网的文本这样喂进去，反复<b>预测下一个 Token、错了就调参数</b>。</p></div>
+  </div>
+</section>
+
+<!-- ============ 17 听众实验 ============ -->
+<section class="slide" data-st="pt">
+  <div class="kick rv">四 · 预训练 <span class="sub">现场实验 · 全场唯一互动</span></div>
+  <h2 class="rv" style="--d:60ms">请把下一个词补完</h2>
+  <div class="rv" style="--d:140ms; background:var(--panel); border:1px solid rgba(245,176,77,.4); border-radius:14px; padding:34px 36px; text-align:center; font-size:30px; line-height:1.7">
+    「如果数据库连接池已经耗尽，<br>那么新的请求通常会——<span class="am">＿＿＿</span>」
+  </div>
+  <div class="chips rv" style="--d:260ms; justify-content:center; margin:20px 0">
+    <span class="chip">排队</span><span class="chip">超时</span><span class="chip">被拒绝</span><span class="chip">失败</span><span class="chip dim">都对 ✓</span>
+  </div>
+  <div class="grid2" style="flex:none">
+    <div class="card rv" style="--d:340ms"><p style="font-size:18px">刚才那两秒，你完成了一次<b>「预测下一个 Token」</b>——而且<b>自动调用了连接池的知识</b>才补得出来。不懂连接池的人，猜不准这个词。</p></div>
+    <div class="card rv" style="--d:440ms"><p style="font-size:18px">规模放到整个互联网：要预测得准，光背词频远远不够——<b>语法、指代、因果关系、代码缩进、解题步骤</b>……这些都能降误差。</p></div>
+  </div>
+  <div class="take rv" style="--d:540ms"><span class="lab">带走一句</span><span>能力不是设计出来的，是<b>优化「预测下一个 Token」这个目标的副产品</b>——这个简单的目标，逼着模型学会了语言、知识和一部分推理。</span></div>
+</section>
+
+<!-- ============ 18 两盆冷水 ============ -->
+<section class="slide" data-st="pt">
+  <div class="kick rv">四 · 预训练 <span class="sub">两条边界</span></div>
+  <h2 class="rv" style="--d:60ms">两盆冷水，必须浇</h2>
+  <div class="grid2" style="flex:1">
+    <div class="card rv" style="--d:120ms">
+      <h3>① 模型不是数据库</h3>
+      <ul>
+        <li>知识不是一条条<b>可查、可溯源的记录</b></li>
+        <li>而是<b>分布式地压在几千亿个参数里</b></li>
+        <li>所以会出现「参数里有、但说不准」「说得流畅、但不对」</li>
+      </ul>
+    </div>
+    <div class="card rv" style="--d:240ms">
+      <h3>② 数据决定上限</h3>
+      <ul>
+        <li>训练数据里<b>没有的、过时的、互相矛盾的</b>——要么不会，要么瞎编</li>
+        <li>知识有<b>截止时间点</b></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 19 GPT 三步 ============ -->
+<section class="slide" data-st="pt">
+  <div class="kick rv">四 · 预训练 <span class="sub">GPT 三步 · 30 秒历史</span></div>
+  <h2 class="rv" style="--d:60ms">任务接口，在逐渐统一</h2>
+  <div class="flow" style="flex:none; margin-bottom:14px">
+    <div class="fstep rv" style="--d:120ms"><div class="fn">GPT-1 · 2018</div><div class="ft">能力可迁移</div><div class="fd">预训练 + 微调，预训练的能力能迁到下游任务</div></div>
+    <div class="far rv" style="--d:180ms">→</div>
+    <div class="fstep rv" style="--d:220ms"><div class="fn">GPT-2 · 2019</div><div class="ft">任务可统一</div><div class="fd">多任务统一成一件事：「续写文本」</div></div>
+    <div class="far rv" style="--d:280ms">→</div>
+    <div class="fstep rv" style="--d:320ms"><div class="fn">GPT-3 · 2020</div><div class="ft">指令即接口</div><div class="fd">新任务<b>不用训练</b>，任务直接写在上下文里</div></div>
+  </div>
+  <div class="vsline rv" style="--d:400ms; margin-bottom:14px">从「每个任务训一个模型」 → 「<b>&nbsp;一个模型，任务写在提示词里&nbsp;</b>」（Scaling：参数 · 数据 · 算力要配平，不是无脑堆参数）</div>
+  <div class="card rv" style="--d:460ms; flex:none">
+    <h3>那它现在能当助手吗？</h3>
+    <div class="code" style="margin:10px 0; font-size:16.5px">
+      <span class="cm">输入：</span>请用三句话解释什么是缓存击穿。<br>
+      <span class="cm">它很可能续写：</span>另一个相似的问题 / 把这句当成网页标题往下编页面
+    </div>
+    <p>因为在它的训练数据里，<b>「问题后面跟着的还是问题」</b>是极常见的模式——它学的目标是「什么文本可能接着出现」。</p>
+  </div>
+  <div class="take rv" style="--d:560ms"><span class="lab">带走一句</span><span><b>会续写 ≠ 会当助手</b>。能力是预训练给的，行为得有人教。</span></div>
+</section>
+
+<!-- ============ 20 SFT ============ -->
+<section class="slide" data-st="ft">
+  <div class="kick rv">五 · 后训练 <span class="sub">SFT · 示范教学</span></div>
+  <h2 class="rv" style="--d:60ms">SFT：把数据换成高质量问答</h2>
+  <div class="grid2" style="grid-template-columns:1fr 1.2fr">
+    <div class="card rv" style="--d:120ms">
+      <h3>训练数据长这样</h3>
+      <div style="display:flex; flex-direction:column; gap:12px; margin-top:8px">
+        <div style="align-self:flex-start; background:rgba(93,169,255,.12); border:1px solid rgba(93,169,255,.35); border-radius:12px 12px 12px 3px; padding:12px 16px; font-size:16.5px; max-width:92%">用户问：请用三句话解释缓存击穿</div>
+        <div style="align-self:flex-end; background:rgba(126,226,168,.10); border:1px solid rgba(126,226,168,.35); border-radius:12px 12px 3px 12px; padding:12px 16px; font-size:16.5px; max-width:92%; color:var(--muted)">理想回答：<span class="gr">（人写的高质量答案）</span></div>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:16px">
+      <div class="card rv" style="--d:240ms">
+        <h3>底层一点都没变</h3>
+        <p>还是「预测下一个 Token」——只是数据从「互联网上什么都有的文本」换成了「高质量的问答回答」。<b>数据分布一换，行为就变了。</b></p>
+      </div>
+      <div class="card rv" style="--d:340ms">
+        <h3>学会了什么</h3>
+        <div class="chips" style="margin-top:4px">
+          <span class="chip">识别任务</span><span class="chip">遵守格式</span><span class="chip">控制篇幅</span><span class="chip">以助手身份组织回答</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="take rv" style="--d:460ms"><span class="lab">类比</span><span>预训练 = 读了十年书；SFT = 上岗前一周的示范培训。<b>它教的主要不是知识，是怎么把已有的能力按用户要的形式拿出来。</b></span></div>
+</section>
+
+<!-- ============ 21 偏好对齐 ============ -->
+<section class="slide" data-st="ft">
+  <div class="kick rv">五 · 后训练 <span class="sub">偏好对齐</span></div>
+  <h2 class="rv" style="--d:60ms">「哪种回答更好」写不成规则——那就做选择题</h2>
+  <div class="flow" style="flex:none; margin-bottom:18px">
+    <div class="fstep rv" style="--d:120ms"><div class="fn">STEP 1</div><div class="ft">出候选</div><div class="fd">同一个问题，让模型生成 <b>4 个回答</b></div></div>
+    <div class="far rv" style="--d:180ms">→</div>
+    <div class="fstep rv" style="--d:220ms"><div class="fn">STEP 2</div><div class="ft">人排序</div><div class="fd">A 比 C 好，C 比 B 好——<b>做比较比写答案容易十倍</b>，可规模化</div></div>
+    <div class="far rv" style="--d:280ms">→</div>
+    <div class="fstep rv" style="--d:320ms"><div class="fn">STEP 3</div><div class="ft">奖励模型</div><div class="fd">几十万条排序训出一个<b>替人打分</b>的模型</div></div>
+    <div class="far rv" style="--d:380ms">→</div>
+    <div class="fstep rv" style="--d:420ms"><div class="fn">STEP 4</div><div class="ft">强化学习</div><div class="fd">以打分为奖励调整模型，<b>让高分回答更容易出现</b></div></div>
+  </div>
+  <div class="grid2" style="flex:none">
+    <div class="card rv" style="--d:500ms"><h3>为什么不直接写规则</h3><p>准但啰嗦 / 简洁但漏边界 / 自信但没验证 / 安全但什么都拒绝——<b>写五十页规范也穷举不完</b>，排序可以。</p></div>
+    <div class="card rv" style="--d:580ms"><h3>两条路线</h3><p><b>RLHF</b>（经典，PPO）· <b>DPO</b>（简化：跳过奖励模型，直接从偏好对学习）</p></div>
+  </div>
+  <div class="take rv" style="--d:680ms"><span class="lab">别神化</span><span>奖励模型只是人的偏好的<b>近似</b>，可能被钻空子；<b>人更偏好 ≠ 内容更真实</b>——对齐管「倾向」，不管「真值」。</span></div>
+</section>
+
+<!-- ============ 22 13B vs 175B ============ -->
+<section class="slide" data-st="ft">
+  <div class="kick rv">五 · 后训练 <span class="sub">一个说明问题的结果 · InstructGPT</span></div>
+  <h2 class="rv" style="--d:60ms">人类偏好评分：小的赢了</h2>
+  <div class="bignum">
+    <div class="bn rv" style="--d:120ms"><div class="v" style="color:var(--green)">130<span style="font-size:44px">亿</span></div><div class="l">InstructGPT<br>预训练 + 后训练</div></div>
+    <div class="vs rv" style="--d:220ms">偏好评分 &gt;</div>
+    <div class="bn rv" style="--d:300ms"><div class="v" style="color:var(--faint)">1750<span style="font-size:44px">亿</span></div><div class="l">原始 GPT-3<br>只有预训练</div></div>
+  </div>
+  <div class="take rv" style="--d:420ms"><span class="lab">说明</span><span><b>「能力大小」和「行为是否符合意图」是两个独立的维度</b>——小十几倍的模型，靠后训练在偏好上反超。后者花小钱就能大幅改善。</span></div>
+</section>
+
+<!-- ============ 23 训练 vs 使用 ============ -->
+<section class="slide" data-st="gen">
+  <div class="kick rv">六 · 生成与边界 <span class="sub">先分清两个阶段</span></div>
+  <h2 class="rv" style="--d:60ms">训练 vs 使用：这个区分非常值钱</h2>
+  <div class="rv" style="--d:120ms; flex:none">
+  <table class="tb">
+    <tr><th style="width:30%"></th><th>训练 Training</th><th>使用 Inference</th></tr>
+    <tr><td><b>有正确答案吗</b></td><td>有</td><td><b>没有</b></td></tr>
+    <tr><td><b>算损失、调参数吗</b></td><td>算 · 调</td><td><b>不算 · 不调</b></td></tr>
+    <tr><td><b>产出</b></td><td>一组参数</td><td>下一个 Token</td></tr>
+  </table>
+  </div>
+  <div class="take rv" style="--d:280ms"><span class="lab">关键</span><span>使用阶段，<b>参数是冻结的</b>。你在对话里教它的东西，改变了什么？——下一页开始回答。</span></div>
+</section>
+
+<!-- ============ 24 生成循环 ============ -->
+<section class="slide" data-st="gen">
+  <div class="kick rv">六 · 生成与边界 <span class="sub">按下回车之后</span></div>
+  <h2 class="rv" style="--d:60ms">生成是一个循环：一次只决定下一个词</h2>
+  <div class="grid2" style="grid-template-columns:1.1fr 1fr">
+    <div class="code rv" style="--d:120ms; align-self:center; font-size:19px; padding:26px 30px; line-height:2.1">
+      <span class="kw">while</span> 没结束:<br>
+      &nbsp;&nbsp;算出全词表每个 Token 的<span class="st">概率</span><br>
+      &nbsp;&nbsp;按概率<span class="st">挑一个</span><br>
+      &nbsp;&nbsp;追加到上下文末尾，<span class="kw">再来</span>
+    </div>
+    <div style="display:flex; flex-direction:column; justify-content:center; gap:0">
+      <div class="looprow rv" style="--d:240ms">
+        <span class="chip" style="font-size:17px">算概率</span><span class="arrow">→</span>
+        <span class="chip" style="font-size:17px">挑一个</span><span class="arrow">→</span>
+        <span class="chip" style="font-size:17px">追加进上下文</span>
+      </div>
+      <div class="loopback rv" style="--d:300ms"></div>
+      <div class="rv" style="--d:340ms; text-align:center; color:var(--faint); font-size:14.5px; margin-bottom:18px">↑ 新 Token 变成下一轮的输入</div>
+      <div class="card rv" style="--d:400ms">
+        <ul>
+          <li><b>不是先打好整篇草稿再逐字念</b>——真的每次只决定下一个词</li>
+          <li><b>KV Cache</b>：前面算过的缓存复用——纯性能优化，不改变能力</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="take rv" style="--d:500ms"><span class="lab">接下来</span><span>这个「逐 Token」结构，直接推出三个大家日常都在困惑的结论——<b>今天最想让大家带走的干货</b>。</span></div>
+</section>
+
+<!-- ============ 25 三个结论 ============ -->
+<section class="slide" data-st="gen">
+  <div class="kick rv">六 · 生成与边界 <span class="sub">三个结论</span> <span class="sub" style="color:var(--amber)">★ 核心交付页</span></div>
+  <h2 class="rv" style="--d:60ms">逐 Token 生成，直接推出三件事</h2>
+  <div style="display:flex; gap:16px; flex:1; min-height:0">
+    <div class="card rv" style="--d:120ms; flex:1; display:flex; flex-direction:column">
+      <div style="font-family:var(--mono); color:var(--acc); font-size:13px; letter-spacing:.15em; margin-bottom:8px">结论 ①</div>
+      <h3 style="font-size:22px">它不记得你</h3>
+      <p style="margin-top:6px">使用阶段<b>不更新参数</b>——你教的东西只活在当前上下文里，对话一关就没了。</p>
+      <p style="margin-top:10px; color:var(--amber)">没有进入它的脑子，只是出现在了它的眼前。</p>
+      <p style="margin-top:auto; font-size:14.5px">产品的「记忆」功能 = 外面拿存储做的，不是模型记住了。</p>
+    </div>
+    <div class="card rv" style="--d:240ms; flex:1; display:flex; flex-direction:column">
+      <div style="font-family:var(--mono); color:var(--acc); font-size:13px; letter-spacing:.15em; margin-bottom:8px">结论 ②</div>
+      <h3 style="font-size:22px">流式输出 ≠ 更聪明</h3>
+      <p style="margin-top:6px">打字机效果只是<b>把已生成的 Token 尽早推给你</b>，改善等待体感。</p>
+      <p style="margin-top:10px">温度、采样参数管的是<b>选词风格</b>——不注入任何新知识。</p>
+      <p style="margin-top:auto; color:var(--amber); font-size:15px">本来就要错的话，低温只会让它稳定地错。</p>
+    </div>
+    <div class="card rv" style="--d:360ms; flex:1; display:flex; flex-direction:column">
+      <div style="font-family:var(--mono); color:var(--acc); font-size:13px; letter-spacing:.15em; margin-bottom:8px">结论 ③</div>
+      <h3 style="font-size:22px">幻觉有明确来源</h3>
+      <p style="margin-top:6px">优化目标是「当前上下文下，<b>什么话最可能出现</b>」——</p>
+      <p style="margin-top:10px; color:var(--amber)">从头到尾，没有任何一个环节在验证事实。</p>
+      <p style="margin-top:auto; font-size:14.5px">自信的语气不构成可信的证据，关键信息要留验证手段。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 26 模型 vs 系统 ============ -->
+<section class="slide" data-st="ag">
+  <div class="kick rv">七 · Agent <span class="sub">模型 vs 系统</span></div>
+  <h2 class="rv" style="--d:60ms">模型只输出文本；执行发生在外部系统</h2>
+  <div class="code rv" style="--d:120ms; flex:none; font-size:16px; margin-bottom:16px">
+    <span class="cm">「帮我查线上订单服务的异常指标，定位原因，建个工单，通知负责人。」</span>
+  </div>
+  <div class="grid2" style="grid-template-columns:1fr 1.25fr; flex:1; min-height:0">
+    <div style="display:flex; flex-direction:column; gap:14px; justify-content:center">
+      <div class="card rv" style="--d:200ms; border-color:rgba(126,226,168,.4)"><h3 style="color:var(--green); font-size:18px">模型能</h3><p style="font-size:16px">生成查询语句 · 写邮件正文 · 生成调用请求</p></div>
+      <div class="card rv" style="--d:300ms; border-color:rgba(255,123,114,.4)"><h3 style="color:var(--red); font-size:18px">模型不能</h3><p style="font-size:16px">真的去查监控 · 发邮件 · 确认操作成功了没有——<b>它只能输出文本</b></p></div>
+    </div>
+    <div class="rv" style="--d:380ms; display:flex; flex-direction:column; gap:10px; justify-content:center">
+      <div class="fstep" style="border-color:rgba(93,169,255,.55); text-align:center"><div class="ft">LLM：理解与决定</div><div class="fd">生成文本 / 生成「调哪个工具 + 参数」的请求</div></div>
+      <div style="text-align:center" class="arrow">↓ 请求</div>
+      <div class="fstep" style="border-color:rgba(245,176,77,.5); text-align:center"><div class="ft">外部系统：真正执行</div><div class="fd">
+        <b>Tool Call</b>：系统执行，结果喂回 &nbsp;·&nbsp; <b>ReAct</b>：观察→推理→行动→再观察 &nbsp;·&nbsp; <b>Agent</b>：目标+状态+工具+循环</div></div>
+      <div style="text-align:center" class="arrow">↑ 结果回填，继续决定</div>
+    </div>
+  </div>
+  <div class="take rv" style="--d:500ms"><span class="lab">判断句</span><span><b>模型输出工具调用参数 ≠ 模型执行了工具</b>；Agent 不是新模型，是组织模型的系统。看到产品「能干活」，先问：能力在参数里，还是外面那层系统给的？</span></div>
+</section>
+
+<!-- ============ 27 回顾 ============ -->
+<section class="slide" data-st="end">
+  <div class="kick rv">收尾 <span class="sub">七级台阶，每级一句</span></div>
+  <h2 class="rv" style="--d:60ms">走一遍，再压缩</h2>
+  <div class="stairs rv" style="--d:140ms">
+    <div class="st" style="height:52%"><div class="n">01</div><div class="t">机器学习</div><div class="d">预测→误差→调整；要的是新数据上依然准</div></div>
+    <div class="st" style="height:60%"><div class="n">02</div><div class="t">深度学习</div><div class="d">非线性 + 多层，特征自己学</div></div>
+    <div class="st" style="height:68%"><div class="n">03</div><div class="t">Transformer</div><div class="d">按内容直达上下文；因果掩码只看过去</div></div>
+    <div class="st" style="height:76%"><div class="n">04</div><div class="t">预训练</div><div class="d">预测下一个 Token；能力是被逼出来的副产品</div></div>
+    <div class="st" style="height:84%"><div class="n">05</div><div class="t">后训练</div><div class="d">SFT 教形式，偏好教倾向；能力 ≠ 行为</div></div>
+    <div class="st" style="height:92%"><div class="n">06</div><div class="t">生成</div><div class="d">参数冻结，一次一个 Token 循环</div></div>
+    <div class="st hot" style="height:100%"><div class="n">07</div><div class="t">Agent</div><div class="d">模型决定，系统执行</div></div>
+  </div>
+  <div class="take rv" style="--d:300ms"><span class="lab">再压缩</span><span>人把东西一样样交给机器：<b>规则 → 参数 → 特征 → 表示 → 任务适配 → 行动</b>。</span></div>
+</section>
+
+<!-- ============ 28 五问 + 收尾 ============ -->
+<section class="slide" data-st="end">
+  <div class="kick rv">收尾 <span class="sub">送你一个框架</span></div>
+  <h2 class="rv" style="--d:60ms">以后看到任何 AI 新概念，先问五个问题</h2>
+  <div style="display:flex; flex-direction:column; gap:12px; flex:1; justify-content:center">
+    <div class="qcard rv" style="--d:120ms"><div class="qn">01</div><div class="qt">它改的是<b>模型结构、训练方式、生成过程，还是外部系统</b>？</div></div>
+    <div class="qcard rv" style="--d:190ms"><div class="qn">02</div><div class="qt">它用的<b>什么数据或反馈信号</b>？</div></div>
+    <div class="qcard rv" style="--d:260ms"><div class="qn">03</div><div class="qt">它实际在<b>优化什么目标</b>？</div></div>
+    <div class="qcard rv" style="--d:330ms"><div class="qn">04</div><div class="qt">这个能力来自<b>模型参数，还是工具和工作流</b>？</div></div>
+    <div class="qcard rv" style="--d:400ms"><div class="qn">05</div><div class="qt">它<b>什么条件下有效，不能保证什么</b>？</div></div>
+  </div>
+  <div class="take rv" style="--d:500ms"><span class="lab">收场</span><span>今天的大模型，底层仍在预测下一个 Token——真正让人惊讶的不是这个目标多简单，而是<b>当结构、数据和规模足够大之后，为了持续做好这件小事，机器长出了我们称之为「智能」的行为</b>。&nbsp;谢谢，下面是 QA。</span></div>
+</section>
+
+<!-- ============ 29 附录 QA ============ -->
+<section class="slide" data-st="app">
+  <div class="kick rv">附录 <span class="sub">QA 速查 · 被问到再展开</span></div>
+  <h2 class="rv" style="--d:60ms">高频追问，一句话版</h2>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; flex:1; align-content:center">
+    <div class="qa rv" style="--d:120ms"><div class="q">Attention 的公式？</div><div class="a"><b>Softmax(QKᵀ/√d)·V</b> —— 寻找、匹配、取回，公式不改变直觉</div></div>
+    <div class="qa rv" style="--d:170ms"><div class="q">温度调低会更准吗？</div><div class="a">只会更<b>稳</b>；本来要错，就稳定地错——采样管风格不管对错</div></div>
+    <div class="qa rv" style="--d:220ms"><div class="q">KV Cache 是什么？</div><div class="a">复用历史 K/V 只算新位置——<b>省算力，不增加知识</b></div></div>
+    <div class="qa rv" style="--d:270ms"><div class="q">怎么减少幻觉？</div><div class="a">给上下文 · 接检索 RAG · 接工具 · 要引用 · 加校验</div></div>
+    <div class="qa rv" style="--d:320ms"><div class="q">提示词 / RAG / 微调怎么选？</div><div class="a"><b>不改参</b>临时引导 · <b>不改参</b>检索进上下文 · <b>改参</b>塑行为（不适合灌知识）</div></div>
+    <div class="qa rv" style="--d:370ms"><div class="q">推理模型（o1 / R1）的原理？</div><div class="a">思考外化成生成内容——<b>推理深度 = 生成长度</b>；更长 ≠ 更对</div></div>
+    <div class="qa rv" style="--d:420ms"><div class="q">MoE / 量化 / GQA？</div><div class="a">做大（少数专家激活）· 做快（低比特参数）· 做省（共享 KV）——不改原理</div></div>
+    <div class="qa rv" style="--d:470ms"><div class="q">Tool Call / MCP / Agent 的关系？</div><div class="a">调用机制 · 标准化连接协议 · <b>组织模型+工具+循环的系统</b>——Agent 不是新模型</div></div>
+  </div>
+  <div class="note rv" style="--d:540ms; text-align:center">深挖材料见各章笔记（v3 弹药库 01–14）</div>
+</section>
+
+</div>
+
+<div id="bar">
+  <div id="dots"></div>
+  <div id="cnt"></div>
+  <div id="navbtns">
+    <button id="bPrev" title="上一页 (←)">‹</button>
+    <button id="bNext" title="下一页 (→)">›</button>
+    <button id="bFull" title="全屏 (F)">⛶</button>
+  </div>
+</div>
+
+<script>
+/* ================= deck ================= */
+const slides=[...document.querySelectorAll('.slide')];
+const N=slides.length, prog=document.getElementById('prog'), cnt=document.getElementById('cnt');
+const STAGE_DEFS=[['ml','机器学习'],['dl','深度学习'],['tf','Transformer'],['pt','预训练'],['ft','后训练'],['gen','生成'],['ag','Agent']];
+const dots=document.getElementById('dots');
+STAGE_DEFS.forEach(([k,name])=>{
+  const d=document.createElement('div'); d.className='d'; d.textContent=name; d.dataset.k=k; dots.appendChild(d);
+});
+let cur=-1;
+function show(i){
+  i=Math.max(0,Math.min(N-1,i));
+  if(i===cur) return;
+  if(cur>=0) slides[cur].classList.remove('on');
+  const s=slides[i];
+  void s.offsetWidth;            /* reflow: restart reveal animations */
+  s.classList.add('on');
+  cur=i;
+  prog.style.width=((i+1)/N*100)+'%';
+  cnt.textContent=String(i+1).padStart(2,'0')+' / '+N;
+  const st=s.dataset.st||'';
+  dots.querySelectorAll('.d').forEach(d=>d.classList.toggle('on',d.dataset.k===st));
+  history.replaceState(null,'','#'+(i+1));
+}
+function next(){show(cur+1)} function prev(){show(cur-1)}
+document.getElementById('bNext').onclick=next;
+document.getElementById('bPrev').onclick=prev;
+document.getElementById('bFull').onclick=()=>document.documentElement.requestFullscreen?.().catch(()=>{});
+addEventListener('keydown',e=>{
+  if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next()}
+  else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev()}
+  else if(e.key==='Home'){show(0)} else if(e.key==='End'){show(N-1)}
+  else if(e.key==='f'||e.key==='F'){document.documentElement.requestFullscreen?.().catch(()=>{})}
+});
+let tx=null;
+addEventListener('touchstart',e=>tx=e.touches[0].clientX,{passive:true});
+addEventListener('touchend',e=>{
+  if(tx===null)return; const dx=e.changedTouches[0].clientX-tx;
+  if(Math.abs(dx)>50){dx<0?next():prev()} tx=null;
+},{passive:true});
+function fit(){
+  const s=Math.min(innerWidth/1280,innerHeight/720);
+  document.getElementById('stage').style.transform=`translate(-50%,-50%) scale(${s})`;
+}
+addEventListener('resize',fit); fit();
+
+/* ================= figures ================= */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const NS='http://www.w3.org/2000/svg';
+function dot(g,x,y,r,fill,op){const c=document.createElementNS(NS,'circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',r);c.setAttribute('fill',fill);if(op)c.setAttribute('fill-opacity',op);g.appendChild(c)}
+
+/* regression scatter */
+(function(){
+  const svg=document.getElementById('svgReg'); const g=document.createElementNS(NS,'g'); svg.appendChild(g);
+  const ax=document.createElementNS(NS,'line'), ay=document.createElementNS(NS,'line');
+  [[ax,45,300,505,300],[ay,45,300,45,25]].forEach(([l,x1,y1,x2,y2])=>{
+    l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke','#3a4a61');l.setAttribute('stroke-width','1.5');g.appendChild(l);
+  });
+  const line=document.createElementNS(NS,'line');
+  line.setAttribute('x1',55);line.setAttribute('y1',258);line.setAttribute('x2',495);line.setAttribute('y2',52);
+  line.setAttribute('stroke','#5da9ff');line.setAttribute('stroke-width','2.5');g.appendChild(line);
+  const pts=[[70,242],[105,232],[138,208],[172,196],[205,182],[238,168],[270,158],[305,140],[338,122],[372,106],[405,92],[440,76],[468,60]];
+  pts.forEach(([x,y])=>dot(g,x,y,5.5,'#22d3ee'));
+  /* outlier + residual */
+  const res=document.createElementNS(NS,'line');
+  res.setAttribute('x1',300);res.setAttribute('y1',133);res.setAttribute('x2',300);res.setAttribute('y2',196);
+  res.setAttribute('stroke','#ff7b72');res.setAttribute('stroke-width','2');res.setAttribute('stroke-dasharray','5 4');g.appendChild(res);
+  dot(g,300,196,5.5,'#ff7b72');
+  const t=document.createElementNS(NS,'text');
+  t.setAttribute('x',308);t.setAttribute('y',172);t.setAttribute('fill','#ff7b72');t.setAttribute('font-size','14');t.textContent='误差';
+  g.appendChild(t);
+  const cap=document.createElementNS(NS,'text');
+  cap.setAttribute('x',52);cap.setAttribute('y',320);cap.setAttribute('fill','#5d6c81');cap.setAttribute('font-size','13');
+  cap.textContent='面积 →'; g.appendChild(cap);
+  const cap2=document.createElementNS(NS,'text');
+  cap2.setAttribute('x',10);cap2.setAttribute('y',290);cap2.setAttribute('fill','#5d6c81');cap2.setAttribute('font-size','13');
+  cap2.textContent='价格'; g.appendChild(cap2);
+})();
+
+/* circle data */
+(function(){
+  const svg=document.getElementById('svgCircle'); if(!svg)return;
+  const g=document.createElementNS(NS,'g'); svg.appendChild(g);
+  const ring=document.createElementNS(NS,'circle');
+  ring.setAttribute('cx',130);ring.setAttribute('cy',130);ring.setAttribute('r',58);
+  ring.setAttribute('fill','none');ring.setAttribute('stroke','#7ee2a8');ring.setAttribute('stroke-width','2');ring.setAttribute('stroke-dasharray','7 6');
+  g.appendChild(ring);
+  const rnd=mulberry32(42);
+  for(let i=0;i<24;i++){const a=rnd()*Math.PI*2,r=10+rnd()*36;dot(g,130+r*Math.cos(a),130+r*Math.sin(a),4.5,'#5da9ff')}
+  for(let i=0;i<34;i++){const a=rnd()*Math.PI*2,r=76+rnd()*32;dot(g,130+r*Math.cos(a),130+r*Math.sin(a),4.5,'#f5b04d')}
+})();
+
+/* spiral data */
+(function(){
+  const svg=document.getElementById('svgSpiral'); if(!svg)return;
+  const g=document.createElementNS(NS,'g'); svg.appendChild(g);
+  const rnd=mulberry32(7);
+  [0,Math.PI].forEach((phase,idx)=>{
+    for(let t=.5;t<=7.1;t+=.4){
+      const r=13+10.4*t, x=130+r*Math.cos(t+phase)+(rnd()-.5)*6, y=130+r*Math.sin(t+phase)+(rnd()-.5)*6;
+      dot(g,x,y,4.5,idx===0?'#5da9ff':'#f5b04d');
+    }
+  });
+})();
+
+/* causal mask grid */
+(function(){
+  const el=document.getElementById('maskGrid'); if(!el)return;
+  const toks=['机器','学习','可以','从','数据','中'];
+  const cols=1+toks.length+1;
+  el.style.gridTemplateColumns=`64px repeat(${toks.length},46px) 96px`;
+  el.style.gridAutoRows='40px'; el.style.gap='5px'; el.style.alignItems='center';
+  const cell=(cls,html='')=>{const d=document.createElement('div');d.className=cls;d.innerHTML=html;return d};
+  el.appendChild(cell('hd',''));
+  toks.forEach(t=>el.appendChild(cell('hd',t)));
+  el.appendChild(cell('hd','预测 →'));
+  toks.forEach((t,i)=>{
+    el.appendChild(cell('lb',t));
+    toks.forEach((_,j)=>el.appendChild(cell('c'+(j<=i?' v':''))));
+    const tgt=i+1<toks.length?toks[i+1]:'…';
+    el.appendChild(cell('tg',tgt));
+  });
+})();
+
+/* init */
+show(Math.max(0,Math.min(N-1,parseInt(location.hash.slice(1))||1)-1));
+</script>
+</body>
+</html>
