@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>从人工规则到 LLM——智能的涌现</title>
+  <style>
+    :root{
+      --bg:#06080d; --panel:#0d1119; --panel2:#121824; --ink:#f4f7fb; --muted:#9aa8ba;
+      --line:#273244; --mint:#80f1c7; --cyan:#69d9ff; --red:#ff6374; --amber:#ffc861;
+      --violet:#b49cff; --w:1600px; --h:900px;
+      font-family:Inter,"SF Pro Display","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020306;color:var(--ink)}
+    body{display:grid;place-items:center}
+    button{font:inherit}
+    #stage{position:relative;width:var(--w);height:var(--h);transform-origin:center center;background:var(--bg);overflow:hidden;box-shadow:0 40px 100px #000}
+    .slide{position:absolute;inset:0;display:none;padding:76px 92px 64px;overflow:hidden;background:
+      radial-gradient(circle at 84% 14%,rgba(105,217,255,.08),transparent 25%),
+      radial-gradient(circle at 8% 88%,rgba(128,241,199,.05),transparent 28%),var(--bg)}
+    .slide.active{display:flex;flex-direction:column;animation:enter .32s ease-out}
+    @keyframes enter{from{opacity:.2;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .slide::before{content:"";position:absolute;inset:28px;border:1px solid rgba(255,255,255,.035);pointer-events:none}
+    .eyebrow{display:flex;align-items:center;gap:14px;color:var(--mint);font-size:18px;font-weight:750;letter-spacing:.16em;text-transform:uppercase}
+    .eyebrow::before{content:"";width:34px;height:3px;background:currentColor;border-radius:9px}
+    h1,h2,h3,p{margin:0}
+    h1{font-size:94px;line-height:1.03;letter-spacing:-.055em;font-weight:800}
+    h2{font-size:58px;line-height:1.08;letter-spacing:-.035em;font-weight:780;margin-top:18px;max-width:1360px}
+    h3{font-size:28px;line-height:1.25;font-weight:700}
+    .subtitle{font-size:28px;line-height:1.45;color:var(--muted);margin-top:20px;max-width:1100px}
+    .content{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;align-items:stretch}
+    .split-40{display:grid;grid-template-columns:.82fr 1.18fr;gap:64px;align-items:center}
+    .split-60{display:grid;grid-template-columns:1.18fr .82fr;gap:64px;align-items:center}
+    .stack{display:flex;flex-direction:column;gap:22px}
+    .row{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+    .big{font-size:40px;line-height:1.24;font-weight:720;letter-spacing:-.02em}
+    .body{font-size:27px;line-height:1.5;color:#d7deea}
+    .small{font-size:21px;line-height:1.45;color:var(--muted)}
+    .huge{font-size:84px;line-height:1.05;font-weight:800;letter-spacing:-.05em}
+    .accent{color:var(--mint)} .cyan{color:var(--cyan)} .red{color:var(--red)} .amber{color:var(--amber)} .violet{color:var(--violet)}
+    .label{font-size:18px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    .rule{height:1px;background:linear-gradient(90deg,var(--line),transparent);margin:18px 0}
+    .callout{border-left:5px solid var(--mint);padding:6px 0 6px 26px;font-size:38px;line-height:1.32;font-weight:720}
+    .quote{font-size:50px;line-height:1.25;font-weight:760;letter-spacing:-.025em;max-width:1280px}
+    .num{font-variant-numeric:tabular-nums}
+    ul.clean{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:17px}
+    ul.clean li{font-size:27px;line-height:1.35;padding-left:26px;position:relative;color:#d7deea}
+    ul.clean li::before{content:"";position:absolute;left:0;top:.58em;width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 18px rgba(128,241,199,.5)}
+    .panel{background:linear-gradient(145deg,rgba(18,24,36,.92),rgba(9,13,20,.82));border:1px solid var(--line);padding:32px;border-radius:6px}
+    .panel.glow{border-color:rgba(128,241,199,.42);box-shadow:0 0 50px rgba(128,241,199,.06)}
+    .panel.redline{border-color:rgba(255,99,116,.45)}
+    .panel .label{margin-bottom:16px}
+    .chip{display:inline-flex;align-items:center;padding:8px 14px;border:1px solid var(--line);border-radius:99px;color:#cdd6e3;font-size:19px;background:#0a0e15}
+    .flow{display:flex;align-items:center;gap:15px;flex-wrap:nowrap}
+    .flow .node{padding:17px 21px;border:1px solid var(--line);background:var(--panel);font-size:24px;font-weight:700;white-space:nowrap}
+    .flow .node.hot{color:var(--mint);border-color:rgba(128,241,199,.55);background:rgba(128,241,199,.07)}
+    .arrow{color:#64748b;font-size:28px;flex:none}
+    .formula{font-family:"SFMono-Regular",Consolas,monospace;font-size:54px;letter-spacing:-.045em;padding:26px 34px;border:1px solid var(--line);background:#080b11;color:#f8fbff;display:inline-block}
+    .code{font-family:"SFMono-Regular",Consolas,monospace;font-size:21px;line-height:1.55;color:#c9d4e3;background:#070a0f;border:1px solid var(--line);padding:24px 28px;white-space:pre-wrap}
+    .kicker{font-size:22px;color:var(--muted);margin-bottom:11px}
+    .compare{display:grid;grid-template-columns:1fr 72px 1fr;align-items:stretch;gap:18px}
+    .compare .versus{display:grid;place-items:center;color:#64748b;font-size:18px;font-weight:800;letter-spacing:.12em}
+    .metric{font-size:56px;line-height:1;font-weight:820;letter-spacing:-.04em}
+    .timeline{display:flex;align-items:flex-start;position:relative;padding-top:34px}
+    .timeline::before{content:"";position:absolute;left:3%;right:3%;top:48px;height:2px;background:linear-gradient(90deg,var(--red),var(--amber),var(--mint),var(--cyan),var(--violet))}
+    .milestone{flex:1;text-align:center;position:relative;padding:48px 12px 0}
+    .milestone::before{content:"";position:absolute;top:7px;left:50%;width:16px;height:16px;border:5px solid var(--bg);border-radius:50%;background:var(--ink);transform:translateX(-50%);box-shadow:0 0 0 2px currentColor}
+    .milestone strong{display:block;font-size:25px;margin-bottom:10px}.milestone span{font-size:18px;color:var(--muted);line-height:1.35}
+    .axis{position:relative;height:330px;border-left:2px solid #435168;border-bottom:2px solid #435168}
+    .axis .dot{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px rgba(105,217,255,.5)}
+    .axis .fit{position:absolute;left:8%;right:7%;height:4px;top:47%;background:var(--mint);transform:rotate(-18deg);transform-origin:center;box-shadow:0 0 18px rgba(128,241,199,.35)}
+    .axis .axis-label{position:absolute;color:var(--muted);font-size:18px}.axis .xlab{right:0;bottom:-32px}.axis .ylab{left:-34px;top:-24px}
+    .loss-chart{height:260px;position:relative;border-left:2px solid #435168;border-bottom:2px solid #435168;overflow:hidden}
+    .loss-chart svg{position:absolute;inset:0;width:100%;height:100%}
+    .heatmap{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+    .heatmap i{aspect-ratio:1;border-radius:3px;background:rgba(105,217,255,var(--a))}
+    .matrix{display:grid;grid-template-columns:repeat(5,44px);gap:8px}.matrix i{width:44px;height:44px;background:#101722;border:1px solid #263348;display:grid;place-items:center;font-style:normal;color:#8998ab;font-size:16px}.matrix i.on{background:rgba(128,241,199,.25);border-color:var(--mint);color:var(--ink)}
+    .network{height:360px;position:relative}.network .layer{position:absolute;top:0;bottom:0;display:flex;flex-direction:column;justify-content:space-around}.network .layer:nth-child(1){left:3%}.network .layer:nth-child(2){left:34%}.network .layer:nth-child(3){left:65%}.network .layer:nth-child(4){right:3%}.network b{width:25px;height:25px;border-radius:50%;background:#0f1723;border:3px solid var(--cyan);box-shadow:0 0 18px rgba(105,217,255,.25)}
+    .network svg{position:absolute;inset:0;width:100%;height:100%}.network line{stroke:#26364a;stroke-width:2}
+    .residual{display:grid;grid-template-columns:180px 1fr 180px;align-items:center;gap:24px}.residual .branch{height:170px;border:3px solid var(--mint);border-left:0;display:grid;place-items:center;color:var(--mint);font-weight:750;font-size:23px}
+    .token-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.token{padding:12px 15px;background:#101722;border:1px solid #2b394e;font-family:monospace;font-size:22px}.token.current{background:rgba(128,241,199,.12);border-color:var(--mint);color:var(--mint)}
+    .block-stack{display:flex;flex-direction:column;gap:12px;align-items:center}.block{width:620px;padding:18px 24px;text-align:center;border:1px solid var(--line);font-size:23px;font-weight:700;background:var(--panel)}.block.attn{border-color:rgba(105,217,255,.55);color:var(--cyan)}.block.ffn{border-color:rgba(180,156,255,.55);color:var(--violet)}.block.norm{font-size:18px;color:var(--muted);padding:10px}
+    .table{width:100%;border-collapse:collapse;font-size:22px}.table th,.table td{padding:17px 20px;border-bottom:1px solid var(--line);text-align:left}.table th{color:var(--muted);font-size:18px;letter-spacing:.06em}.table td:first-child{font-weight:700}.yes{color:var(--mint)}.no{color:var(--red)}
+    .footer{position:absolute;left:92px;right:92px;bottom:34px;display:flex;justify-content:space-between;align-items:center;color:#59677a;font-size:16px;letter-spacing:.08em}
+    .footer .page{font-variant-numeric:tabular-nums;color:#8090a4}
+    #progress{position:fixed;left:0;bottom:0;height:4px;background:linear-gradient(90deg,var(--mint),var(--cyan));z-index:30;transition:width .25s ease}
+    #controls{position:fixed;right:18px;top:18px;display:flex;gap:8px;z-index:50;opacity:.15;transition:opacity .2s}#controls:hover{opacity:1}
+    #controls button{width:38px;height:38px;border:1px solid #344055;background:#0b1018;color:#cbd5e1;border-radius:50%;cursor:pointer}
+    #overview{position:fixed;inset:0;background:#03050a;z-index:60;display:none;overflow:auto;padding:28px}
+    #overview.open{display:grid;grid-template-columns:repeat(4,minmax(250px,1fr));gap:18px;align-content:start}
+    .thumb{aspect-ratio:16/9;background:#0a0e15;border:1px solid #202a39;padding:24px;cursor:pointer;overflow:hidden;position:relative}.thumb:hover{border-color:var(--mint)}.thumb b{display:block;font-size:24px;line-height:1.2;margin-top:9px}.thumb span{font-size:13px;color:var(--mint)}.thumb em{position:absolute;right:16px;bottom:12px;font-style:normal;color:#64748b}
+    #help{position:fixed;left:20px;bottom:18px;z-index:40;color:#8a98aa;font-size:14px;opacity:.5}
+    @media print{html,body{overflow:visible;background:#fff}#stage{width:auto;height:auto;transform:none!important;box-shadow:none}.slide{position:relative;display:flex!important;width:1600px;height:900px;break-after:page}.slide::before,#controls,#help,#progress{display:none}}
+  </style>
+</head>
+<body>
+  <main id="stage" aria-label="从人工规则到 LLM 演示文稿">
+
+    <section class="slide active" data-title="十年前的 AI 识别世界，今天的 AI 开始完成任务">
+      <div class="eyebrow">开场 · 现象</div>
+      <div class="content split-40">
+        <div class="stack">
+          <div class="label">从人工规则到 LLM</div>
+          <h1>智能的<br><span class="accent">涌现</span></h1>
+          <p class="subtitle">这些能力，究竟是怎样一步步出现的？</p>
+        </div>
+        <div class="compare">
+          <div class="panel">
+            <div class="label">十年前 · 识别</div>
+            <div class="stack body"><span>听懂一段语音</span><span>认出一张图片</span><span>翻译一句文字</span></div>
+          </div>
+          <div class="versus">→</div>
+          <div class="panel glow">
+            <div class="label accent">今天 · 完成任务</div>
+            <div class="stack body"><span>回答开放问题</span><span>写出可运行代码</span><span>总结复杂文档</span><span>拆解并执行任务</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>FROM RULES TO LLM</span><span class="page">01 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="智能演进的主线，是把显式设计逐步交给学习">
+      <div class="eyebrow">开场 · 主线</div><h2>智能演进的主线，是把显式设计逐步交给学习</h2>
+      <div class="content stack" style="gap:52px">
+        <div class="timeline">
+          <div class="milestone red"><strong>传统程序</strong><span>人写规则</span></div>
+          <div class="milestone amber"><strong>机器学习</strong><span>学习参数</span></div>
+          <div class="milestone accent"><strong>深度学习</strong><span>学习特征</span></div>
+          <div class="milestone cyan"><strong>Transformer</strong><span>学习关系</span></div>
+          <div class="milestone violet"><strong>LLM</strong><span>学习任务分布</span></div>
+          <div class="milestone"><strong>Agent</strong><span>走向行动</span></div>
+        </div>
+        <div class="callout">人不断把原本需要自己显式设计的东西，交给<span class="accent">数据、模型与优化</span>。</div>
+        <p class="small">本场聚焦底层原理与演进主线；Prompt、Low Code 与 Agent 工程留待后续展开。</p>
+      </div>
+      <div class="footer"><span>RULES → LEARNING → EMERGENCE</span><span class="page">02 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="当规则写不出来，学习就成为另一条路">
+      <div class="eyebrow">机器学习 · 问题</div><h2>当规则写不出来，学习就成为另一条路</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="flow"><span class="node">输入</span><span class="arrow">→</span><span class="node red">人工规则</span><span class="arrow">→</span><span class="node">输出</span></div>
+          <div class="quote">我们能判断，<br>却很难把判断过程<br><span class="red">完整写成规则</span>。</div>
+        </div>
+        <div class="stack">
+          <div class="panel"><div class="label">垃圾邮件</div><p class="body">“免费、中奖、退订”不是绝对规则</p></div>
+          <div class="panel"><div class="label">猫狗识别</div><p class="body">姿态、光线、背景千变万化</p></div>
+          <div class="panel"><div class="label">用户流失</div><p class="body">行为信号复杂且互相影响</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>MACHINE LEARNING</span><span class="page">03 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="机器学习：从经验中提炼可泛化的规律">
+      <div class="eyebrow">机器学习 · 定义</div><h2>机器学习：从经验中提炼可泛化的规律</h2>
+      <div class="content stack" style="gap:42px">
+        <div class="quote">让机器从<span class="cyan">数据或经验</span>中学习<span class="accent">可泛化的规律</span>，使它在特定任务上的表现不断改善。</div>
+        <div class="grid3">
+          <div><div class="metric cyan">01</div><h3>数据 / 经验</h3><p class="small">观察世界的样本</p></div>
+          <div><div class="metric accent">02</div><h3>规律 / 模型</h3><p class="small">压缩样本中的关系</p></div>
+          <div><div class="metric amber">03</div><h3>学习 / 泛化</h3><p class="small">对未见样本仍有效</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>DATA → PATTERN → GENERALIZATION</span><span class="page">04 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="学习闭环只有四件事：数据、模型、损失与优化">
+      <div class="eyebrow">机器学习 · 机制</div><h2>学习闭环只有四件事：数据、模型、损失与优化</h2>
+      <div class="content stack" style="gap:48px">
+        <div class="flow" style="justify-content:center">
+          <span class="node hot">数据</span><span class="arrow">→</span><span class="node">模型</span><span class="arrow">→</span><span class="node red">损失函数</span><span class="arrow">→</span><span class="node amber">优化算法</span><span class="arrow">↺</span>
+        </div>
+        <div class="grid2">
+          <div class="panel glow"><div class="label accent">预测</div><p class="big">模型根据当前参数给出答案</p></div>
+          <div class="panel redline"><div class="label red">纠错</div><p class="big">损失衡量偏差，优化器调整参数</p></div>
+        </div>
+        <div class="callout">学习，就是不断调整参数，让 <span class="red">Loss</span> 下降。</div>
+      </div>
+      <div class="footer"><span>THE LEARNING LOOP</span><span class="page">05 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="线性回归展示了学习最小而完整的样子">
+      <div class="eyebrow">机器学习 · 最小实例</div><h2>线性回归展示了学习最小而完整的样子</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="formula">ŷ = w · x + b</div>
+          <div class="grid2" style="gap:20px">
+            <div><div class="label">输入</div><p class="big cyan">x</p></div><div><div class="label">输出</div><p class="big accent">ŷ</p></div>
+            <div><div class="label">参数</div><p class="big amber">w, b</p></div><div><div class="label">关键变化</div><p class="small">参数由数据学出</p></div>
+          </div>
+          <div class="code"># 最小训练循环
+y_hat = w * x + b
+loss = mse(y_hat, y)
+loss.backward()
+optimizer.step()</div>
+        </div>
+        <div>
+          <div class="axis" aria-label="散点与拟合线示意">
+            <span class="dot" style="left:10%;top:76%"></span><span class="dot" style="left:22%;top:70%"></span><span class="dot" style="left:33%;top:58%"></span><span class="dot" style="left:45%;top:57%"></span><span class="dot" style="left:58%;top:39%"></span><span class="dot" style="left:69%;top:35%"></span><span class="dot" style="left:82%;top:20%"></span><span class="fit"></span><span class="axis-label xlab">x</span><span class="axis-label ylab">y</span>
+          </div>
+          <p class="small" style="margin-top:45px">梯度下降：参数更新 → 拟合线靠近数据 → Loss 持续下降</p>
+        </div>
+      </div>
+      <div class="footer"><span>PARAMETERS ARE LEARNED</span><span class="page">06 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="分类，本质是把分数变成概率再惩罚错误">
+      <div class="eyebrow">机器学习 · 分类</div><h2>分类，本质是把分数变成概率再惩罚错误</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="flow"><span class="node">线性分数</span><span class="arrow">→</span><span class="node hot">Softmax</span><span class="arrow">→</span><span class="node">概率分布</span></div>
+          <div class="panel"><div class="label">Softmax</div><p class="body">把任意分数转换为总和等于 1 的概率分布。</p></div>
+          <div class="callout">后来的 LLM 预测 Token，仍是一个<span class="accent">巨大的分类问题</span>。</div>
+        </div>
+        <div class="stack">
+          <div class="label">真实类别 = 猫</div>
+          <div class="panel glow"><div class="row" style="justify-content:space-between"><span class="big">P(猫) = 0.9</span><span class="metric accent">Loss 小</span></div><div style="height:14px;background:#182230;margin-top:25px"><div style="width:90%;height:100%;background:var(--mint)"></div></div></div>
+          <div class="panel redline"><div class="row" style="justify-content:space-between"><span class="big">P(猫) = 0.1</span><span class="metric red">Loss 大</span></div><div style="height:14px;background:#182230;margin-top:25px"><div style="width:10%;height:100%;background:var(--red)"></div></div></div>
+        </div>
+      </div>
+      <div class="footer"><span>SOFTMAX + CROSS ENTROPY</span><span class="page">07 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="学会训练集不够：模型还要稳定地面对未知">
+      <div class="eyebrow">机器学习 · 泛化</div><h2>学会训练集不够：模型还要稳定地面对未知</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="label">泛化：看过 / 调整 / 最终检验</div>
+          <div class="flow"><span class="node hot">训练集</span><span class="arrow">→</span><span class="node">验证集</span><span class="arrow">→</span><span class="node">测试集</span></div>
+          <div class="grid2" style="gap:20px">
+            <div class="panel"><div class="label amber">欠拟合</div><p class="body">连训练规律都没学会</p></div>
+            <div class="panel"><div class="label red">过拟合</div><p class="body">记住样本，却不会迁移</p></div>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="label">数值稳定：越深越敏感</div>
+          <div class="panel glow">
+            <p class="big">中间数值可能不断<span class="red">放大</span>或<span class="cyan">缩小</span></p>
+            <div class="rule"></div>
+            <p class="body">梯度也会爆炸或消失，参数初始化与归一化开始变得重要。</p>
+          </div>
+          <p class="small">伏笔：Transformer 会用 LayerNorm 回收这个问题。</p>
+        </div>
+      </div>
+      <div class="footer"><span>GENERALIZATION & STABILITY</span><span class="page">08 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="机器学会了参数，但特征仍由人决定">
+      <div class="eyebrow">机器学习 · 局限</div><h2>机器学会了参数，但特征仍由人决定</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="panel glow"><div class="label accent">机器已经拿走</div><div class="huge">参数选择</div></div>
+          <div class="panel redline"><div class="label red">人仍需设计</div><div class="huge">特征</div></div>
+        </div>
+        <div class="stack">
+          <div class="label">如果要识别一只猫……</div>
+          <div class="row"><span class="chip">耳朵形状？</span><span class="chip">眼睛比例？</span><span class="chip">毛发纹理？</span><span class="chip">身体轮廓？</span></div>
+          <div class="quote">参数可以学习，<br><span class="accent">特征为什么不能？</span></div>
+          <div class="flow"><span class="node hot">深度学习</span><span class="arrow">→</span><span class="small">自动学习特征表示</span></div>
+        </div>
+      </div>
+      <div class="footer"><span>THE FEATURE BOTTLENECK</span><span class="page">09 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="深度学习直面两个难题：非线性与特征设计">
+      <div class="eyebrow">深度学习 · 问题</div><h2>深度学习直面两个难题：非线性与特征设计</h2>
+      <div class="content compare">
+        <div class="panel redline stack">
+          <div class="metric red">01</div><div class="big">世界大量规律<br>不是直线</div>
+          <p class="body">类别边界、图像模式、语言关系都高度非线性。</p>
+        </div>
+        <div class="versus">+</div>
+        <div class="panel glow stack">
+          <div class="metric accent">02</div><div class="big">人工特征设计<br>越来越难</div>
+          <p class="body">任务越复杂，人越难提前规定“应该看什么”。</p>
+        </div>
+      </div>
+      <div class="callout">能不能让机器连<span class="accent">特征</span>也自己学习？</div>
+      <div class="footer"><span>DEEP LEARNING</span><span class="page">10 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="深度学习：用多层非线性自动学习表示">
+      <div class="eyebrow">深度学习 · 定义</div><h2>深度学习：用多层非线性自动学习表示</h2>
+      <div class="content stack" style="gap:46px">
+        <div class="quote" style="font-size:46px">通过<span class="cyan">多层非线性变换</span>，自动从原始数据中逐层学习<span class="accent">特征表示</span>。</div>
+        <div class="flow" style="justify-content:center">
+          <span class="node">原始数据</span><span class="arrow">→</span><span class="node">低层特征</span><span class="arrow">→</span><span class="node">组合特征</span><span class="arrow">→</span><span class="node hot">任务表示</span>
+        </div>
+        <div class="row" style="justify-content:center"><span class="chip">多层</span><span class="chip">非线性</span><span class="chip">自动学习</span><span class="chip">特征表示</span></div>
+      </div>
+      <div class="footer"><span>LEARN THE REPRESENTATION</span><span class="page">11 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="没有非线性的深度，只是假深度">
+      <div class="eyebrow">深度学习 · MLP</div><h2>没有非线性的深度，只是假深度</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="formula">Linear ∘ Linear<br>= Linear</div>
+          <p class="body">线性层无论叠多少次，最终仍只是一次线性变换。</p>
+          <div class="callout"><span class="amber">激活函数</span>把“弯曲世界”的能力加入网络。</div>
+        </div>
+        <div class="stack">
+          <div class="label">多层意味着逐层组合</div>
+          <div class="flow"><span class="node">边缘</span><span class="arrow">→</span><span class="node">形状</span><span class="arrow">→</span><span class="node">部件</span><span class="arrow">→</span><span class="node hot">物体</span></div>
+          <div class="panel glow"><div class="label accent">表示学习</div><p class="big">从人工定义“看什么”，转向网络自己发现“什么有用”。</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>NONLINEARITY CREATES DEPTH</span><span class="page">12 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="表达复杂规律，还必须把海量参数真正学出来">
+      <div class="eyebrow">深度学习 · 训练</div><h2>表达复杂规律，还必须把海量参数真正学出来</h2>
+      <div class="content split-40">
+        <div class="stack">
+          <div class="flow"><span class="node hot">前向</span><span class="arrow">→</span><span class="node red">Loss</span><span class="arrow">→</span><span class="node amber">反向</span></div>
+          <ul class="clean"><li>前向传播：计算预测</li><li>反向传播：计算每个参数的梯度</li><li>链式法则：把误差逐层传回</li><li>梯度下降：更新参数</li></ul>
+          <p class="small">自动求导让这一过程可以规模化。</p>
+        </div>
+        <div class="network">
+          <svg aria-hidden="true"><line x1="8%" y1="15%" x2="36%" y2="10%"/><line x1="8%" y1="15%" x2="36%" y2="50%"/><line x1="8%" y1="50%" x2="36%" y2="10%"/><line x1="8%" y1="50%" x2="36%" y2="90%"/><line x1="8%" y1="85%" x2="36%" y2="50%"/><line x1="36%" y1="10%" x2="67%" y2="20%"/><line x1="36%" y1="10%" x2="67%" y2="70%"/><line x1="36%" y1="50%" x2="67%" y2="20%"/><line x1="36%" y1="50%" x2="67%" y2="70%"/><line x1="36%" y1="90%" x2="67%" y2="70%"/><line x1="67%" y1="20%" x2="94%" y2="50%"/><line x1="67%" y1="70%" x2="94%" y2="50%"/></svg>
+          <div class="layer"><b></b><b></b><b></b></div><div class="layer"><b></b><b></b><b></b></div><div class="layer"><b></b><b></b></div><div class="layer"><b></b></div>
+        </div>
+      </div>
+      <div class="footer"><span>FORWARD + BACKPROP</span><span class="page">13 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="MLP 足够通用，却忽略了数据自身的结构">
+      <div class="eyebrow">深度学习 · MLP 局限</div><h2>MLP 足够通用，却忽略了数据自身的结构</h2>
+      <div class="content grid2">
+        <div class="panel redline stack">
+          <div class="label red">图像</div><div class="big">每个像素与每个神经元全连接</div>
+          <ul class="clean"><li>参数量巨大</li><li>同一特征换个位置就要重学</li></ul>
+          <div class="matrix"><i></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i></div>
+        </div>
+        <div class="panel stack">
+          <div class="label cyan">序列</div><div class="big">输入没有天然顺序，也没有记忆</div>
+          <ul class="clean"><li>“狗咬人”与“人咬狗”难以区分</li><li>上下文无法自然延续</li></ul>
+          <div class="token-row"><span class="token">我</span><span class="token">去</span><span class="token">银行</span><span class="token">取款</span></div>
+        </div>
+      </div>
+      <div class="callout">效率来自把<span class="accent">数据结构</span>写进网络。</div>
+      <div class="footer"><span>STRUCTURE MATTERS</span><span class="page">14 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="CNN 把图像的局部性与平移不变性写进网络">
+      <div class="eyebrow">深度学习 · CNN</div><h2>CNN 把图像的局部性与平移不变性写进网络</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="compare" style="grid-template-columns:1fr 52px 1fr">
+            <div><div class="label">图像先验</div><p class="big">局部性</p></div><div class="versus">→</div><div><div class="label">CNN 机制</div><p class="big accent">局部连接</p></div>
+          </div>
+          <div class="compare" style="grid-template-columns:1fr 52px 1fr">
+            <div><div class="label">图像先验</div><p class="big">平移不变</p></div><div class="versus">→</div><div><div class="label">CNN 机制</div><p class="big cyan">参数共享</p></div>
+          </div>
+          <div class="panel glow"><p class="body">参数大幅减少；同一个“边缘探测器”可以在整张图上复用。</p></div>
+        </div>
+        <div class="stack">
+          <div class="matrix" style="grid-template-columns:repeat(5,62px)"><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="flow"><span class="node">LeNet</span><span class="arrow">→</span><span class="node hot">AlexNet</span><span class="arrow">+</span><span class="node">ImageNet</span><span class="arrow">+</span><span class="node">GPU</span></div>
+          <p class="small">这组组合引爆了现代深度学习。</p>
+        </div>
+      </div>
+      <div class="footer"><span>CONVOLUTIONAL STRUCTURE</span><span class="page">15 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="ResNet 用一条捷径，让更深的网络更容易训练">
+      <div class="eyebrow">深度学习 · ResNet</div><h2>ResNet 用一条捷径，让更深的网络更容易训练</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="formula">H(x) = F(x) + x</div>
+          <ul class="clean"><li>信息可以沿恒等路径直接传播</li><li>梯度也可以绕过复杂变换</li><li>深层网络的优化难度显著降低</li></ul>
+          <p class="small">解决的不只是梯度消失，还包括深层网络训练误差反而升高的 degradation problem。</p>
+        </div>
+        <div class="residual">
+          <div class="node">x</div><div class="branch">F(x)<br>残差分支</div><div class="node hot">F(x) + x</div>
+        </div>
+      </div>
+      <div class="callout">这条<span class="accent">残差路径</span>，稍后会再次出现在 Transformer 中。</div>
+      <div class="footer"><span>SKIP CONNECTIONS</span><span class="page">16 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="RNN 给序列加上顺序与记忆，却让信息走得太远">
+      <div class="eyebrow">深度学习 · RNN</div><h2>RNN 给序列加上顺序与记忆，却让信息走得太远</h2>
+      <div class="content stack" style="gap:46px">
+        <div class="flow" style="justify-content:center">
+          <span class="node">x₁</span><span class="arrow">→</span><span class="node hot">h₁</span><span class="arrow">→</span><span class="node hot">h₂</span><span class="arrow">→</span><span class="node hot">h₃</span><span class="arrow">→</span><span class="node">…</span>
+        </div>
+        <div class="grid3">
+          <div><div class="metric red">01</div><h3>长距离困难</h3><p class="small">信息必须逐步传递</p></div>
+          <div><div class="metric amber">02</div><h3>串行计算</h3><p class="small">后一步依赖前一步</p></div>
+          <div><div class="metric cyan">03</div><h3>状态瓶颈</h3><p class="small">历史被压缩进固定向量</p></div>
+        </div>
+        <div class="callout">文本需要顺序与上下文，但不一定需要<span class="red">循环</span>。</div>
+      </div>
+      <div class="footer"><span>SEQUENCE & MEMORY</span><span class="page">17 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="Transformer 直接追问：需要的信息在哪里？">
+      <div class="eyebrow">Transformer · 问题</div><h2>Transformer 直接追问：需要的信息在哪里？</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="token-row"><span class="token">小王</span><span class="token">把</span><span class="token">书</span><span class="token">给了</span><span class="token">小李</span><span class="token">，</span><span class="token current">他</span><span class="token">很高兴</span></div>
+          <p class="big">“他”究竟指谁？</p>
+          <p class="body">不必把全部历史挤进一个状态；让当前 Token 直接查看所有候选信息。</p>
+        </div>
+        <div class="stack">
+          <div class="panel redline"><span class="label red">RNN</span><p class="big">信息路径长 · 串行 · 压缩</p></div>
+          <div class="arrow" style="text-align:center">↓</div>
+          <div class="panel glow"><span class="label accent">关键问题</span><p class="big">一个 Token 能否直接找到真正需要的 Token？</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>TRANSFORMER</span><span class="page">18 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="Transformer 用注意力取代循环，重构序列建模">
+      <div class="eyebrow">Transformer · 定义</div><h2>Transformer 用注意力取代循环，重构序列建模</h2>
+      <div class="content stack" style="gap:40px">
+        <div class="quote" style="font-size:46px"><span class="cyan">完全基于注意力</span>，摒弃循环与卷积；<br>通过可堆叠的深层架构完成<span class="accent">序列建模</span>。</div>
+        <div class="flow" style="justify-content:center">
+          <span class="node hot">Attention</span><span class="arrow">+</span><span class="node">位置编码</span><span class="arrow">+</span><span class="node">FFN</span><span class="arrow">+</span><span class="node">残差</span><span class="arrow">+</span><span class="node">LayerNorm</span>
+        </div>
+        <p class="small" style="text-align:center">组件可以重复堆叠，由此获得深度与规模。</p>
+      </div>
+      <div class="footer"><span>ATTENTION-BASED ARCHITECTURE</span><span class="page">19 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="Attention 的直觉不是聚焦，而是按相关性加权汇总">
+      <div class="eyebrow">Transformer · Attention</div><h2>Attention 的直觉不是聚焦，而是按相关性加权汇总</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="formula">输出 = Σ 权重ᵢ × 信息ᵢ</div>
+          <div class="grid2" style="gap:20px">
+            <div class="panel glow"><div class="label accent">相关性高</div><div class="metric">权重大</div></div>
+            <div class="panel"><div class="label">相关性低</div><div class="metric" style="color:#67768a">权重小</div></div>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="label">“银行”的含义由上下文决定</div>
+          <div class="token-row"><span class="token">我</span><span class="token">去</span><span class="token current">银行</span><span class="token" style="border-color:var(--mint)">取款</span></div>
+          <div class="token-row"><span class="token">河边</span><span class="token">的</span><span class="token current">银行</span><span class="token" style="border-color:var(--cyan)">堤岸</span></div>
+          <div class="callout">权重不由人规定，而由模型根据<span class="accent">内容</span>计算。</div>
+        </div>
+      </div>
+      <div class="footer"><span>WEIGHTED AGGREGATION</span><span class="page">20 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="Q、K、V 把“寻找、匹配、取回”拆成三种职责">
+      <div class="eyebrow">Transformer · QKV</div><h2>Q、K、V 把“寻找、匹配、取回”拆成三种职责</h2>
+      <div class="content split-60">
+        <div class="stack">
+          <div class="grid3">
+            <div class="panel glow"><div class="metric accent">Q</div><h3>我在找什么？</h3></div>
+            <div class="panel"><div class="metric cyan">K</div><h3>我有什么线索？</h3></div>
+            <div class="panel"><div class="metric violet">V</div><h3>我提供什么信息？</h3></div>
+          </div>
+          <div class="flow"><span class="node">Q × Kᵀ</span><span class="arrow">→</span><span class="node">Score</span><span class="arrow">→</span><span class="node hot">Softmax</span><span class="arrow">→</span><span class="node">加权 V</span></div>
+          <div class="formula" style="font-size:42px">softmax(QKᵀ / √d) · V</div>
+          <p class="small">多头注意力：让不同“头”并行学习不同关系。</p>
+        </div>
+        <div>
+          <div class="label" style="margin-bottom:15px">Attention 热力图 · 示意</div>
+          <div class="heatmap">
+            <i style="--a:.08"></i><i style="--a:.15"></i><i style="--a:.22"></i><i style="--a:.08"></i><i style="--a:.12"></i><i style="--a:.2"></i>
+            <i style="--a:.1"></i><i style="--a:.18"></i><i style="--a:.55"></i><i style="--a:.16"></i><i style="--a:.2"></i><i style="--a:.12"></i>
+            <i style="--a:.08"></i><i style="--a:.2"></i><i style="--a:.95"></i><i style="--a:.17"></i><i style="--a:.14"></i><i style="--a:.1"></i>
+            <i style="--a:.12"></i><i style="--a:.1"></i><i style="--a:.35"></i><i style="--a:.2"></i><i style="--a:.78"></i><i style="--a:.16"></i>
+            <i style="--a:.15"></i><i style="--a:.12"></i><i style="--a:.2"></i><i style="--a:.66"></i><i style="--a:.3"></i><i style="--a:.18"></i>
+            <i style="--a:.08"></i><i style="--a:.11"></i><i style="--a:.15"></i><i style="--a:.25"></i><i style="--a:.4"></i><i style="--a:.65"></i>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>QUERY · KEY · VALUE</span><span class="page">21 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="Attention 看见内容，却天生看不见顺序">
+      <div class="eyebrow">Transformer · 位置</div><h2>Attention 看见内容，却天生看不见顺序</h2>
+      <div class="content grid2">
+        <div class="compare" style="grid-template-columns:1fr 56px 1fr">
+          <div class="panel redline"><div class="token-row"><span class="token">狗</span><span class="token">咬</span><span class="token">人</span></div></div>
+          <div class="versus">≠</div>
+          <div class="panel redline"><div class="token-row"><span class="token">人</span><span class="token">咬</span><span class="token">狗</span></div></div>
+        </div>
+        <div class="stack">
+          <div class="panel glow"><div class="label accent">Position Encoding</div><p class="big">给每个 Token 注入位置信息</p></div>
+          <div class="panel"><div class="label cyan">现代 LLM：RoPE</div><p class="body">让 Q/K 的匹配同时感知相对位置。</p></div>
+          <div class="callout">内容决定<span class="accent">找谁</span>，位置决定<span class="cyan">隔多远</span>。</div>
+        </div>
+      </div>
+      <div class="footer"><span>POSITION MATTERS</span><span class="page">22 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="Attention 负责通信，FFN 负责加工">
+      <div class="eyebrow">Transformer · FFN</div><h2>Attention 负责通信，FFN 负责加工</h2>
+      <div class="content compare">
+        <div class="panel glow stack">
+          <div class="metric cyan">↔</div><div class="huge">Attention</div><div class="big">Token 之间交换信息</div>
+          <p class="body">决定从上下文里取回什么。</p>
+        </div>
+        <div class="versus">然后</div>
+        <div class="panel stack" style="border-color:rgba(180,156,255,.55)">
+          <div class="metric violet">ƒ</div><div class="huge">FFN</div><div class="big">每个 Token 独立加工</div>
+          <p class="body">对拿回来的信息做非线性变换。</p>
+        </div>
+      </div>
+      <div class="footer"><span>COMMUNICATE · COMPUTE</span><span class="page">23 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="残差与 LayerNorm 让 Transformer 可以一层层堆高">
+      <div class="eyebrow">Transformer · 可训练性</div><h2>残差与 LayerNorm 让 Transformer 可以一层层堆高</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="label">从 ResNet 回收</div>
+          <div class="panel glow"><div class="metric accent">+</div><div class="big">残差连接</div><p class="body">给信息与梯度提供直接路径。</p></div>
+        </div>
+        <div class="stack">
+          <div class="label">从数值稳定回收</div>
+          <div class="panel"><div class="metric cyan">μσ</div><div class="big">LayerNorm</div><p class="body">让中间表示维持相对稳定的尺度。</p></div>
+        </div>
+      </div>
+      <div class="callout">想把模型做深，既要有<span class="accent">捷径</span>，也要有<span class="cyan">稳定尺度</span>。</div>
+      <div class="footer"><span>RESIDUAL + NORMALIZATION</span><span class="page">24 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="一个 Transformer Block，就是通信与加工的重复单元">
+      <div class="eyebrow">Transformer · 组装</div><h2>一个 Transformer Block，就是通信与加工的重复单元</h2>
+      <div class="content grid2">
+        <div class="block-stack">
+          <div class="block">输入表示</div><div class="arrow">↓</div>
+          <div class="block attn">Self-Attention · 通信</div>
+          <div class="block norm">+ Residual · LayerNorm</div>
+          <div class="block ffn">FFN · 加工</div>
+          <div class="block norm">+ Residual · LayerNorm</div>
+          <div class="arrow">↻ 重复 N 层</div>
+        </div>
+        <div class="stack">
+          <div class="huge">Block × N</div>
+          <p class="body">每一层都让 Token 重新交换一次信息，再独立加工一次。</p>
+          <div class="panel glow"><div class="label accent">核心分工</div><p class="big"><span class="cyan">Attention</span> 管通信<br><span class="violet">FFN</span> 管加工</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>TRANSFORMER BLOCK</span><span class="page">25 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="Transformer 原型：Encoder–Decoder；LLM 主线：Decoder-only">
+      <div class="eyebrow">Transformer · 论文路标</div><h2>Transformer 原型：Encoder–Decoder；<br>LLM 主线：Decoder-only</h2>
+      <div class="content split-40">
+        <div class="stack">
+          <div class="label">Vaswani et al. · 2017</div>
+          <div class="huge">Attention<br>Is All<br>You Need</div>
+          <p class="small">论文首次系统提出完全基于注意力的序列建模架构。</p>
+        </div>
+        <div class="stack">
+          <div class="compare" style="grid-template-columns:1fr 60px 1fr">
+            <div class="block-stack"><div class="block" style="width:330px">Encoder × N</div><div class="small">理解输入序列</div></div>
+            <div class="versus">→</div>
+            <div class="block-stack"><div class="block" style="width:330px">Decoder × N</div><div class="small">自回归生成输出</div></div>
+          </div>
+          <div class="rule"></div>
+          <div class="panel glow"><div class="label accent">现代主流 LLM</div><p class="big">GPT / LLaMA：Decoder-only 主线</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>ENCODER–DECODER → DECODER-ONLY</span><span class="page">26 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="架构决定潜力，但随机参数不会自动变成能力">
+      <div class="eyebrow">Transformer · 局限</div><h2>架构决定潜力，但随机参数不会自动变成能力</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="huge">架构<br><span class="red">≠</span><br>能力</div>
+          <p class="body">再深、再大的 Transformer，初始化时参数仍是一堆随机数。</p>
+        </div>
+        <div class="stack">
+          <div class="panel redline"><div class="label red">刚初始化</div><ul class="clean"><li>不认识文字</li><li>不理解知识</li><li>不会写代码</li></ul></div>
+          <div class="quote">能力从哪里来？</div>
+          <div class="flow"><span class="node hot">大规模预训练</span><span class="arrow">→</span><span class="node">LLM</span></div>
+        </div>
+      </div>
+      <div class="footer"><span>ARCHITECTURE IS NOT CAPABILITY</span><span class="page">27 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="LLM 必须同时回答：数据、任务与规模">
+      <div class="eyebrow">LLM · 三个问题</div><h2>LLM 必须同时回答：数据、任务与规模</h2>
+      <div class="content grid3">
+        <div class="stack"><div class="metric red">01</div><div class="big">海量文本<br>没有人工标注</div><p class="body">数据怎么利用？</p></div>
+        <div class="stack"><div class="metric amber">02</div><div class="big">任务种类<br>几乎无穷</div><p class="body">每个任务都单独训练？</p></div>
+        <div class="stack"><div class="metric accent">03</div><div class="big">模型、数据、计算<br>不断扩大</div><p class="body">能力会发生什么？</p></div>
+      </div>
+      <div class="footer"><span>LARGE LANGUAGE MODELS</span><span class="page">28 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="LLM 把海量文本变成一场自监督的下一个 Token 预测">
+      <div class="eyebrow">LLM · 定义</div><h2>LLM 把海量文本变成一场自监督的下一个 Token 预测</h2>
+      <div class="content stack" style="gap:40px">
+        <div class="quote" style="font-size:43px">在大规模文本上，以<span class="accent">预测下一个 Token</span>为核心目标进行自监督预训练；再通过监督微调与偏好对齐，适配具体任务与交互。</div>
+        <div class="flow" style="justify-content:center">
+          <span class="node">文本</span><span class="arrow">→</span><span class="node">Token</span><span class="arrow">→</span><span class="node hot">自监督预训练</span><span class="arrow">→</span><span class="node">SFT</span><span class="arrow">→</span><span class="node">偏好对齐</span>
+        </div>
+        <div class="row" style="justify-content:center"><span class="chip">大规模</span><span class="chip">Next Token</span><span class="chip">迁移</span><span class="chip">对齐</span></div>
+      </div>
+      <div class="footer"><span>PRETRAIN · ADAPT · ALIGN</span><span class="page">29 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="文字进入模型后，最终仍是一次超大规模分类">
+      <div class="eyebrow">LLM · 输入输出</div><h2>文字进入模型后，最终仍是一次超大规模分类</h2>
+      <div class="content stack" style="gap:44px">
+        <div>
+          <div class="label" style="margin-bottom:14px">输入：文字变成向量</div>
+          <div class="flow"><span class="node">文本</span><span class="arrow">→</span><span class="node">Token</span><span class="arrow">→</span><span class="node">Token ID</span><span class="arrow">→</span><span class="node hot">Embedding</span><span class="arrow">→</span><span class="node">向量</span></div>
+        </div>
+        <div>
+          <div class="label" style="margin-bottom:14px">输出：向量变成概率</div>
+          <div class="flow"><span class="node">隐藏向量</span><span class="arrow">→</span><span class="node">输出层</span><span class="arrow">→</span><span class="node">全词表 Logits</span><span class="arrow">→</span><span class="node hot">Softmax</span><span class="arrow">→</span><span class="node">下一个 Token</span></div>
+        </div>
+        <div class="callout">词表有多大，分类空间就有多大。</div>
+      </div>
+      <div class="footer"><span>TEXT → VECTOR → DISTRIBUTION</span><span class="page">30 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="文本自己给自己出题，预训练不再依赖人工标注">
+      <div class="eyebrow">LLM · 预训练</div><h2>文本自己给自己出题，预训练不再依赖人工标注</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="token-row"><span class="token">人工</span><span class="token">智能</span><span class="token">正在</span><span class="token">改变</span><span class="token current">___</span></div>
+          <div class="panel glow"><div class="label accent">监督信号就在文本里</div><p class="big" style="font-size:34px">每个位置的“后一个 Token”都是答案。</p></div>
+          <p class="small">全词表交叉熵衡量预测分布与真实 Token 的差异。</p>
+        </div>
+        <div class="stack">
+          <div class="panel"><div class="label cyan">一次训练多个位置</div><div class="token-row"><span class="token">A→B</span><span class="token">B→C</span><span class="token">C→D</span></div></div>
+          <div class="panel redline"><div class="label red">因果掩码</div><p class="body">当前位置看不到未来答案；训练仍可并行。</p>
+            <div class="matrix" style="grid-template-columns:repeat(5,42px);margin-top:18px"><i class="on">✓</i><i>×</i><i>×</i><i>×</i><i>×</i><i class="on">✓</i><i class="on">✓</i><i>×</i><i>×</i><i>×</i><i class="on">✓</i><i class="on">✓</i><i class="on">✓</i><i>×</i><i>×</i><i class="on">✓</i><i class="on">✓</i><i class="on">✓</i><i class="on">✓</i><i>×</i><i class="on">✓</i><i class="on">✓</i><i class="on">✓</i><i class="on">✓</i><i class="on">✓</i></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>SELF-SUPERVISED PRETRAINING</span><span class="page">31 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="最小预训练实验：随机参数如何长出语言模式">
+      <div class="eyebrow">LLM · llama.c 实验</div><h2>最小预训练实验：随机参数如何长出语言模式</h2>
+      <div class="content split-60">
+        <div class="stack">
+          <div class="loss-chart">
+            <svg viewBox="0 0 700 260" preserveAspectRatio="none" aria-label="Loss 下降示意"><polyline fill="none" stroke="#80f1c7" stroke-width="6" points="0,28 55,38 95,61 138,74 184,102 230,112 272,136 320,149 365,165 410,177 458,192 510,202 560,214 615,220 700,230"/><line x1="0" y1="230" x2="700" y2="230" stroke="#435168"/><line x1="1" y1="0" x2="1" y2="230" stroke="#435168"/></svg>
+          </div>
+          <div class="row" style="justify-content:space-between"><span class="small">训练开始 · 随机输出</span><span class="small">训练推进 · Loss 下降</span></div>
+        </div>
+        <div class="stack">
+          <div class="panel redline"><div class="label red">训练前</div><p class="body" style="font-family:monospace">“的而在… x9 水山？”</p></div>
+          <div class="panel glow"><div class="label accent">训练后</div><p class="body">词序、语法与局部语义开始形成。</p></div>
+          <div class="callout">随机 Transformer 可以通过 Next Token Prediction 真正<span class="accent">学出语言模式</span>。</div>
+          <p class="small">曲线与输出为机制示意；实讲时可替换为你的 llama.c 实测结果。</p>
+        </div>
+      </div>
+      <div class="footer"><span>LLAMA.C · MINIMAL PRETRAINING</span><span class="page">32 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="GPT-1 证明：预训练能力可以迁移到不同任务">
+      <div class="eyebrow">LLM · GPT-1</div><h2>GPT-1 证明：预训练能力可以迁移到不同任务</h2>
+      <div class="content stack" style="gap:50px">
+        <div class="flow" style="justify-content:center"><span class="node hot">大量文本预训练</span><span class="arrow">→</span><span class="node">通用语言表示</span><span class="arrow">→</span><span class="node amber">少量任务数据微调</span></div>
+        <div class="compare">
+          <div class="panel redline"><div class="label red">过去</div><p class="big">每个任务<br>从零训练</p></div>
+          <div class="versus">→</div>
+          <div class="panel glow"><div class="label accent">GPT-1</div><p class="big">先获得通用能力<br>再适配任务</p></div>
+        </div>
+        <div class="callout">模型第一次拥有可<span class="accent">迁移</span>的语言能力底座。</div>
+      </div>
+      <div class="footer"><span>PRETRAINING TRANSFERS</span><span class="page">33 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="GPT-2 进一步发现：许多任务都能写成续写">
+      <div class="eyebrow">LLM · GPT-2</div><h2>GPT-2 进一步发现：许多任务都能写成续写</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="label">把任务写进文本</div>
+          <div class="code" style="font-size:28px">Translate English to French:
+Hello → <span class="accent">Bonjour</span></div>
+          <div class="code" style="font-size:28px">Summarize:
+Long article → <span class="accent">Short summary</span></div>
+        </div>
+        <div class="stack">
+          <div class="huge">任务<br>=<br><span class="accent">续写格式</span></div>
+          <p class="body">同一个语言模型开始在没有任务专用微调的情况下处理不同任务。</p>
+        </div>
+      </div>
+      <div class="footer"><span>TASKS AS COMPLETION</span><span class="page">34 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="GPT-3 打开第二条适配通道：上下文">
+      <div class="eyebrow">LLM · GPT-3</div><h2>GPT-3 打开第二条适配通道：上下文</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="label">参数通道</div>
+          <div class="panel"><p class="big">训练 / 微调改变参数</p><p class="small">慢，但可以长期保留</p></div>
+          <div class="label">上下文通道</div>
+          <div class="panel glow"><p class="big">Prompt / 示例描述任务</p><p class="small">即时生效，不改参数</p></div>
+        </div>
+        <div class="stack">
+          <div class="grid3">
+            <div><div class="metric red">0</div><h3>Zero-shot</h3></div>
+            <div><div class="metric amber">1</div><h3>One-shot</h3></div>
+            <div><div class="metric accent">N</div><h3>Few-shot</h3></div>
+          </div>
+          <div class="quote">任务本身，<br>可以直接进入 <span class="accent">Context</span>。</div>
+          <p class="body">这就是 In-context Learning：在上下文中“临时学会”任务。</p>
+        </div>
+      </div>
+      <div class="footer"><span>IN-CONTEXT LEARNING</span><span class="page">35 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="通用能力出现，因为语言本身承载大量任务与世界规律">
+      <div class="eyebrow">LLM · 能力涌现</div><h2>通用能力出现，因为语言本身承载大量任务与世界规律</h2>
+      <div class="content split-60">
+        <div class="stack">
+          <div class="row"><span class="chip">世界知识</span><span class="chip">任务描述</span><span class="chip">推理过程</span><span class="chip">对话</span><span class="chip">代码</span><span class="chip">人类行为痕迹</span></div>
+          <div class="quote" style="font-size:44px">为了预测好下一个 Token，模型必须学习<span class="accent">文本背后的规律</span>。</div>
+          <div class="flow"><span class="node">数据 ↑</span><span class="node">参数 ↑</span><span class="node">计算 ↑</span><span class="arrow">→</span><span class="node hot">能力边界扩张</span></div>
+        </div>
+        <div class="panel glow stack">
+          <div class="label">学习对象发生变化</div>
+          <div class="big">一个具体任务</div><div class="arrow">↓</div>
+          <div class="huge accent">语言分布</div>
+          <p class="body">而语言分布，恰好承载着大量任务。</p>
+        </div>
+      </div>
+      <div class="footer"><span>WHY GENERAL CAPABILITY EMERGES</span><span class="page">36 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="SFT 改变的是数据分布：从续写模型到助手">
+      <div class="eyebrow">LLM · SFT</div><h2>SFT 改变的是数据分布：从续写模型到助手</h2>
+      <div class="content compare">
+        <div class="panel redline stack">
+          <div class="label red">预训练模型</div><div class="huge">接下来<br>会写什么？</div>
+          <p class="body">学习互联网文本的延续方式。</p>
+        </div>
+        <div class="versus">SFT<br>→</div>
+        <div class="panel glow stack">
+          <div class="label accent">助手模型</div><div class="huge">你希望我<br>做什么？</div>
+          <p class="body">学习 Instruction → Response 的交互分布。</p>
+        </div>
+      </div>
+      <div class="callout">训练目标仍是 Next Token Prediction；改变的是<span class="accent">什么文本值得预测</span>。</div>
+      <div class="footer"><span>COMPLETION → ASSISTANT</span><span class="page">37 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="同一个 Prompt，SFT 让输出从续写转向执行指令">
+      <div class="eyebrow">LLM · SFT 实验</div><h2>同一个 Prompt，SFT 让输出从续写转向执行指令</h2>
+      <div class="content stack">
+        <div class="panel"><div class="label">Prompt</div><p class="big">“用三点解释什么是机器学习。”</p></div>
+        <div class="compare">
+          <div class="panel redline"><div class="label red">Base Model · 典型表现</div><p class="body">继续模仿网页、教材或对话文本，格式与指令不一定匹配。</p></div>
+          <div class="versus">VS</div>
+          <div class="panel glow"><div class="label accent">SFT Model · 典型表现</div><p class="body">直接给出三点解释，结构清楚，语气更像助手。</p></div>
+        </div>
+        <div class="callout">SFT 主要改变<span class="accent">指令遵循与输出行为</span>，不是凭空注入全部知识。</div>
+      </div>
+      <div class="footer"><span>BASE VS SFT</span><span class="page">38 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="偏好学习回答另一个问题：怎样才算更好的回答？">
+      <div class="eyebrow">LLM · 偏好对齐</div><h2>偏好学习回答另一个问题：怎样才算更好的回答？</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="label">偏好信号</div>
+          <div class="compare" style="grid-template-columns:1fr 58px 1fr"><div class="panel">Answer A</div><div class="versus">VS</div><div class="panel glow">Answer B ✓</div></div>
+          <p class="body">人类只需比较两个答案，而不必写出唯一标准答案。</p>
+        </div>
+        <div class="stack">
+          <div class="panel"><div class="label cyan">RLHF</div><p class="body">偏好数据 → Reward Model → 强化学习</p></div>
+          <div class="panel glow"><div class="label accent">DPO</div><p class="body">直接用偏好对优化模型</p></div>
+          <div class="panel redline"><div class="label red">边界</div><p class="body">调整回答倾向，不等于保证事实正确。</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>PREFERENCE ALIGNMENT</span><span class="page">39 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="LoRA 不重写整张权重，只学习一个低秩增量">
+      <div class="eyebrow">LLM · LoRA</div><h2>LoRA 不重写整张权重，只学习一个低秩增量</h2>
+      <div class="content grid2">
+        <div class="stack">
+          <div class="formula">W → W + ΔW</div>
+          <div class="flow"><span class="node">冻结 W</span><span class="arrow">+</span><span class="node hot">训练 ΔW = BA</span></div>
+          <p class="body">用两个小矩阵近似需要的权重变化，保留原模型，学习少量增量参数。</p>
+        </div>
+        <div class="grid2" style="gap:20px">
+          <div class="panel glow"><div class="label accent">少</div><p class="big">更新参数少</p></div>
+          <div class="panel"><div class="label cyan">省</div><p class="big">显存需求低</p></div>
+          <div class="panel"><div class="label amber">快</div><p class="big">训练速度快</p></div>
+          <div class="panel"><div class="label violet">活</div><p class="big">多适配器切换</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>LOW-RANK ADAPTATION</span><span class="page">40 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="LoRA 让消费级硬件也能低成本改变模型行为">
+      <div class="eyebrow">LLM · LoRA 实验</div><h2>LoRA 让消费级硬件也能低成本改变模型行为</h2>
+      <div class="content split-60">
+        <div class="stack">
+          <div class="flow"><span class="node">Base</span><span class="arrow">→</span><span class="node hot">LoRA 适配</span><span class="arrow">→</span><span class="node">目标行为</span></div>
+          <table class="table">
+            <thead><tr><th>观察项</th><th>全参数微调</th><th>LoRA</th></tr></thead>
+            <tbody><tr><td>训练参数</td><td class="red">全部</td><td class="yes">少量增量</td></tr><tr><td>显存需求</td><td>高</td><td class="yes">较低</td></tr><tr><td>适配器保存</td><td>大模型副本</td><td class="yes">小文件</td></tr><tr><td>切换任务</td><td>成本高</td><td class="yes">灵活</td></tr></tbody>
+          </table>
+        </div>
+        <div class="stack">
+          <div class="panel"><div class="label">Base</div><p class="body">通用回答，但未贴合特定格式 / 领域。</p></div>
+          <div class="panel glow"><div class="label accent">LoRA 后</div><p class="body">输出行为向目标数据分布靠近。</p></div>
+          <p class="small">训练参数量、显存、时间与实际输出建议替换为你的实测记录。</p>
+        </div>
+      </div>
+      <div class="footer"><span>PARAMETER-EFFICIENT FINETUNING</span><span class="page">41 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="训练会改参数；推理只读参数，并逐 Token 生成">
+      <div class="eyebrow">LLM · 训练 vs 推理</div><h2>训练会改参数；推理只读参数，并逐 Token 生成</h2>
+      <div class="content split-60">
+        <table class="table">
+          <thead><tr><th>机制</th><th>训练</th><th>推理</th></tr></thead>
+          <tbody><tr><td>有正确答案</td><td class="yes">有</td><td class="no">没有</td></tr><tr><td>计算 Loss</td><td class="yes">是</td><td class="no">否</td></tr><tr><td>反向传播</td><td class="yes">是</td><td class="no">否</td></tr><tr><td>更新参数</td><td class="yes">是</td><td class="no">否</td></tr><tr><td>逐 Token 生成</td><td class="no">否</td><td class="yes">是</td></tr></tbody>
+        </table>
+        <div class="stack">
+          <div class="label">自回归推理循环</div>
+          <div class="flow" style="flex-wrap:wrap"><span class="node">Prompt</span><span class="arrow">→</span><span class="node hot">预测 Token</span><span class="arrow">→</span><span class="node">拼回输入</span><span class="arrow">↺</span></div>
+          <div class="callout">训练可并行，生成必须<span class="accent">一步接一步</span>。</div>
+        </div>
+      </div>
+      <div class="footer"><span>TRAINING VS INFERENCE</span><span class="page">42 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="采样决定生成的随机程度与风格，不负责判断真假">
+      <div class="eyebrow">LLM · 采样</div><h2>采样决定生成的随机程度与风格，不负责判断真假</h2>
+      <div class="content grid3">
+        <div class="stack"><div class="metric red">T</div><div class="big">Temperature</div><p class="body">低：更确定<br>高：更多样</p><div class="row"><span style="width:80px;height:50px;background:var(--red)"></span><span style="width:48px;height:34px;background:rgba(255,99,116,.65)"></span><span style="width:30px;height:20px;background:rgba(255,99,116,.35)"></span></div></div>
+        <div class="stack"><div class="metric amber">K</div><div class="big">Top-K</div><p class="body">只在概率最高的 K 个 Token 中采样。</p><div class="token-row"><span class="token current">1</span><span class="token current">2</span><span class="token current">3</span><span class="token">×</span><span class="token">×</span></div></div>
+        <div class="stack"><div class="metric accent">P</div><div class="big">Top-P</div><p class="body">选取累计概率达到 P 的最小 Token 集合。</p><div style="height:18px;background:#182230"><div style="width:76%;height:100%;background:var(--mint)"></div></div></div>
+      </div>
+      <div class="callout">采样改变的是<span class="accent">选择方式</span>，不是事实校验机制。</div>
+      <div class="footer"><span>SAMPLING CONTROLS STYLE</span><span class="page">43 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="每一代技术，都让机器多接管一层设计工作">
+      <div class="eyebrow">收尾 · 回收主线</div><h2>每一代技术，都让机器多接管一层设计工作</h2>
+      <div class="content stack" style="gap:42px">
+        <div class="timeline">
+          <div class="milestone red"><strong>传统程序</strong><span>人写规则<br>机器执行</span></div>
+          <div class="milestone amber"><strong>机器学习</strong><span>学习参数</span></div>
+          <div class="milestone accent"><strong>深度学习</strong><span>学习特征</span></div>
+          <div class="milestone cyan"><strong>Transformer</strong><span>学习上下文关系</span></div>
+          <div class="milestone violet"><strong>LLM</strong><span>在语言中统一任务</span></div>
+          <div class="milestone"><strong>Agent</strong><span>从答案走向行动</span></div>
+        </div>
+        <div class="callout">技术演进的真正主角，不只是更大的模型，而是<span class="accent">设计边界的持续后移</span>。</div>
+      </div>
+      <div class="footer"><span>THE ARC, REVISITED</span><span class="page">44 / 45</span></div>
+    </section>
+
+    <section class="slide" data-title="为了预测下一个 Token，模型学会了越来越多我们称为智能的能力">
+      <div class="eyebrow">收尾 · 智能的涌现</div>
+      <div class="content stack" style="justify-content:center;gap:42px">
+        <div class="label">整场最终结论</div>
+        <div class="quote" style="font-size:56px;max-width:1400px">当结构足够通用、数据足够丰富、规模足够大，为了做好<span class="accent">“预测下一个 Token”</span>这件简单的事，模型表现出了越来越多我们称为<span class="cyan">「智能」</span>的能力。</div>
+        <div class="rule"></div>
+        <div class="flow"><span class="node">规则</span><span class="arrow">→</span><span class="node">参数</span><span class="arrow">→</span><span class="node">特征</span><span class="arrow">→</span><span class="node">关系</span><span class="arrow">→</span><span class="node hot">任务表达</span></div>
+        <p class="body">下一站：工程实战与 Agent——从生成答案走向完成行动。</p>
+      </div>
+      <div class="footer"><span>EMERGENCE</span><span class="page">45 / 45</span></div>
+    </section>
+
+  </main>
+
+  <div id="controls" aria-label="演示控制">
+    <button id="prev" title="上一页">‹</button><button id="overviewBtn" title="总览">▦</button><button id="fullscreen" title="全屏">⛶</button><button id="next" title="下一页">›</button>
+  </div>
+  <div id="help">← → / Space 翻页 · F 全屏 · O 总览 · Home / End</div>
+  <div id="progress"></div>
+  <aside id="overview" aria-label="幻灯片总览"></aside>
+
+  <script>
+    (() => {
+      const stage = document.getElementById('stage');
+      const slides = [...document.querySelectorAll('.slide')];
+      const progress = document.getElementById('progress');
+      const overview = document.getElementById('overview');
+      let index = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1), 10) || 1) - 1));
+
+      const fit = () => {
+        const scale = Math.min(innerWidth / 1600, innerHeight / 900);
+        stage.style.transform = `scale(${scale})`;
+      };
+      const render = (next, pushHash = true) => {
+        index = Math.max(0, Math.min(slides.length - 1, next));
+        slides.forEach((s, i) => s.classList.toggle('active', i === index));
+        progress.style.width = `${((index + 1) / slides.length) * 100}%`;
+        document.title = `${index + 1}/${slides.length} · ${slides[index].dataset.title}`;
+        if (pushHash) history.replaceState(null, '', `#${index + 1}`);
+      };
+      const toggleOverview = () => overview.classList.toggle('open');
+
+      slides.forEach((slide, i) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb';
+        thumb.innerHTML = `<span>${slide.querySelector('.eyebrow')?.textContent || ''}</span><b>${slide.dataset.title}</b><em>${String(i + 1).padStart(2, '0')}</em>`;
+        thumb.addEventListener('click', () => { render(i); overview.classList.remove('open'); });
+        overview.appendChild(thumb);
+      });
+
+      document.getElementById('prev').onclick = () => render(index - 1);
+      document.getElementById('next').onclick = () => render(index + 1);
+      document.getElementById('overviewBtn').onclick = toggleOverview;
+      document.getElementById('fullscreen').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      addEventListener('resize', fit);
+      addEventListener('hashchange', () => render((parseInt(location.hash.slice(1), 10) || 1) - 1, false));
+      addEventListener('keydown', e => {
+        if (overview.classList.contains('open') && e.key === 'Escape') return overview.classList.remove('open');
+        if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); render(index + 1); }
+        if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); render(index - 1); }
+        if (e.key === 'Home') render(0);
+        if (e.key === 'End') render(slides.length - 1);
+        if (e.key.toLowerCase() === 'f') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+        if (e.key.toLowerCase() === 'o') toggleOverview();
+      });
+      let touchX = null;
+      addEventListener('touchstart', e => touchX = e.touches[0].clientX, {passive:true});
+      addEventListener('touchend', e => { if (touchX === null) return; const dx = e.changedTouches[0].clientX - touchX; if (Math.abs(dx) > 55) render(index + (dx < 0 ? 1 : -1)); touchX = null; }, {passive:true});
+      fit(); render(index, false);
+    })();
+  </script>
+</body>
+</html>
