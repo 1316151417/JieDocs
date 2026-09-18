@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="940" height="432" viewBox="0 0 940 432" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',sans-serif">
+  <defs>
+    <g id="unitT">
+      <rect x="0" y="138" width="17.5" height="38" fill="#e05555"/>
+      <rect x="17.5" y="138" width="9" height="38" fill="#eef0f3"/>
+      <rect x="26.5" y="138" width="9" height="38" fill="#d7dbe1"/>
+      <rect x="35.5" y="138" width="17.5" height="38" fill="#e05555"/>
+      <rect x="53" y="138" width="5" height="38" fill="#eef0f3"/>
+    </g>
+  </defs>
+  <rect width="940" height="432" fill="#ffffff"/>
+
+  <text x="470" y="34" text-anchor="middle" font-size="17" font-weight="bold" fill="#2c3038">图 1 · 两套方案的用户等待时间对比</text>
+  <text x="470" y="56" text-anchor="middle" font-size="11.5" fill="#6b7280">同一条时间轴：单次 LLM 调用按 500ms 估算</text>
+
+  <!-- legend -->
+  <rect x="200" y="68" width="12" height="12" fill="#e05555"/>
+  <text x="217" y="78" font-size="11" fill="#4b5158">LLM 调用（≈500ms/次）</text>
+  <rect x="420" y="68" width="12" height="12" fill="#eef0f3" stroke="#c9cdd4"/>
+  <text x="437" y="78" font-size="11" fill="#4b5158">Skill 加载 / Agent 调度</text>
+  <rect x="630" y="68" width="12" height="12" fill="#d7dbe1" stroke="#aeb4bd"/>
+  <text x="647" y="78" font-size="11" fill="#4b5158">业务接口 / 后端处理</text>
+
+  <!-- vertical gridlines -->
+  <g stroke="#e8eaed" stroke-width="1">
+    <line x1="190" y1="126" x2="190" y2="318"/>
+    <line x1="260" y1="126" x2="260" y2="318"/>
+    <line x1="330" y1="126" x2="330" y2="318"/>
+    <line x1="400" y1="126" x2="400" y2="318"/>
+    <line x1="470" y1="126" x2="470" y2="318"/>
+    <line x1="540" y1="126" x2="540" y2="318"/>
+    <line x1="610" y1="126" x2="610" y2="318"/>
+    <line x1="680" y1="126" x2="680" y2="318"/>
+    <line x1="750" y1="126" x2="750" y2="318"/>
+    <line x1="820" y1="126" x2="820" y2="318"/>
+  </g>
+
+  <!-- ===== top bar: multi-skill ===== -->
+  <text x="120" y="100" font-size="14" font-weight="bold" fill="#2c3038">多 Skill 方案</text>
+  <path d="M120,130 V124 H700 V130" fill="none" stroke="#c23c3c" stroke-width="1.2"/>
+  <text x="410" y="117" text-anchor="middle" font-size="12" fill="#a33c3c">≈20 次 LLM 调用 × 500ms ≈ 10s ＋ 加载 / 接口 / 调度</text>
+
+  <use xlink:href="#unitT" href="#unitT" x="120"/>
+  <use xlink:href="#unitT" href="#unitT" x="178"/>
+  <use xlink:href="#unitT" href="#unitT" x="236"/>
+  <use xlink:href="#unitT" href="#unitT" x="294"/>
+  <use xlink:href="#unitT" href="#unitT" x="352"/>
+  <use xlink:href="#unitT" href="#unitT" x="410"/>
+  <use xlink:href="#unitT" href="#unitT" x="468"/>
+  <use xlink:href="#unitT" href="#unitT" x="526"/>
+  <use xlink:href="#unitT" href="#unitT" x="584"/>
+  <use xlink:href="#unitT" href="#unitT" x="642"/>
+
+  <rect x="722" y="149" width="88" height="20" fill="#ffffff"/>
+  <text x="726" y="163" font-size="16" font-weight="bold" fill="#c23c3c">10～20s+</text>
+  <rect x="722" y="169" width="146" height="14" fill="#ffffff"/>
+  <text x="726" y="179" font-size="10" fill="#8a8f98">可能更长（上下文变长会更慢）</text>
+  <text x="120" y="192" font-size="10.5" fill="#8a8f98">每组：LLM → 加载 → 接口 → LLM → 调度，循环 ×10 组（共 20 次 LLM 调用）</text>
+
+  <!-- ===== bottom bar: new plan ===== -->
+  <text x="120" y="262" font-size="14" font-weight="bold" fill="#2c3038">新方案（轻量 Agent）<tspan font-size="11" font-weight="normal" fill="#8a8f98">&#160;&#160;2～3 次 LLM 调用</tspan></text>
+  <rect x="120" y="272" width="17.5" height="38" fill="#e05555"/>
+  <rect x="137.5" y="272" width="10.5" height="38" fill="#eef0f3"/>
+  <rect x="148" y="272" width="17.5" height="38" fill="#e05555"/>
+  <rect x="165.5" y="272" width="35" height="38" fill="#d7dbe1"/>
+  <rect x="200.5" y="272" width="17.5" height="38" fill="#e05555"/>
+  <rect x="222" y="283" width="76" height="20" fill="#ffffff"/>
+  <text x="226" y="297" font-size="16" font-weight="bold" fill="#2a7a55">≈ 1～3s</text>
+  <rect x="222" y="302" width="92" height="14" fill="#ffffff"/>
+  <text x="226" y="313" font-size="10" fill="#8a8f98">接近正常后台操作</text>
+  <g font-size="10" fill="#6b7280" text-anchor="middle">
+    <text x="128.75" y="324">LLM①</text>
+    <text x="156.75" y="324">LLM②</text>
+    <text x="209.25" y="324">LLM③</text>
+    <text x="142.75" y="338">Skill</text>
+    <text x="183" y="338">Tool</text>
+  </g>
+  <text x="226" y="326" font-size="10" fill="#8a8f98">Tool 内部由后端一次聚合完成，不再逐个驱动</text>
+
+  <!-- ===== axis ===== -->
+  <line x1="110" y1="356" x2="860" y2="356" stroke="#4b5158" stroke-width="1.5"/>
+  <g stroke="#4b5158" stroke-width="1">
+    <line x1="120" y1="352" x2="120" y2="360"/>
+    <line x1="190" y1="352" x2="190" y2="360"/>
+    <line x1="260" y1="352" x2="260" y2="360"/>
+    <line x1="330" y1="352" x2="330" y2="360"/>
+    <line x1="400" y1="352" x2="400" y2="360"/>
+    <line x1="470" y1="352" x2="470" y2="360"/>
+    <line x1="540" y1="352" x2="540" y2="360"/>
+    <line x1="610" y1="352" x2="610" y2="360"/>
+    <line x1="680" y1="352" x2="680" y2="360"/>
+    <line x1="750" y1="352" x2="750" y2="360"/>
+    <line x1="820" y1="352" x2="820" y2="360"/>
+  </g>
+  <g font-size="11" fill="#4b5158" text-anchor="middle">
+    <text x="120" y="374">0</text>
+    <text x="190" y="374">2</text>
+    <text x="260" y="374">4</text>
+    <text x="330" y="374">6</text>
+    <text x="400" y="374">8</text>
+    <text x="470" y="374">10</text>
+    <text x="540" y="374">12</text>
+    <text x="610" y="374">14</text>
+    <text x="680" y="374">16</text>
+    <text x="750" y="374">18</text>
+    <text x="820" y="374">20</text>
+  </g>
+  <text x="868" y="360" font-size="11" fill="#6b7280">时间（秒）</text>
+
+  <text x="470" y="410" text-anchor="middle" font-size="12.5" fill="#2c3038"><tspan font-weight="bold" fill="#a33c3c">慢的根源不是单次调用慢，而是调用次数多</tspan><tspan fill="#6b7280"> —— 砍掉不必要的 LLM 决策点，等待压缩一个数量级</tspan></text>
+</svg>

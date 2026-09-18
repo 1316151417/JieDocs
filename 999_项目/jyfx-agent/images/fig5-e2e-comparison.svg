@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="896" viewBox="0 0 940 896" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',sans-serif">
+  <defs>
+    <marker id="mDark5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4b5158"/>
+    </marker>
+  </defs>
+  <rect width="940" height="896" fill="#ffffff"/>
+
+  <text x="470" y="32" text-anchor="middle" font-size="17" font-weight="bold" fill="#2c3038">图 5 · 两套方案端到端链路全景对比</text>
+  <text x="470" y="54" text-anchor="middle" font-size="11.5" fill="#6b7280">从用户到卡片：红色 = LLM 决策点 ｜ 灰色 = Skill / Tool ｜ 绿色 = 结果 ｜ 左右起点对齐</text>
+
+  <line x1="470" y1="72" x2="470" y2="790" stroke="#d8dbe0" stroke-width="1.2" stroke-dasharray="6,5"/>
+
+  <!-- headers -->
+  <rect x="125" y="70" width="250" height="28" rx="14" fill="#e05555"/>
+  <text x="250" y="89" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#ffffff">原方案 · 多 Skill 编排</text>
+  <rect x="565" y="70" width="250" height="28" rx="14" fill="#3d9970"/>
+  <text x="690" y="89" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#ffffff">新方案 · 轻量 Agent</text>
+
+  <!-- ===== left column ===== -->
+  <g>
+    <rect x="165" y="106" width="170" height="32" rx="6" fill="#3b4048"/>
+    <text x="250" y="127" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff">用户</text>
+    <rect x="165" y="152" width="170" height="32" rx="6" fill="#e05555"/>
+    <text x="250" y="173" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffffff">LLM ①</text>
+    <rect x="165" y="198" width="170" height="32" rx="6" fill="#eef0f3" stroke="#c9cdd4"/>
+    <text x="250" y="219" text-anchor="middle" font-size="11" fill="#4b5158">Skill A</text>
+    <rect x="165" y="244" width="170" height="32" rx="6" fill="#e05555"/>
+    <text x="250" y="265" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffffff">LLM ②</text>
+    <rect x="165" y="290" width="170" height="32" rx="6" fill="#d7dbe1" stroke="#aeb4bd"/>
+    <text x="250" y="311" text-anchor="middle" font-size="11" fill="#373c44">Tool A</text>
+    <rect x="165" y="336" width="170" height="32" rx="6" fill="#e05555"/>
+    <text x="250" y="357" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffffff">LLM ③</text>
+    <rect x="165" y="382" width="170" height="32" rx="6" fill="#eef0f3" stroke="#c9cdd4"/>
+    <text x="250" y="403" text-anchor="middle" font-size="11" fill="#4b5158">Skill B</text>
+    <rect x="165" y="428" width="170" height="32" rx="6" fill="#e05555"/>
+    <text x="250" y="449" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffffff">LLM ④</text>
+    <rect x="165" y="474" width="170" height="32" rx="6" fill="#d7dbe1" stroke="#aeb4bd"/>
+    <text x="250" y="495" text-anchor="middle" font-size="11" fill="#373c44">Tool B</text>
+    <rect x="165" y="520" width="170" height="32" rx="6" fill="#e05555"/>
+    <text x="250" y="541" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffffff">LLM ⑤</text>
+    <rect x="165" y="566" width="170" height="32" rx="6" fill="#eef0f3" stroke="#c9cdd4"/>
+    <text x="250" y="587" text-anchor="middle" font-size="11" fill="#4b5158">Skill C</text>
+    <rect x="165" y="612" width="170" height="32" rx="6" fill="#e05555"/>
+    <text x="250" y="633" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffffff">LLM ⑥</text>
+    <rect x="165" y="658" width="170" height="32" rx="6" fill="#fafbfc" stroke="#c9cdd4" stroke-dasharray="5,4"/>
+    <text x="250" y="679" text-anchor="middle" font-size="11" fill="#8a8f98">⋯ 重复的 Skill/Tool 组 ⋯</text>
+    <rect x="165" y="704" width="170" height="32" rx="6" fill="#e05555"/>
+    <text x="250" y="725" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffffff">LLM ⑦</text>
+    <rect x="165" y="750" width="170" height="32" rx="6" fill="#3d9970"/>
+    <text x="250" y="771" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff">经营待办卡片</text>
+  </g>
+  <g stroke="#7a828c" stroke-width="1.3">
+    <line x1="250" y1="138" x2="250" y2="148" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="184" x2="250" y2="194" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="230" x2="250" y2="240" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="276" x2="250" y2="286" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="322" x2="250" y2="332" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="368" x2="250" y2="378" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="414" x2="250" y2="424" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="460" x2="250" y2="470" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="506" x2="250" y2="516" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="552" x2="250" y2="562" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="598" x2="250" y2="608" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="644" x2="250" y2="654" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="690" x2="250" y2="700" marker-end="url(#mDark5)"/>
+    <line x1="250" y1="736" x2="250" y2="746" marker-end="url(#mDark5)"/>
+  </g>
+  <text x="345" y="660" font-size="11.5" font-weight="bold" fill="#c23c3c">10～20+ 个</text>
+  <text x="345" y="676" font-size="11.5" font-weight="bold" fill="#c23c3c">LLM 决策点</text>
+
+  <!-- ===== right column ===== -->
+  <rect x="605" y="106" width="170" height="32" rx="6" fill="#3b4048"/>
+  <text x="690" y="127" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff">用户</text>
+  <rect x="605" y="152" width="170" height="32" rx="6" fill="#e05555"/>
+  <text x="690" y="173" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffffff">LLM ①</text>
+  <rect x="575" y="198" width="230" height="32" rx="6" fill="#fbe3bd" stroke="#d9a441"/>
+  <text x="690" y="218" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#6b4d1a">经营推荐 Skill · 仅加载一次</text>
+  <rect x="605" y="244" width="170" height="32" rx="6" fill="#e05555"/>
+  <text x="690" y="265" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffffff">LLM ②</text>
+  <rect x="560" y="290" width="260" height="32" rx="6" fill="#ffffff" stroke="#3b4048" stroke-width="1.6"/>
+  <text x="690" y="310" text-anchor="middle" font-size="11" font-weight="bold" fill="#2c3038">业务 Tool（get_manager_business_data 等）</text>
+  <rect x="560" y="336" width="260" height="120" rx="8" fill="#eef0f3" stroke="#aeb4bd"/>
+  <text x="690" y="366" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#373c44">确定性后端流程</text>
+  <text x="690" y="390" text-anchor="middle" font-size="11" fill="#6b7280">接口调用 → 数据聚合 → 指标计算</text>
+  <text x="690" y="410" text-anchor="middle" font-size="11" fill="#6b7280">固定顺序 · 可单元测试</text>
+  <text x="690" y="432" text-anchor="middle" font-size="11" font-style="italic" fill="#8a8f98">由代码驱动 · 零 LLM 决策</text>
+  <rect x="605" y="470" width="170" height="32" rx="6" fill="#3d9970"/>
+  <text x="690" y="491" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff">经营待办卡片</text>
+  <g stroke="#7a828c" stroke-width="1.3">
+    <line x1="690" y1="138" x2="690" y2="148" marker-end="url(#mDark5)"/>
+    <line x1="690" y1="184" x2="690" y2="194" marker-end="url(#mDark5)"/>
+    <line x1="690" y1="230" x2="690" y2="240" marker-end="url(#mDark5)"/>
+    <line x1="690" y1="276" x2="690" y2="286" marker-end="url(#mDark5)"/>
+    <line x1="690" y1="322" x2="690" y2="332" marker-end="url(#mDark5)"/>
+    <line x1="690" y1="456" x2="690" y2="466" marker-end="url(#mDark5)"/>
+  </g>
+  <text x="690" y="530" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#2a7a55">全程仅 2～3 个 LLM 决策点</text>
+
+  <!-- ===== bottom summary panels ===== -->
+  <rect x="130" y="798" width="240" height="76" rx="8" fill="#fdeeee" stroke="#f0c9c9"/>
+  <text x="250" y="822" text-anchor="middle" font-size="12" font-weight="bold" fill="#a33c3c">LLM 调用 10～20+ ｜ 等待 10～20s+</text>
+  <text x="250" y="842" text-anchor="middle" font-size="11" fill="#b05252">决策点多 · 链路长 · 规则分散</text>
+  <text x="250" y="860" text-anchor="middle" font-size="10.5" font-style="italic" fill="#b05252">LLM 在参与业务流程编排</text>
+
+  <rect x="570" y="798" width="240" height="76" rx="8" fill="#e9f5ef" stroke="#bcdccb"/>
+  <text x="690" y="822" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a6b4f">LLM 调用 2～3 ｜ 目标 1～3s</text>
+  <text x="690" y="842" text-anchor="middle" font-size="11" fill="#4c7a63">决策点少 · 链路短 · 规则集中</text>
+  <text x="690" y="860" text-anchor="middle" font-size="10.5" font-style="italic" fill="#4c7a63">LLM 只参与真正需要智能判断的部分</text>
+</svg>
