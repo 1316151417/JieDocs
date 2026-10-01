@@ -6,11 +6,11 @@
 
 Node 的文件操作有三套同时存在的接口，功能一致，区别只在调用风格。读源码时三种都会遇到：
 
-| 风格 | 形态 | 导入 |
-|---|---|---|
-| 同步 | `fs.readFileSync(p, "utf8")` | `node:fs` |
-| 回调 | `fs.readFile(p, "utf8", (err, data) => {})` | `node:fs` |
-| Promise | `await readFile(p, "utf8")` | `node:fs/promises` |
+| 风格      | 形态                                          | 导入                 |
+| ------- | ------------------------------------------- | ------------------ |
+| 同步      | `fs.readFileSync(p, "utf8")`                | `node:fs`          |
+| 回调      | `fs.readFile(p, "utf8", (err, data) => {})` | `node:fs`          |
+| Promise | `await readFile(p, "utf8")`                 | `node:fs/promises` |
 
 ```ts
 import * as fs from "node:fs";                 // 同步 + 回调两套都在这里

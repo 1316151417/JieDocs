@@ -137,12 +137,12 @@ void logger.flush(); // void 是给读者和 lint 的信号：故意不 await
 
 ## 4.5 组合子：all / allSettled / race / any
 
-| 组合子 | 语义 | 最近对应物 |
-|---|---|---|
-| `Promise.all` | 全部 fulfilled 才 fulfill；任一 reject 立刻整体 reject（fail-fast） | `CompletableFuture.allOf` / `asyncio.gather` |
-| `Promise.allSettled` | 等全部 settle，收集各自成败 | `gather(return_exceptions=True)` |
-| `Promise.race` | 第一个 settle 的胜出（无论成败） | 无直接对应 |
-| `Promise.any` | 第一个 fulfilled 胜出；全败才 reject（AggregateError） | 无直接对应 |
+| 组合子                  | 语义                                                      | 最近对应物                                        |
+| -------------------- | ------------------------------------------------------- | -------------------------------------------- |
+| `Promise.all`        | 全部 fulfilled 才 fulfill；任一 reject 立刻整体 reject（fail-fast） | `CompletableFuture.allOf` / `asyncio.gather` |
+| `Promise.allSettled` | 等全部 settle，收集各自成败                                       | `gather(return_exceptions=True)`             |
+| `Promise.race`       | 第一个 settle 的胜出（无论成败）                                    | 无直接对应                                        |
+| `Promise.any`        | 第一个 fulfilled 胜出；全败才 reject（AggregateError）             | 无直接对应                                        |
 
 ```ts
 // all：要么全要，要么整体失败。并行取"必需"数据
